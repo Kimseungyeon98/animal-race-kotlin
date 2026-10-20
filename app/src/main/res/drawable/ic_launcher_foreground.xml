@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- 깃대 -->
+    <path android:fillColor="#F2C230" android:pathData="M35,32h4v46h-4z" />
+    <!-- 깃발 바탕 -->
+    <path android:fillColor="#FFFFFF" android:pathData="M39,34h35v28h-35z" />
+    <path android:fillColor="#111111" android:pathData="M40,34h7v7h-7zM54,34h7v7h-7zM68,34h7v7h-7zM47,41h7v7h-7zM61,41h7v7h-7zM40,48h7v7h-7zM54,48h7v7h-7zM68,48h7v7h-7zM47,55h7v7h-7zM61,55h7v7h-7z" />
+</vector>
