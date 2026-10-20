@@ -1,6 +1,10 @@
 package com.example.animalrace.ui.art
 
 import androidx.compose.ui.geometry.Offset
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
@@ -33,6 +37,23 @@ internal val POSES = listOf(
     Pose(26f, -26f, -5f, -14f),
     Pose(-22f, 22f, 0f, 8f),
 )
+
+/**
+ * 달리는 자세를 시간에 따라 연속으로 계산한다. 두 교차 자세를 번갈아 끊어 보여 주면
+ * 움직이는 화면에서 깜빡이듯 번져 보여서, 사인 곡선으로 부드럽게 이어 준다.
+ */
+internal fun gait(seconds: Float, period: Float = 0.34f): Pose {
+    val w = 2f * PI.toFloat() * seconds / period
+    val k = (1f - cos(w)) / 2f
+    val a = POSES[1]
+    val b = POSES[2]
+    return Pose(
+        legA = a.legA + (b.legA - a.legA) * k,
+        legB = a.legB + (b.legB - a.legB) * k,
+        bob = -3.5f * abs(sin(w)),
+        wing = a.wing + (b.wing - a.wing) * k,
+    )
+}
 
 private val pathCache = HashMap<String, Path>()
 

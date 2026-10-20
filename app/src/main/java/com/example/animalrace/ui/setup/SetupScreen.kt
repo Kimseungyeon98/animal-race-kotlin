@@ -1,6 +1,16 @@
 package com.example.animalrace.ui.setup
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -416,8 +426,9 @@ private fun Dex(state: AppState, index: Int, onIndex: (Int) -> Unit, onToggle: (
                         .padding(horizontal = 10.dp, vertical = 2.dp),
                 )
             }
-            Text(animal.desc, fontSize = 17.sp, color = Pal.Ink, lineHeight = 24.sp)
-            Text(animal.scene, fontSize = 15.sp, color = Pal.InkSoft, lineHeight = 21.sp)
+            // 동물마다 설명 길이가 달라도 아래 요소·버튼 위치가 흔들리지 않게 줄 수를 고정
+            Text(animal.desc, fontSize = 16.sp, color = Pal.Ink, lineHeight = 24.sp, minLines = 1, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(animal.scene, fontSize = 15.sp, color = Pal.InkSoft, lineHeight = 21.sp, minLines = 3, maxLines = 3, overflow = TextOverflow.Ellipsis)
         }
         Row(
             Modifier
@@ -479,12 +490,24 @@ private fun SquareIcon(icon: List<String>, label: String, onClick: () -> Unit, t
     ) { InkIcon(icon, size = 18.dp, stroke = 3f) }
 }
 
-/** 아래에서 올라오는 시트 (어두운 배경을 누르면 닫힘). [fill]이 false면 내용 높이만큼만 올라온다. */
+/**
+ * 아래에서 올라오는 시트. 어두운 배경을 누르거나, 위쪽 손잡이를 잡고 아래로 끌어내리면 닫힌다.
+ * [fill]이 false면 내용 높이만큼만 올라온다.
+ */
 @Composable
 private fun Sheet(onClose: () -> Unit, fill: Boolean = true, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val drag = remember { Animatable(0f) }
+    var sheetPx by remember { mutableFloatStateOf(1f) }
+    var closing by remember { mutableStateOf(false) }
+    val dragState = rememberDraggableState { delta ->
+        scope.launch { drag.snapTo((drag.value + delta).coerceAtLeast(0f)) }
+    }
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
+            .graphicsLayer { alpha = 1f - (drag.value / sheetPx).coerceIn(0f, 1f) * 0.6f }
             .background(Pal.Ink.copy(alpha = 0.55f))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClose),
         contentAlignment = Alignment.BottomCenter,
@@ -496,17 +519,44 @@ private fun Sheet(onClose: () -> Unit, fill: Boolean = true, content: @Composabl
                     if (fill) Modifier.fillMaxHeight(0.88f)
                     else Modifier.heightIn(max = maxHeight * 0.92f),
                 )
+                .onSizeChanged { sheetPx = it.height.toFloat().coerceAtLeast(1f) }
+                .offset { IntOffset(0, drag.value.roundToInt()) }
                 .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                 .background(Pal.Ivory)
                 .border(3.dp, Pal.Ink, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 18.dp)
-                .then(if (fill) Modifier else Modifier.verticalScroll(rememberScrollState())),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .windowInsetsPadding(WindowInsets.navigationBars),
         ) {
-            Box(Modifier.align(Alignment.CenterHorizontally).size(44.dp, 5.dp).clip(RoundedCornerShape(3.dp)).background(Pal.Disabled))
-            content()
+            // 손잡이: 폭 전체를 잡을 수 있게 넉넉한 높이
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(30.dp)
+                    .draggable(
+                        state = dragState,
+                        orientation = Orientation.Vertical,
+                        onDragStopped = { velocity ->
+                            val far = drag.value > with(density) { 110.dp.toPx() } || drag.value > sheetPx * 0.3f
+                            if (!closing && (far || velocity > 1800f)) {
+                                closing = true
+                                drag.animateTo(sheetPx, tween(160))
+                                onClose()
+                            } else {
+                                drag.animateTo(0f, spring(dampingRatio = 0.8f, stiffness = 600f))
+                            }
+                        },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(Modifier.size(48.dp, 5.dp).clip(RoundedCornerShape(3.dp)).background(Pal.Disabled))
+            }
+            Column(
+                Modifier
+                    .padding(start = 16.dp, end = 16.dp, bottom = 18.dp)
+                    .then(if (fill) Modifier else Modifier.verticalScroll(rememberScrollState())),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                content = content,
+            )
         }
     }
 }

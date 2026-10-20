@@ -290,7 +290,11 @@ fun AnimalSprite(
     val effect = if (fx != Fx.NONE) fxFrame(animal, fx, (fxTime ?: clock) / 0.06f, loop = fxTime == null)
     else FxFrame(pose = if (running) 1 + (clock / 0.18f).toInt() % 2 else frame)
     // 연출 중이어도 달리는 중이면 다리는 계속 굴린다 (연출이 멈춤 자세를 고른 경우 제외)
-    val pose = POSES[effect.pose.coerceIn(0, 2)]
+    val pose = when {
+        effect.pose == 0 -> POSES[0]
+        animated -> gait(clock + animal.ordinal * 0.05f) // 동물마다 발 구르는 박자를 살짝 엇갈리게
+        else -> POSES[effect.pose.coerceIn(0, 2)]
+    }
     val s = size.value / 200f
 
     Box(modifier.size(size, size * 0.85f)) {
