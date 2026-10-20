@@ -544,28 +544,29 @@ private fun Overlays(frame: Frame, countdown: String?) {
     val showWinner = winner != null && frame.time - (winner.finishTime ?: 0.0) < 2.2
 
     AnimatedVisibility(countdown != null, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.fillMaxSize()) {
-        Column(
-            Modifier.fillMaxSize().background(Pal.Ink.copy(alpha = 0.45f)),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            // 크게 시작해서 줄어드는 숫자가 들어갈 넉넉한 영역
-            Box(Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) {
+        // 화면 전체를 카운트다운 영역으로 쓰고, 크게 시작한 글자도 잘라내지 않는다
+        Box(Modifier.fillMaxSize().background(Pal.Ink.copy(alpha = 0.45f)), contentAlignment = Alignment.Center) {
             AnimatedContent(
                 targetState = countdown ?: "",
-                // 크게 시작해서 줄어드는 동안 영역 밖으로 나간 부분이 잘리지 않게 clip = false
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
                 transitionSpec = {
-                    (scaleIn(initialScale = 2f) + fadeIn()) togetherWith (scaleOut(targetScale = 0.6f) + fadeOut()) using
+                    // 숫자는 2배에서 줄어들고, 폭이 넓은 "출발!"은 시작해도 화면 폭을 넘지 않는 배율에서 줄어든다
+                    val from = if (targetState.length == 1) 2f else 1.3f
+                    (scaleIn(initialScale = from) + fadeIn()) togetherWith (scaleOut(targetScale = 0.6f) + fadeOut()) using
                         SizeTransform(clip = false)
                 },
                 label = "countdown",
             ) { c ->
-                if (c.length == 1) OutlinedText(c, 180.sp, color = Pal.Sun, outlineWidth = 26f, fontFamily = Fredoka)
-                else OutlinedText(c, 96.sp, color = Pal.Sun, outlineWidth = 18f)
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    if (c.length == 1) OutlinedText(c, 180.sp, color = Pal.Sun, outlineWidth = 26f, fontFamily = Fredoka)
+                    else OutlinedText(c, 96.sp, color = Pal.Sun, outlineWidth = 18f)
+                }
             }
-            }
-            Spacer(Modifier.height(6.dp))
-            OutlinedText(if (countdown == "출발!") "달려라!" else "준비…", 24.sp, outlineWidth = 6f)
+            OutlinedText(
+                if (countdown == "출발!") "달려라!" else "준비…", 24.sp, outlineWidth = 6f,
+                modifier = Modifier.offset(y = 130.dp),
+            )
         }
     }
 
