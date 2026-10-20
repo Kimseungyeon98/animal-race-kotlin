@@ -2,6 +2,7 @@ package com.example.animalrace.ui.race
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -550,7 +551,11 @@ private fun Overlays(frame: Frame, countdown: String?) {
         ) {
             AnimatedContent(
                 targetState = countdown ?: "",
-                transitionSpec = { (scaleIn(initialScale = 2f) + fadeIn()) togetherWith (scaleOut(targetScale = 0.6f) + fadeOut()) },
+                // 크게 시작해서 줄어드는 동안 영역 밖으로 나간 부분이 잘리지 않게 clip = false
+                transitionSpec = {
+                    (scaleIn(initialScale = 1.6f) + fadeIn()) togetherWith (scaleOut(targetScale = 0.6f) + fadeOut()) using
+                        SizeTransform(clip = false)
+                },
                 label = "countdown",
             ) { c ->
                 if (c.length == 1) OutlinedText(c, 150.sp, color = Pal.Sun, outlineWidth = 22f, fontFamily = Fredoka)
