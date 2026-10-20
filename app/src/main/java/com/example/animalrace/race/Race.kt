@@ -25,6 +25,7 @@ data class RacerView(
     val stopped: Boolean,
     val boosted: Boolean,
     val finished: Boolean,
+    val finishTime: Double?,
 )
 
 data class RaceView(
@@ -138,7 +139,7 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
                 RacerView(
                     lane = r.lane, animal = r.animal, x = r.x, rank = order.indexOf(r),
                     fx = r.fx, stopped = !r.finished && r.mult == 0.0,
-                    boosted = !r.finished && r.mult > 1.05, finished = r.finished,
+                    boosted = !r.finished && r.mult > 1.05, finished = r.finished, finishTime = r.finish,
                 )
             },
             recentEvents = events.takeLast(5).reversed(),
