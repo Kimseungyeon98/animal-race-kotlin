@@ -9,7 +9,7 @@ import kotlin.random.Random
 
 /**
  * 스킬은 연출일 뿐이므로 어떤 동물이든 모든 순위에 같은 확률로 와야 한다.
- * 14마리 전원 출전을 반복해 동물 × 순위 분포를 카이제곱으로 검정한다.
+ * 전 동물 출전을 반복해 동물 × 순위 분포를 카이제곱으로 검정한다.
  */
 class FairnessTest {
 
@@ -29,8 +29,11 @@ class FairnessTest {
 
         val expected = races.toDouble() / k
         val chi = counts.sumOf { row -> row.sumOf { (it - expected) * (it - expected) / expected } }
-        // 자유도 14 × 13 = 182, 유의수준 0.1% 임계값 ≈ 242
-        assertTrue("χ² = $chi (공정하다면 182 근처)", chi < 242)
+        // 자유도 k(k-1), 유의수준 0.1% 임계값 (Wilson–Hilferty 근사). 20종이면 자유도 380, 임계값 ≈ 471
+        val df = (k * (k - 1)).toDouble()
+        val a = 2 / (9 * df)
+        val critical = df * Math.pow(1 - a + 3.09 * Math.sqrt(a), 3.0)
+        assertTrue("χ² = $chi (공정하다면 ${df.toInt()} 근처, 임계값 ${critical.toInt()})", chi < critical)
     }
 
     @Test

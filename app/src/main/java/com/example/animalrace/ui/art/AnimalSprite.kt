@@ -68,6 +68,8 @@ private val Flame1 = Color(0xFFFF8A3D)
 private val Flame2 = Color(0xFFFFC93C)
 private val Banana = Color(0xFFFFD84A)
 private val Star = Color(0xFFFFB020)
+private val Gas = Color(0xFFB9E07A)
+private val Bamboo = Color(0xFF7BC86C)
 
 private fun bubble(text: String, x: Float, y: Float, bg: Color = BubbleSelf) =
     FxPart(x, y, text.length * 17f + 30f, 30f, fill = bg, border = Ink, borderW = 3f, top = 15f, bottom = 15f, text = text, fontSize = 16f)
@@ -109,7 +111,9 @@ internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false)
 
     val hit = when {
         fx == Fx.HIT_CYCLE && animal == TURTLE -> Fx.BLOCK
-        fx == Fx.HIT_CYCLE -> listOf(Fx.SLIP, Fx.QUAKE, Fx.SCARED)[(t / cycle).toInt() % 3]
+        fx == Fx.HIT_CYCLE && animal == HEDGEHOG -> Fx.SPIKE
+        fx == Fx.HIT_CYCLE && animal == CAPYBARA -> Fx.ZEN
+        fx == Fx.HIT_CYCLE -> listOf(Fx.SLIP, Fx.QUAKE, Fx.SCARED, Fx.STINK)[(t / cycle).toInt() % 4]
         else -> fx
     }
 
@@ -231,6 +235,45 @@ internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false)
                     }
                     front += bubble("푸드덕!", 120f, -16f)
                 }
+                SKUNK -> {
+                    pose = 0; dx = wobble(t, 1f)
+                    for (k in 0..2) {
+                        val m = (t * 2 + k * 8) % 24
+                        back += blob(12 - m * 1.5f, 54f + k * 18 - m * 0.6f, 26 + m, 20 + m * 0.6f, Gas, 0.85f * loopFade(m / 24))
+                    }
+                    front += bubble("뿡!", 120f, -16f, BubbleMean)
+                }
+                HEDGEHOG -> {
+                    pose = 0; rot = (t * 36) % 360
+                    for (k in 0..2) { val m = (t * 7 + k * 9) % 26; back += speedLine(10 - m, 74f + k * 18, 34f - k * 6, loopFade(m / 26)) }
+                    front += bubble("스핀 대시!", 100f, -18f)
+                }
+                CAPYBARA -> {
+                    front += blob(138f, 34f, 26f, 24f, Color(0xFFFFC93C))
+                    front += blob(150f, 30f, 8f, 6f, Color(0xFF5DB65E))
+                    for (k in 0..1) front += glyph("~", 40f + k * 30, 30 - (t + k * 6) % 12, 20f, Color(0xFF5AA9FF), 0.8f)
+                    front += bubble("둥실~", 60f, -18f)
+                }
+                SLOTH -> {
+                    pose = fast
+                    dy = -abs(sin(t / 2)) * 4
+                    for (k in 0..2) { val m = (t * 7 + k * 9) % 26; back += speedLine(14 - m, 70f + k * 18, 34f - k * 6, loopFade(m / 26)) }
+                    front += glyph("✦", 140 + cos(t / 3) * 6, 50f, 16f, Star)
+                    front += glyph("✦", 172f, 54 + sin(t / 3) * 6, 14f, Star)
+                    front += bubble("진심 모드!", 96f, -18f, BubbleMean)
+                }
+                HAMSTER -> {
+                    pose = fast
+                    back += FxPart(14f, 2f, 172f, 166f, border = Ink, borderW = 5f)
+                    for (k in 0..3) back += FxPart(98f, 4f, 4f, 162f, fill = Color(0xFFC9C3D6), top = 2f, bottom = 2f, rot = (t * 14 + k * 45) % 360)
+                    front += bubble("쳇바퀴 풀가동!", 70f, -18f)
+                }
+                PANDA -> {
+                    val jp = t % 14
+                    pose = 0; dy = -sin(jp / 14 * PI.toFloat()) * 46
+                    back += FxPart(136f, 30 - dy * 0.3f, 10f, 130f, fill = Bamboo, border = Ink, borderW = 3f, top = 5f, bottom = 5f, rot = -34 + jp * 5)
+                    front += bubble("장대높이뛰기!", 70f, -18f)
+                }
             }
         }
         Fx.SLIP -> {
@@ -286,6 +329,60 @@ internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false)
                 front += glyph("✦", 140 + cos(ang) * 24, 16 + sin(ang) * 7, 15f, Star)
             }
             front += bubble("꽈당!", 30f, -14f, BubbleHurt)
+        }
+        Fx.STINK -> {
+            pose = 0; rot = sin(t / 3) * 6; dx = wobble(t, 2f)
+            for (k in 0..2) {
+                val ang = t / 5 + k * 2.1f
+                front += blob(140 + cos(ang) * 26, 50 + sin(ang) * 12, 24f, 18f, Gas, 0.8f)
+            }
+            front += bubble("으악 냄새!", 30f, -14f, BubbleHurt)
+        }
+        Fx.SPIKE -> {
+            pose = 0; dy = -3f
+            for (k in 0..5) {
+                val ang = k * 1.05f
+                front += FxPart(90 + cos(ang) * 70, 90 + sin(ang) * 58, 12f, 4f, fill = Color(0xFFFFC93C), border = Ink, borderW = 1f,
+                    top = 2f, bottom = 2f, rot = k * 60f, alpha = 0.7f + 0.3f * sin(t / 2))
+            }
+            val b = t % 30
+            front += banana(20 - b * 3, 40 - b * 1.2f + b * b * 0.04f, -b * 25, 1 - b / 30)
+            front += bubble("따끔! 반사", 92f, -16f)
+        }
+        Fx.ZEN -> {
+            front += FxPart(128f, 40f, 46f, 18f, fill = Color.White, border = Ink, borderW = 3f, top = 8f, bottom = 8f)
+            for (k in 0..1) front += glyph("~", 132f + k * 18, 22 - (t + k * 5) % 10, 16f, Color(0xFFC9C3D6), 0.9f)
+            front += bubble("평온…", 30f, -14f, Color(0xFFEAF7EA))
+        }
+        Fx.FLAW -> {
+            pose = 0
+            when (animal) {
+                HAMSTER -> {
+                    // 볼 빵빵하게 해바라기씨 채우기
+                    val puff = 1 + 0.15f * sin(t / 2)
+                    front += blob(108f, 96f, 22 * puff, 18 * puff, Color(0xFFFFF3E2))
+                    front += blob(166f, 94f, 22 * puff, 18 * puff, Color(0xFFFFF3E2))
+                    for (k in 0..2) front += FxPart(140f + k * 7, 118 + sin(t / 2 + k) * 2, 6f, 9f, fill = Color(0xFF3A3348), border = Ink, borderW = 1f, rot = k * 20f - 20)
+                    front += bubble("볼 빵빵…", 30f, -14f)
+                }
+                PANDA -> {
+                    front += FxPart(168f, 66f, 9f, 56f, fill = Bamboo, border = Ink, borderW = 3f, top = 4f, bottom = 4f, rot = 20 + sin(t / 2) * 6)
+                    front += blob(176f, 62f, 16f, 8f, Color(0xFF5DB65E))
+                    front += bubble("대나무 냠냠", 30f, -14f)
+                }
+                SLOTH -> {
+                    rot = 4f
+                    for (k in 0..2) {
+                        val zy = 44 - (t * 1.5f + k * 14) % 42
+                        front += glyph("Z", 176f + k * 9, zy, 14f + k * 4, Ink, ((zy + 4) / 30).coerceIn(0f, 1f))
+                    }
+                    front += bubble("하품…", 30f, -14f)
+                }
+                else -> {
+                    rot = -18f; dy = 8f
+                    front += bubble("꽈당!", 30f, -14f, BubbleHurt)
+                }
+            }
         }
         Fx.NONE, Fx.HIT_CYCLE -> Unit
     }

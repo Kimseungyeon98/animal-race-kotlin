@@ -258,7 +258,7 @@ private fun SmallButton(label: String, icon: List<String>?, onClick: () -> Unit)
     }
 }
 
-/** 남은 높이에 맞춰 타일 크기를 정해서 14마리가 한 화면에 들어오게 한다. */
+/** 3열 유지. 남은 높이에 5줄이 들어가게 타일 크기를 정하고, 그보다 많으면 스크롤한다. */
 @Composable
 private fun AnimalGrid(state: AppState, modifier: Modifier, onTap: (Animal) -> Unit) {
     BoxWithConstraints(modifier.fillMaxWidth()) {
@@ -268,10 +268,12 @@ private fun AnimalGrid(state: AppState, modifier: Modifier, onTap: (Animal) -> U
         val gap = 10.dp
         val stickerRoom = 10.dp // 첫 줄 번호 스티커가 위로 튀어나올 자리
         // 각 줄 높이 = 타일 + 그림자 5dp
-        val tileH = ((maxHeight - stickerRoom - gap * (rows - 1)) / rows - 5.dp).coerceIn(70.dp, 140.dp)
+        val visibleRows = minOf(rows, 5)
+        val tileH = ((maxHeight - stickerRoom - gap * (visibleRows - 1)) / visibleRows - 5.dp).coerceIn(70.dp, 140.dp)
         val tileW = (maxWidth - gap * (cols - 1)) / cols
+        val scroll = rememberScrollState()
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = stickerRoom),
+            Modifier.fillMaxSize().verticalScroll(scroll).padding(top = stickerRoom, bottom = 4.dp),
             verticalArrangement = Arrangement.spacedBy(gap),
         ) {
             animals.chunked(cols).forEach { rowAnimals ->
@@ -281,6 +283,24 @@ private fun AnimalGrid(state: AppState, modifier: Modifier, onTap: (Animal) -> U
                     }
                     repeat(cols - rowAnimals.size) { Spacer(Modifier.weight(1f)) }
                 }
+            }
+        }
+        // 아래에 동물이 더 있으면 안내 (끝까지 내리면 사라짐)
+        AnimatedVisibility(
+            visible = scroll.canScrollForward,
+            enter = fadeIn(), exit = fadeOut(),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 2.dp, bottom = 6.dp),
+        ) {
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Pal.Ink.copy(alpha = 0.82f))
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                InkIcon(listOf("M5 9l7 7 7-7"), size = 12.dp, color = Color.White, stroke = 3.5f)
+                Text("${animals.size}종 · 아래로 더 있어요", fontSize = 13.sp, color = Color.White)
             }
         }
     }
@@ -378,7 +398,7 @@ private fun Dex(state: AppState, index: Int, onIndex: (Int) -> Unit, onToggle: (
             SquareIcon(Icons2.Close, "도감 닫기", onClose)
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SquareIcon(Icons2.Left, "이전 동물", { onIndex((index + 13) % 14) }, tall = true)
+            SquareIcon(Icons2.Left, "이전 동물", { onIndex((index + Animal.entries.size - 1) % Animal.entries.size) }, tall = true)
             Box(
                 Modifier
                     .weight(1f)
@@ -412,7 +432,7 @@ private fun Dex(state: AppState, index: Int, onIndex: (Int) -> Unit, onToggle: (
                     }
                 }
             }
-            SquareIcon(Icons2.Right, "다음 동물", { onIndex((index + 1) % 14) }, tall = true)
+            SquareIcon(Icons2.Right, "다음 동물", { onIndex((index + 1) % Animal.entries.size) }, tall = true)
         }
         Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {

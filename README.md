@@ -1,6 +1,6 @@
 # 복불복 동물 레이스 (Kotlin + Jetpack Compose)
 
-**현재 버전: 3.1.2**
+**현재 버전: 3.2**
 
 벌칙을 정하고 각자 응원할 동물을 2~10마리 골라 경주시키는 사내용 게임 앱입니다.
 
@@ -15,7 +15,7 @@ app/src/main/java/com/example/animalrace/
 ├── MainActivity.kt          진입점. 화면 켜짐 유지, 뒤로가기 처리
 ├── AppState.kt              앱 전체 상태 + 화면 전환(Setup → Race → Result)
 ├── model/
-│   ├── Animal.kt            동물 14종 (이모지·스킬·대표색·밸런스 계수)
+│   ├── Animal.kt            동물 20종 (이모지·스킬·설명·대표색)
 │   └── RaceRecord.kt        경기 기록 모델 + 저장소 인터페이스
 ├── race/Race.kt             경주 엔진: 결과 추첨 + 스토리보드(전개 연출), 순수 Kotlin
 ├── data/PrefsRepository.kt  SharedPreferences(JSON)에 설정·최근 10판 저장
@@ -23,7 +23,7 @@ app/src/main/java/com/example/animalrace/
     ├── App.kt               화면 전환 애니메이션
     ├── theme/               B안 카툰 팔레트(밝은 테마 고정), 주아체·Fredoka, 출전 번호 색
     ├── art/
-    │   ├── AnimalArt.kt     동물 14종 일러스트 (디자인 시안 SVG를 Canvas로 옮김)
+    │   ├── AnimalArt.kt     동물 20종 일러스트 (디자인 시안 SVG를 Canvas로 옮김)
     │   └── AnimalSprite.kt  캐릭터 컴포넌트: 달리기 동작 + 스킬/피격 연출
     ├── components/          입체 버튼, 외곽선 글자, 출전 번호 스티커, 선 아이콘
     ├── setup/SetupScreen.kt 메인: 동물 고르기, 도감, 최근 경기, 벌칙 수정
@@ -42,6 +42,15 @@ app/src/main/java/com/example/animalrace/
 - 카메라: `ui/race/RaceScreen.kt` 의 `cameraTarget()` (확대 범위 130~420m, 선두 위치 70%)
 
 ## 패치노트
+
+### 3.2 — 신규 캐릭터 6종
+- 🦨 스컹크(방귀 폭탄): **바로 뒤**에 붙은 동물을 멈춤 — 처음으로 뒤를 노리는 공격
+- 🦔 고슴도치(가시 반사): 공격을 받지 않고, 원숭이·오리·코끼리·스컹크가 공격하면 **튕겨내서 공격한 쪽이 대신 당함**
+- 🦫 카피바라(무념무상): 거북이처럼 방해를 받지 않음. 공격을 받아도 수건을 얹고 평온하게 계속 달림
+- 🦥 나무늘보(진심 모드)·🐹 햄스터(쳇바퀴)·🐼 판다(장대높이뛰기): 고유 가속 + 실수 장면(하품·볼 빵빵·대나무 냠냠)
+- 메인: 3열 유지, 5줄이 보이고 나머지는 스크롤. 아래에 더 있으면 "20종 · 아래로 더 있어요" 안내
+- 최대 출전은 10마리 유지 (레인·순위 띠·출전 번호 색 한계)
+- 공정성: 20종 기준 재검증 `docs/fairness.md`
 
 ### 3.1.2 — 카운트다운 전체 화면
 - 카운트다운 영역을 화면 전체로. "준비…/달려라!"는 아래쪽에 겹쳐 표시

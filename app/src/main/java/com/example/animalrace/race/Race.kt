@@ -29,6 +29,12 @@ private const val GRID = 1.0 / 120
 internal const val PACE_MIN = 0.7
 internal const val PACE_MAX = 1.3
 
+/** 방해를 받지 않는 동물(거북이 등껍질, 카피바라 무념무상). */
+private val IMMUNE = setOf(TURTLE, CAPYBARA)
+
+/** 남을 멈추게 하는 공격 스킬을 가진 동물. */
+private val ATTACKERS = setOf(MONKEY, DUCK, ELEPHANT, SKUNK)
+
 enum class EventKind { SKILL, LEAD, FINISH }
 
 data class RaceEvent(val id: Int, val t: Double, val text: String, val kind: EventKind)
@@ -254,7 +260,7 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
                 if (r === winner) winnerSurge = plan.segs.filter { (it.mult ?: 1.0) > 1.0 }.maxOfOrNull { it.from }
             }
             resolveSetbacks()
-            turtleShows()
+            immuneShows()
             cues.sortBy { it.t }
         }
 
@@ -282,8 +288,8 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
                 Role.DECOY, Role.RUNNER_UP -> if (wire) listOf(Beat.BOOST to at(0.66, 0.82)) else roleArc(r, role, winnerSurge, ::at, p)
                 Role.LAST, Role.OTHER -> if (wire) chaser(::at) else roleArc(r, role, winnerSurge, ::at, p)
             }
-            // 거북이는 방해를 막아 내므로 당하는 장면이 없다
-            return if (r.animal == TURTLE) beats.filter { it.first == Beat.BOOST } else beats
+            // 거북이(등껍질)·카피바라(무념무상)는 방해를 받지 않으므로 당하는 장면이 없다
+            return if (r.animal in IMMUNE) beats.filter { it.first == Beat.BOOST } else beats
         }
 
         private fun chaser(at: (Double, Double) -> Double): List<Pair<Beat, Double>> {
@@ -415,7 +421,11 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
             return Plan(path, segs, setbackSegs, planCues)
         }
 
-        /** 방해 장면마다 그 순간 상황에 맞는 원인을 붙인다 (오리는 1등에게, 원숭이는 바로 앞에게, 코끼리는 근처에게). */
+        /**
+         * 방해 장면마다 그 순간 상황에 맞는 원인을 붙인다
+         * (오리는 1등에게, 원숭이는 바로 앞에게, 코끼리는 근처에게, 스컹크는 바로 뒤에게).
+         * 고슴도치는 공격을 튕겨내므로, 공격하는 동물이 멈춰야 할 때 고슴도치에게 반사당하는 장면이 될 수 있다.
+         */
         private fun resolveSetbacks() {
             for ((v, seg) in setbacks.sortedBy { it.second.from }) {
                 val t0 = seg.from
@@ -423,8 +433,10 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
                 val running = racers.filter { t0 < finishAt[it.lane] }
                 val leaderNow = running.maxByOrNull { it.pathAt(t0) }
                 fun gap(a: Racer) = v.pathAt(t0) - a.pathAt(t0)
+                // 고슴도치는 공격을 받으면 튕겨내므로 남의 공격으로 멈추지 않는다
+                val attackable = v.animal != HEDGEHOG
 
-                racers.filter { it.animal == DUCK && it !== v && it in running && leaderNow === v && !it.busy(t0 - 0.3, t0 + 1.2) }
+                if (attackable) racers.filter { it.animal == DUCK && it !== v && it in running && leaderNow === v && !it.busy(t0 - 0.3, t0 + 1.2) }
                     .forEach { d ->
                         options += 3.0 to {
                             seg.fx = Fx.SCARED
@@ -432,7 +444,7 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
                             cues += Cue(t0 - 0.2, "${tag(d)} 꽥!! ${withSubject(tag(v))} 깜짝 놀라 멈춤", d)
                         }
                     }
-                racers.filter { it.animal == MONKEY && it !== v && it in running && gap(it) in 5.0..260.0 && !it.busy(t0 - 0.7, t0 + 1.0) }
+                if (attackable) racers.filter { it.animal == MONKEY && it !== v && it in running && gap(it) in 5.0..260.0 && !it.busy(t0 - 0.7, t0 + 1.0) }
                     .forEach { m ->
                         options += 3.0 to {
                             seg.fx = Fx.SLIP
@@ -440,7 +452,7 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
                             cues += Cue(t0 - 0.5, "${tag(m)} 바나나 투척 → ${withSubject(tag(v))} 미끄러짐!", m)
                         }
                     }
-                racers.filter { it.animal == ELEPHANT && it !== v && it in running && abs(gap(it)) < 160 && !it.busy(t0 - 0.3, t0 + 1.3) }
+                if (attackable) racers.filter { it.animal == ELEPHANT && it !== v && it in running && abs(gap(it)) < 160 && !it.busy(t0 - 0.3, t0 + 1.3) }
                     .forEach { e ->
                         options += 3.0 to {
                             seg.fx = Fx.QUAKE
@@ -448,6 +460,51 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
                             cues += Cue(t0 - 0.2, "${tag(e)} 쿵쿵! ${withSubject(tag(v))} 휘청", e)
                         }
                     }
+                if (attackable) racers.filter { it.animal == SKUNK && it !== v && it in running && gap(it) in -120.0..-5.0 && !it.busy(t0 - 0.3, t0 + 1.3) }
+                    .forEach { k ->
+                        options += 3.0 to {
+                            seg.fx = Fx.STINK
+                            k.segs += Seg(t0 - 0.3, t0 + 1.3, null, Fx.SKILL)
+                            cues += Cue(t0 - 0.3, "${tag(k)} 방귀 폭탄! ${withSubject(tag(v))} 으악 냄새!", k)
+                        }
+                    }
+                // 공격하는 동물이 멈추는 차례라면: 고슴도치를 공격했다가 가시에 튕겨 대신 당한다
+                if (v.animal in ATTACKERS && !v.busy(t0 - 0.6, t0 - 0.01)) {
+                    racers.filter { h ->
+                        h.animal == HEDGEHOG && h !== v && h in running && !h.busy(t0 - 0.4, t0 + 1.0) && when (v.animal) {
+                            MONKEY -> gap(h) in -260.0..-5.0
+                            DUCK -> leaderNow === h
+                            ELEPHANT -> abs(gap(h)) < 160
+                            SKUNK -> gap(h) in 5.0..120.0
+                            else -> false
+                        }
+                    }.forEach { h ->
+                        options += 3.0 to {
+                            val (what, reaction) = when (v.animal) {
+                                MONKEY -> "바나나 투척" to Fx.SLIP
+                                DUCK -> "꽥!!" to Fx.SCARED
+                                ELEPHANT -> "쿵쿵!" to Fx.QUAKE
+                                else -> "방귀 폭탄" to Fx.STINK
+                            }
+                            seg.fx = reaction
+                            v.segs += Seg(t0 - 0.5, t0, null, Fx.SKILL)
+                            h.segs += Seg(t0 - 0.3, t0 + 0.9, null, Fx.SPIKE)
+                            cues += Cue(t0 - 0.5, "${tag(v)} $what → ${tag(h)} 가시로 따끔 반사! ${withSubject(tag(v))} 대신 당함", h)
+                        }
+                    }
+                }
+                val flaw = when (v.animal) {
+                    HAMSTER -> "볼에 해바라기씨 채우는 중…"
+                    PANDA -> "길가 대나무 냠냠…"
+                    SLOTH -> "하품하며 잠깐 쉬는 중…"
+                    else -> null
+                }
+                if (flaw != null) {
+                    options += 2.5 to {
+                        seg.fx = Fx.FLAW
+                        cues += Cue(t0, "${tag(v)} $flaw", v)
+                    }
+                }
                 if (v.animal == RABBIT && running.count { it.pathAt(t0) > v.pathAt(t0) } <= 1) {
                     options += 2.5 to {
                         seg.fx = Fx.SKILL
@@ -469,9 +526,9 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
             }
         }
 
-        /** 거북이가 있으면 가끔 방해를 등껍질로 막아 내는 장면을 넣는다 (결과에는 영향 없음). */
-        private fun turtleShows() {
-            for (tt in racers.filter { it.animal == TURTLE }) {
+        /** 거북이·카피바라가 있으면 가끔 방해를 막아 내는(무시하는) 장면을 넣는다 (결과에는 영향 없음). */
+        private fun immuneShows() {
+            for (tt in racers.filter { it.animal in IMMUNE }) {
                 if (rnd.nextDouble() > 0.6) continue
                 repeat(8) {
                     val t0 = 3.0 + rnd.nextDouble() * (finishAt[tt.lane] * 0.75 - 3.0)
@@ -483,17 +540,21 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
                             MONKEY -> gap(a) in 5.0..260.0
                             ELEPHANT -> abs(gap(a)) < 160
                             DUCK -> running.maxBy { it.pathAt(t0) } === tt
+                            SKUNK -> gap(a) in -120.0..-5.0
                             else -> false
                         }
                     } ?: return@repeat
+                    val turtle = tt.animal == TURTLE
                     attacker.segs += Seg(t0 - 0.5, t0 + 0.9, null, Fx.SKILL)
-                    tt.segs += Seg(t0, t0 + 1.0, null, Fx.BLOCK)
+                    tt.segs += Seg(t0, t0 + 1.2, null, if (turtle) Fx.BLOCK else Fx.ZEN)
                     val what = when (attacker.animal) {
                         MONKEY -> "바나나 투척"
                         ELEPHANT -> "쿵쿵!"
+                        SKUNK -> "방귀 폭탄"
                         else -> "꽥!!"
                     }
-                    cues += Cue(t0 - 0.5, "${tag(attacker)} $what → ${tag(tt)} 등껍질로 막아냄!", attacker)
+                    val how = if (turtle) "등껍질로 막아냄!" else "수건 얹고 평온… 끄떡없음"
+                    cues += Cue(t0 - 0.5, "${tag(attacker)} $what → ${tag(tt)} $how", attacker)
                     return
                 }
             }
@@ -524,7 +585,12 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
             SNAIL -> listOf(Phase(0.0, 2.6, 2.3, Fx.SKILL))
             CHICKEN -> listOf(Phase(0.0, 1.4, 1.9, Fx.SKILL))
             TURTLE -> listOf(Phase(0.0, 2.0, 1.7, Fx.SKILL))
-            RABBIT, MONKEY, ELEPHANT, DUCK -> listOf(Phase(0.0, 1.6, 1.9, Fx.RALLY))
+            HEDGEHOG -> listOf(Phase(0.0, 1.4, 2.0, Fx.SKILL))
+            CAPYBARA -> listOf(Phase(0.0, 1.8, 1.7, Fx.SKILL))
+            SLOTH -> listOf(Phase(0.0, 2.2, 2.1, Fx.SKILL))
+            HAMSTER -> listOf(Phase(0.0, 1.3, 2.1, Fx.SKILL))
+            PANDA -> listOf(Phase(0.0, 1.2, 2.3, Fx.SKILL))
+            RABBIT, MONKEY, ELEPHANT, DUCK, SKUNK -> listOf(Phase(0.0, 1.6, 1.9, Fx.RALLY))
         }
     }
 
@@ -540,7 +606,12 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
         CHICKEN -> "푸드덕!"
         TURTLE -> "성큼성큼 가속!"
         RABBIT -> "깡충깡충 전력질주!"
-        MONKEY, ELEPHANT, DUCK -> "이를 악물고 분발!"
+        HEDGEHOG -> "몸을 말아 스핀 대시!"
+        CAPYBARA -> "유자 얹고 둥실둥실~"
+        SLOTH -> "진심 모드 발동!!"
+        HAMSTER -> "쳇바퀴 풀가동!"
+        PANDA -> "대나무 장대높이뛰기!"
+        MONKEY, ELEPHANT, DUCK, SKUNK -> "이를 악물고 분발!"
     }
 
     private fun base(t: Double, f: Double): Double {

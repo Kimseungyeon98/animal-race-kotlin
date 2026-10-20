@@ -350,5 +350,128 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
                 svg("M74 100 q24 -16 44 4 q-20 24 -44 -4 z", c(0xFFECE6F3), rot = p.wing, px = 96f, py = 100f)
             }
         }
+        SKUNK -> {
+            shadow(100f, 160f, 58f, 7f)
+            translate(0f, bob) {
+                svg("M62 108 q-50 -6 -46 -56 q6 -36 44 -30 q26 6 18 34 q-8 -6 -16 -2 q-10 6 -4 22 q6 14 16 18 z", c(0xFF3A3348))
+                svg("M52 98 q-30 -10 -24 -44 q6 -22 28 -18 q12 4 10 16 q-14 -2 -20 8 q-6 14 6 28 z", White, sw = 0f)
+                rrect(66f, 116f, 14f, 34f, 7f, c(0xFF2E2838), b, 73f, 120f)
+                rrect(112f, 116f, 14f, 34f, 7f, c(0xFF2E2838), a, 119f, 120f)
+                ellipse(96f, 108f, 44f, 30f, c(0xFF4A4458))
+                svg("M62 96 q36 -28 84 -12", null, sw = 11f, stroke = White)
+                rrect(80f, 116f, 14f, 34f, 7f, c(0xFF4A4458), a, 87f, 120f)
+                rrect(126f, 116f, 14f, 34f, 7f, c(0xFF4A4458), b, 133f, 120f)
+                circle(139f, 66f, 9f, c(0xFF2E2838))
+                circle(153f, 88f, 25f, c(0xFF4A4458))
+                svg("M147 64 q6 12 6 24", null, sw = 7f, stroke = White)
+                ellipse(173f, 96f, 12f, 9f, c(0xFFE9E4F0))
+                dot(184f, 94f, 4.5f, c(0xFFFF8FA8))
+                dot(161f, 86f, 5.5f, White); dot(161f, 86f, 3.5f, c(0xFF1E1A24)); dot(162.3f, 84.7f, 1.4f, White)
+            }
+        }
+        HEDGEHOG -> {
+            shadow(100f, 160f, 56f, 7f)
+            translate(0f, bob) {
+                rrect(66f, 124f, 14f, 26f, 7f, c(0xFFC9A27A), b, 73f, 128f)
+                rrect(104f, 124f, 14f, 26f, 7f, c(0xFFC9A27A), a, 111f, 128f)
+                svg("M34 132 L24 114 L40 110 L28 92 L48 94 L42 74 L60 82 L62 60 L78 74 L88 54 L98 74 L112 58 L116 78 L132 68 L130 88 L146 86 L150 104 L154 132 Z", c(0xFF7A5236))
+                svg("M54 128 q4 -40 46 -46 q34 2 42 46 z", c(0xFF9C6B46), sw = 0f)
+                rrect(80f, 124f, 14f, 26f, 7f, c(0xFFE6C49A), a, 87f, 128f)
+                rrect(124f, 124f, 14f, 26f, 7f, c(0xFFE6C49A), b, 131f, 128f)
+                circle(140f, 90f, 8f, c(0xFFF0D2A8))
+                ellipse(150f, 112f, 28f, 24f, c(0xFFF0D2A8))
+                svg("M168 104 q22 4 18 16 q-8 6 -22 0 z", c(0xFFF0D2A8))
+                dot(186f, 113f, 4.5f)
+                eye(158f, 102f, 4.5f, 159.5f, 100.5f, 1.6f)
+                ellipse(156f, 116f, 6f, 3.5f, c(0xFFFF9DB5), sw = 0f)
+            }
+        }
+        CAPYBARA -> {
+            shadow(100f, 160f, 66f, 7f)
+            translate(0f, bob) {
+                rrect(58f, 118f, 16f, 32f, 7f, c(0xFF8E6440), b, 66f, 122f)
+                rrect(104f, 118f, 16f, 32f, 7f, c(0xFF8E6440), a, 112f, 122f)
+                rrect(36f, 76f, 116f, 60f, 30f, c(0xFFB07D52))
+                rrect(72f, 118f, 16f, 32f, 7f, c(0xFFB07D52), a, 80f, 122f)
+                rrect(120f, 118f, 16f, 32f, 7f, c(0xFFB07D52), b, 128f, 122f)
+                ellipse(130f, 58f, 8f, 6f, c(0xFF8E6440))
+                rrect(118f, 56f, 66f, 50f, 20f, c(0xFFB07D52))
+                rrect(164f, 68f, 24f, 34f, 11f, c(0xFF8E6440))
+                ellipse(181f, 77f, 2.2f, 3.2f, Ink, sw = 0f)
+                svg("M142 72 q6 5 12 0", null, sw = 4f)
+                svg("M168 98 q6 4 12 0", null, sw = 3f)
+            }
+        }
+        SLOTH -> {
+            val claw = c(0xFFE9E1DD)
+            shadow(100f, 160f, 60f, 7f)
+            translate(0f, bob) {
+                rrect(60f, 114f, 14f, 38f, 7f, c(0xFF8A7468), b, 67f, 118f)
+                // 머리 쪽 앞발 두 개에만 발톱
+                rotate(a, Offset(115f, 118f)) {
+                    rrect(108f, 114f, 14f, 38f, 7f, c(0xFF8A7468))
+                    svg("M110 152 l-3 7 M115 153 l0 7 M120 152 l3 7", null, sw = 3f, stroke = claw)
+                }
+                ellipse(92f, 104f, 52f, 32f, c(0xFFA89088))
+                svg("M52 112 l-6 10 l10 -2 l-2 10 l8 -6", null, sw = 3f)
+                rrect(76f, 110f, 14f, 44f, 7f, c(0xFFA89088), a, 83f, 114f)
+                rotate(b, Offset(129f, 114f)) {
+                    rrect(122f, 110f, 14f, 44f, 7f, c(0xFFA89088))
+                    svg("M124 154 l-3 7 M129 155 l0 7 M134 154 l3 7", null, sw = 3f, stroke = claw)
+                }
+                circle(152f, 80f, 30f, c(0xFFA89088))
+                svg("M129 80 q2 -21 25 -21 q25 0 25 21 q0 19 -25 23 q-23 -4 -25 -23 z", c(0xFFF1EBE8))
+                ellipse(141f, 85f, 10f, 5.5f, c(0xFF6D4C41), rot = -28f, sw = 0f)
+                ellipse(167f, 85f, 10f, 5.5f, c(0xFF6D4C41), rot = 28f, sw = 0f)
+                svg("M137 84 q4 -4.5 8 0", null, sw = 2.6f, stroke = c(0xFF1E1A24))
+                svg("M163 84 q4 -4.5 8 0", null, sw = 2.6f, stroke = c(0xFF1E1A24))
+                svg("M148 89 h12 q2 0 0 3 l-5 5 q-1 1 -2 0 l-5 -5 q-2 -3 0 -3 z", c(0xFF1E1A24), sw = 0f)
+                svg("M143 99 q11 7 22 0", null, sw = 3f, stroke = c(0xFF1E1A24))
+            }
+        }
+        HAMSTER -> {
+            val sw = 4.5f
+            shadow(100f, 160f, 54f, 7f)
+            translate(0f, bob) {
+                ellipse(72f, 146f, 11f, 7f, c(0xFFF2C9A0), rot = b, px = 72f, py = 138f, sw = sw)
+                ellipse(104f, 148f, 11f, 7f, c(0xFFF2C9A0), rot = a, px = 104f, py = 140f, sw = sw)
+                ellipse(88f, 120f, 46f, 32f, c(0xFFF3DCBC), sw = sw)
+                ellipse(98f, 134f, 26f, 14f, c(0xFFFFF8EE), sw = 0f)
+                circle(112f, 56f, 13f, c(0xFFEACBA6), sw = sw); dot(112f, 57f, 6.5f, c(0xFFD9A28A))
+                circle(162f, 54f, 13f, c(0xFFEACBA6), sw = sw); dot(162f, 55f, 6.5f, c(0xFFD9A28A))
+                ellipse(139f, 92f, 44f, 40f, c(0xFFF6E6CF), sw = sw)
+                ellipse(146f, 106f, 17f, 11f, c(0xFFFFF8EE), sw = 0f)
+                ellipse(119f, 104f, 8f, 4.5f, c(0xFFFFB3BF), sw = 0f)
+                ellipse(173f, 102f, 8f, 4.5f, c(0xFFFFB3BF), sw = 0f)
+                eye(127f, 90f, 4.5f, 128.5f, 88.5f, 1.5f)
+                eye(165f, 88f, 4.5f, 166.5f, 86.5f, 1.5f)
+                ellipse(146f, 100f, 5f, 3.6f, c(0xFFF28FA0), sw = 2.5f)
+                svg("M139 106 q3.5 4 7 0 q3.5 4 7 0", null, sw = 2.5f)
+                ellipse(127f, 132f, 7f, 6f, c(0xFFFFF3E2), rot = a, px = 127f, py = 126f, sw = 3.5f)
+                ellipse(153f, 132f, 7f, 6f, c(0xFFFFF3E2), rot = b, px = 153f, py = 126f, sw = 3.5f)
+            }
+        }
+        PANDA -> {
+            val black = c(0xFF2E2838)
+            shadow(100f, 160f, 60f, 7f)
+            translate(0f, bob) {
+                rrect(60f, 116f, 18f, 34f, 8f, black, b, 69f, 120f)
+                rrect(106f, 116f, 18f, 34f, 8f, black, a, 115f, 120f)
+                ellipse(88f, 106f, 50f, 34f, White)
+                svg("M100 78 q22 -6 32 8 l-6 46 q-14 4 -26 -4 z", black)
+                rrect(74f, 116f, 18f, 34f, 8f, black, a, 83f, 120f)
+                rrect(120f, 116f, 18f, 34f, 8f, black, b, 129f, 120f)
+                circle(125f, 56f, 13f, black); circle(177f, 56f, 13f, black)
+                ellipse(151f, 84f, 36f, 31f, White)
+                ellipse(138f, 84f, 11.5f, 9f, black, rot = -25f, sw = 0f)
+                ellipse(164f, 84f, 11.5f, 9f, black, rot = 25f, sw = 0f)
+                dot(140f, 81f, 4.2f, White); dot(162f, 81f, 4.2f, White)
+                svg("M146 94 q5 -3 10 0 q-1 5 -5 6 q-4 -1 -5 -6 z", Ink, sw = 2f)
+                svg("M143 103 q8 7 16 0", null, sw = 3f)
+                svg("M148 106 q3 8 6 0 z", c(0xFFE5484D), sw = 2f)
+                ellipse(129f, 98f, 5f, 3f, c(0xFFFFB3BF), sw = 0f)
+                ellipse(173f, 98f, 5f, 3f, c(0xFFFFB3BF), sw = 0f)
+            }
+        }
     }
 }
