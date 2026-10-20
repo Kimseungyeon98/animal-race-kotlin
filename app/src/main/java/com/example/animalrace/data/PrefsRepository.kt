@@ -35,7 +35,7 @@ class PrefsRepository(context: Context) : AppRepository {
             val res = o.getJSONArray("results")
             val results = (0 until res.length()).mapNotNull { j ->
                 val r = res.getJSONObject(j)
-                animalOf(r.getString("a"))?.let { RaceResult(it, r.getDouble("t"), r.optInt("u")) }
+                animalOf(r.getString("a"))?.let { RaceResult(it, r.getDouble("t"), r.optInt("u"), r.optInt("l", j)) }
             }
             if (results.isEmpty()) null
             else RaceRecord(o.getLong("at"), o.optString("bet"), o.optInt("lead"), results)
@@ -47,7 +47,7 @@ class PrefsRepository(context: Context) : AppRepository {
         history.forEach { rec ->
             val results = JSONArray()
             rec.results.forEach { r ->
-                results.put(JSONObject().put("a", r.animal.name).put("t", r.time).put("u", r.skillUses))
+                results.put(JSONObject().put("a", r.animal.name).put("t", r.time).put("u", r.skillUses).put("l", r.lane))
             }
             arr.put(
                 JSONObject().put("at", rec.at).put("bet", rec.bet).put("lead", rec.leadChanges).put("results", results),

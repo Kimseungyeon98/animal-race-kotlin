@@ -2,6 +2,7 @@ package com.example.animalrace.race
 
 import com.example.animalrace.model.Animal
 import com.example.animalrace.model.Animal.*
+import com.example.animalrace.model.Fx
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.max
@@ -27,7 +28,9 @@ data class RacerView(
     val animal: Animal,
     val x: Double,
     val rank: Int,
-    val fx: String?,
+    val fx: Fx,
+    /** 현재 연출이 시작된 뒤 지난 시간(초). 연출 애니메이션 진행에 쓴다. */
+    val fxElapsed: Double,
     val stopped: Boolean,
     val boosted: Boolean,
     val finished: Boolean,
@@ -42,7 +45,7 @@ data class RaceView(
     val done: Boolean,
 )
 
-internal class Effect(val mult: Double, val from: Double, val until: Double, val icon: String)
+internal class Effect(val mult: Double, val from: Double, val until: Double, val fx: Fx)
 
 class Racer internal constructor(val lane: Int, val animal: Animal, rnd: Random) {
     var x = 0.0
@@ -53,7 +56,8 @@ class Racer internal constructor(val lane: Int, val animal: Animal, rnd: Random)
         internal set
     internal var v = 0.0
     internal var rank = lane
-    internal var fx: String? = null
+    internal var fx: Fx = Fx.NONE
+    internal var fxFrom = 0.0
     internal var mult = 1.0
     internal var cd = 1 + rnd.nextDouble() * 2
     internal var noise = 1.0
@@ -118,8 +122,8 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
             }
 
             var m = 1.0
-            r.fx = null
-            for (e in r.effects) if (t >= e.from && t < e.until) { m *= e.mult; r.fx = e.icon }
+            r.fx = Fx.NONE
+            for (e in r.effects) if (t >= e.from && t < e.until) { m *= e.mult; r.fx = e.fx; r.fxFrom = e.from }
             r.effects.removeAll { it.until <= t }
             r.mult = m
 
@@ -143,7 +147,7 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
             if (t >= f) {
                 r.finish = f
                 r.x = TRACK
-                r.fx = null
+                r.fx = Fx.NONE
                 finishCount++
                 if (finishCount == 1) say("🏁 1착! ${tag(r)}", EventKind.FINISH)
             }
@@ -168,7 +172,7 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
             racers = racers.map { r ->
                 RacerView(
                     lane = r.lane, animal = r.animal, x = r.x, rank = order.indexOf(r),
-                    fx = r.fx, stopped = !r.finished && r.mult == 0.0,
+                    fx = r.fx, fxElapsed = t - r.fxFrom, stopped = !r.finished && r.mult == 0.0,
                     boosted = !r.finished && r.mult > 1.05, finished = r.finished, finishTime = r.finish,
                 )
             },
@@ -210,7 +214,7 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
         when (r.animal) {
             HORSE -> if (!r.flag && r.x > TRACK * 0.65) {
                 r.flag = true; r.uses++
-                addFx(r, 1.0, 2.0, "⚡"); say("${tag(r)} 막판 스퍼트 시작!")
+                addFx(r, 1.0, 2.0, Fx.SKILL); say("${tag(r)} 막판 스퍼트 시작!")
             }
             SNAIL -> if (!r.flag && t > 11 && progress(r, 2.6) < SETTLE) { act(r); r.uses++ }
             else -> Unit
@@ -223,59 +227,62 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
         when (r.animal) {
             CHEETAH -> {
                 if (progress(r, 2.8) >= SETTLE) return false
-                addFx(r, 2.1, 1.2, "🔥"); addFx(r, 0.5, 1.6, "😮‍💨", delay = 1.2)
+                addFx(r, 2.1, 1.2, Fx.SKILL); addFx(r, 0.5, 1.6, Fx.SKILL_ALT, delay = 1.2)
                 say("${tag(r)} 폭발 질주!")
             }
             RABBIT -> {
                 if (r.rank != 0 || active.any { it !== r && r.x - it.x < 35 } || progress(r, 1.5) >= SETTLE) return false
-                addFx(r, 0.0, 1.5, "💤"); say("${tag(r)} 너무 앞서서 방심, 낮잠…")
+                addFx(r, 0.0, 1.5, Fx.SKILL); say("${tag(r)} 너무 앞서서 방심, 낮잠…")
             }
             DOG -> {
                 if (r.rank < ceil(racers.size / 2.0)) return false
-                addFx(r, 1.65, 1.6, "👃"); say("${tag(r)} 추격 본능 발동!")
+                addFx(r, 1.65, 1.6, Fx.SKILL); say("${tag(r)} 추격 본능 발동!")
             }
-            CAT -> if (rnd.nextBoolean() || progress(r, 0.9) >= SETTLE) {
-                addFx(r, 1.6, 1.0, "😼"); say("${tag(r)} 갑자기 전력질주!")
+            CAT -> if (rnd.nextBoolean() || progress(r, 1.2) >= SETTLE) {
+                addFx(r, 1.6, 1.0, Fx.SKILL); say("${tag(r)} 갑자기 전력질주!")
             } else {
-                addFx(r, 0.2, 0.9, "🧶"); say("${tag(r)} 멈춰서 그루밍 중…")
+                addFx(r, 0.2, 1.2, Fx.SKILL_ALT); say("${tag(r)} 멈춰서 그루밍 중…")
             }
             PIG -> {
                 if (progress(r, 2.8) >= SETTLE) return false
-                addFx(r, 0.0, 1.0, "🍎"); addFx(r, 2.1, 1.8, "💪", delay = 1.0)
+                addFx(r, 0.0, 1.0, Fx.SKILL); addFx(r, 2.1, 1.8, Fx.SKILL_ALT, delay = 1.0)
                 say("${tag(r)} 간식 발견! 먹고 돌진")
             }
             MONKEY -> {
-                val target = active.filter { it !== r && it.x > r.x && it.x - r.x < 260 && progress(it, 1.1) < SETTLE }
+                val target = active.filter { it !== r && it.x > r.x && it.x - r.x < 260 && progress(it, 1.6) < SETTLE }
                     .minByOrNull { it.x }
                     ?: return false
                 say("${tag(r)} 바나나 투척 → ${withSubject(tag(target))} 미끄러짐!")
-                addFx(target, 0.0, 1.1, "🍌", debuff = true)
+                addFx(r, 1.0, 1.6, Fx.SKILL)
+                addFx(target, 0.0, 1.1, Fx.SLIP, delay = 0.5, debuff = true)
             }
-            PENGUIN -> { addFx(r, 1.75, 2.0, "🧊"); say("${tag(r)} 배 슬라이딩!") }
+            PENGUIN -> { addFx(r, 1.75, 2.0, Fx.SKILL); say("${tag(r)} 배 슬라이딩!") }
             KANGAROO -> {
                 if (progress(r, 1.0) >= SETTLE) return false
-                r.x += 45; addFx(r, 1.0, 0.5, "⤴️")
+                r.x += 45; addFx(r, 1.0, 0.7, Fx.SKILL)
                 if (rnd.nextDouble() < 0.35) say("${tag(r)} 껑충!")
             }
             ELEPHANT -> {
                 val hit = active.filter { it !== r && abs(it.x - r.x) < 150 && progress(it, 1.3) < SETTLE }
                 if (hit.isEmpty()) return false
                 say("${tag(r)} 쿵쿵! 주변 ${hit.size}마리 휘청")
-                hit.forEach { addFx(it, 0.45, 1.3, "💫", debuff = true) }
+                addFx(r, 1.0, 1.3, Fx.SKILL)
+                hit.forEach { addFx(it, 0.45, 1.3, Fx.QUAKE, debuff = true) }
             }
             DUCK -> {
                 val lead = active.maxBy { it.x }
                 if (lead === r || progress(lead, 1.2) >= SETTLE) return false
                 say("${tag(r)} 꽥!! ${withSubject(tag(lead))} 깜짝 놀람")
-                addFx(lead, 0.0, 1.2, "😱", debuff = true)
+                addFx(r, 1.0, 1.2, Fx.SKILL)
+                addFx(lead, 0.0, 1.2, Fx.SCARED, debuff = true)
             }
             SNAIL -> {
                 if (t < 6 || r.flag) return false
                 r.flag = true
-                addFx(r, 2.2, 2.6, "🚀"); say("${tag(r)} 로켓 점화!!!")
+                addFx(r, 2.2, 2.6, Fx.SKILL); say("${tag(r)} 로켓 점화!!!")
             }
             CHICKEN -> {
-                addFx(r, 1.6, 1.0, "🪶")
+                addFx(r, 1.6, 1.0, Fx.SKILL)
                 if (rnd.nextBoolean()) say("${tag(r)} 푸드덕!")
             }
             HORSE, TURTLE -> return false
@@ -283,10 +290,14 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
         return true
     }
 
-    private fun addFx(r: Racer, mult: Double, dur: Double, icon: String, delay: Double = 0.0, debuff: Boolean = false) {
-        if (debuff && r.animal == TURTLE) { say("${tag(r)} 등껍질로 막아냄!"); return }
+    private fun addFx(r: Racer, mult: Double, dur: Double, fx: Fx, delay: Double = 0.0, debuff: Boolean = false) {
+        if (debuff && r.animal == TURTLE) {
+            say("${tag(r)} 등껍질로 막아냄!")
+            r.effects += Effect(1.0, t + delay, t + delay + 0.8, Fx.BLOCK)
+            return
+        }
         val from = t + delay
-        r.effects += Effect(mult, from, from + dur, icon)
+        r.effects += Effect(mult, from, from + dur, fx)
     }
 
     private fun say(text: String, kind: EventKind = EventKind.SKILL) {

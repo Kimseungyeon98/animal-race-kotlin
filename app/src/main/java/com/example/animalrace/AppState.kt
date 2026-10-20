@@ -74,7 +74,7 @@ class AppState(private val repo: AppRepository) {
             at = System.currentTimeMillis(),
             bet = bet.trim(),
             leadChanges = race.leadChanges,
-            results = race.ranking().map { RaceResult(it.animal, it.finish ?: 0.0, it.uses) },
+            results = race.ranking().map { RaceResult(it.animal, it.finish ?: 0.0, it.uses, it.lane) },
         )
         lastRecord = record
         history.add(0, record)

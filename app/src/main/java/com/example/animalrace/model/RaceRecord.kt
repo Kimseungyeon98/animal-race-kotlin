@@ -12,6 +12,8 @@ data class RaceResult(
     val animal: Animal,
     val time: Double,
     val skillUses: Int,
+    /** 출전 번호(0부터) */
+    val lane: Int = 0,
 )
 
 data class SavedSetup(
