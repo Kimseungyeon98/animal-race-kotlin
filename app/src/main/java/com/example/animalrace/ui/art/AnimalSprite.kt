@@ -5,6 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -23,6 +26,8 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,7 +70,7 @@ private val Banana = Color(0xFFFFD84A)
 private val Star = Color(0xFFFFB020)
 
 private fun bubble(text: String, x: Float, y: Float, bg: Color = BubbleSelf) =
-    FxPart(x, y, text.length * 15f + 20f, 28f, fill = bg, border = Ink, borderW = 3f, top = 14f, bottom = 14f, text = text, fontSize = 16f)
+    FxPart(x, y, text.length * 17f + 30f, 30f, fill = bg, border = Ink, borderW = 3f, top = 15f, bottom = 15f, text = text, fontSize = 16f)
 
 private fun speedLine(x: Float, y: Float, w: Float, alpha: Float = 1f) =
     FxPart(x, y, w, 7f, fill = Color.White, border = Ink, top = 4f, bottom = 4f, alpha = alpha)
@@ -345,14 +350,22 @@ fun AnimalSprite(
 @Composable
 private fun FxPartView(p: FxPart, s0: Float) {
     // 말풍선은 작은 캐릭터(경주 화면)에서도 읽히도록 최소 배율을 두고, 아래 가운데를 기준으로 키운다
-    val s = if (p.text.isNotEmpty() && p.border != null) maxOf(s0, 0.72f) else s0
+    val isBubble = p.text.isNotEmpty() && p.border != null
+    val s = if (isBubble) maxOf(s0, 0.72f) else s0
     val x = (p.x + p.w / 2) * s0 - p.w * s / 2
     val y = (p.y + p.h) * s0 - p.h * s
+    // 글자 크기를 폰의 글꼴 크기 설정과 무관하게 그림 비율에 맞춘다 (설정이 크면 말풍선 밖으로 넘쳐 잘리던 문제)
+    val fontScale = LocalDensity.current.fontScale
+    val fontSize = ((p.fontSize * s).coerceAtLeast(8f) / fontScale).sp
     val shape: Shape = if (p.top == null) CircleShape
     else RoundedCornerShape((p.top * s).dp, (p.top * s).dp, ((p.bottom ?: p.top) * s).dp, ((p.bottom ?: p.top) * s).dp)
     var m = Modifier
         .offset(x.dp, y.dp)
-        .size((p.w * s).coerceAtLeast(1f).dp, (p.h * s).coerceAtLeast(1f).dp)
+        .then(
+            // 말풍선은 최소 폭만 정하고 문장이 길면 그만큼 넓어진다
+            if (isBubble) Modifier.height((p.h * s).dp).widthIn(min = (p.w * s).dp)
+            else Modifier.size((p.w * s).coerceAtLeast(1f).dp, (p.h * s).coerceAtLeast(1f).dp),
+        )
         .graphicsLayer { alpha = p.alpha; rotationZ = p.rot }
     if (p.fill != Color.Transparent || p.border != null) {
         m = m.clip(shape).background(p.fill, shape)
@@ -363,11 +376,13 @@ private fun FxPartView(p: FxPart, s0: Float) {
             Text(
                 p.text,
                 color = p.textColor,
-                fontSize = (p.fontSize * s).coerceAtLeast(8f).sp,
-                lineHeight = (p.fontSize * s).coerceAtLeast(8f).sp,
+                fontSize = fontSize,
+                lineHeight = fontSize,
                 fontFamily = if (p.numberFont) Fredoka else Jua,
                 maxLines = 1,
                 softWrap = false,
+                overflow = TextOverflow.Visible,
+                modifier = if (isBubble) Modifier.padding(horizontal = (10 * s).dp) else Modifier,
             )
         }
     }

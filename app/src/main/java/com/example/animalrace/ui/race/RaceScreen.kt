@@ -549,17 +549,20 @@ private fun Overlays(frame: Frame, countdown: String?) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
+            // 크게 시작해서 줄어드는 숫자가 들어갈 넉넉한 영역
+            Box(Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) {
             AnimatedContent(
                 targetState = countdown ?: "",
                 // 크게 시작해서 줄어드는 동안 영역 밖으로 나간 부분이 잘리지 않게 clip = false
                 transitionSpec = {
-                    (scaleIn(initialScale = 1.6f) + fadeIn()) togetherWith (scaleOut(targetScale = 0.6f) + fadeOut()) using
+                    (scaleIn(initialScale = 2f) + fadeIn()) togetherWith (scaleOut(targetScale = 0.6f) + fadeOut()) using
                         SizeTransform(clip = false)
                 },
                 label = "countdown",
             ) { c ->
-                if (c.length == 1) OutlinedText(c, 150.sp, color = Pal.Sun, outlineWidth = 22f, fontFamily = Fredoka)
-                else OutlinedText(c, 80.sp, color = Pal.Sun, outlineWidth = 16f)
+                if (c.length == 1) OutlinedText(c, 180.sp, color = Pal.Sun, outlineWidth = 26f, fontFamily = Fredoka)
+                else OutlinedText(c, 96.sp, color = Pal.Sun, outlineWidth = 18f)
+            }
             }
             Spacer(Modifier.height(6.dp))
             OutlinedText(if (countdown == "출발!") "달려라!" else "준비…", 24.sp, outlineWidth = 6f)

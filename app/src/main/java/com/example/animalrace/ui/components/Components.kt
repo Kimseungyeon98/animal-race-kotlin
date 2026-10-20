@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -107,10 +108,11 @@ fun OutlinedText(
     val base = TextStyle(fontSize = fontSize, fontFamily = fontFamily, letterSpacing = 0.sp)
     Box(modifier) {
         Text(
-            text, color = outline, maxLines = 1, softWrap = false,
+            text, color = outline, maxLines = 1, softWrap = false, overflow = TextOverflow.Visible,
             style = base.copy(drawStyle = Stroke(width = outlineWidth, join = StrokeJoin.Round)),
         )
-        Text(text, color = color, maxLines = 1, softWrap = false, style = base)
+        // 외곽선은 글자 영역 밖으로 번지므로 잘라내지 않는다 (큰 카운트다운 숫자 가장자리 잘림 방지)
+        Text(text, color = color, maxLines = 1, softWrap = false, overflow = TextOverflow.Visible, style = base)
     }
 }
 
