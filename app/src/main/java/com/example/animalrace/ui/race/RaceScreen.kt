@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -32,6 +33,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -96,6 +98,8 @@ private const val START_X = -0.12 * START_W
 /** 아직 달리는 앞쪽 4마리가 들어오게 확대/축소하고, 선두를 화면 70% 지점에 둔다. */
 private fun cameraTarget(v: RaceView): Pair<Double, Double> {
     val running = v.racers.filter { !it.finished }.sortedByDescending { it.x }
+    // 모두 들어오면 결승선을 화면 가운데쯤 두어 결승선을 지난 동물과 등수 태그가 다 보이게
+    if (running.isEmpty()) return (TRACK - 0.45 * 170.0) to 170.0
     val front = running.firstOrNull()?.x ?: TRACK
     val pack = running.take(4)
     val spread = front - (pack.lastOrNull()?.x ?: front)
@@ -260,7 +264,7 @@ private fun Standings(view: RaceView) {
                         bg = if (first) Pal.Ink else if (last) Pal.Tomato else Pal.Paper,
                         fg = if (first || last) Color.White else Pal.Ink,
                         fontSize = 10.sp, number = !(first || last),
-                        modifier = Modifier.align(Alignment.BottomEnd).offset(x = 6.dp, y = (-2).dp),
+                        modifier = Modifier.align(Alignment.BottomCenter).wrapContentWidth(unbounded = true),
                     )
                 }
             }
@@ -406,12 +410,16 @@ private fun Track(frame: Frame, trackTop: Dp, laneH: Dp, width: Dp) {
                 if (r.rank == 0 && !r.finished && r.fx == com.example.animalrace.model.Fx.NONE && view.t > 1) {
                     Crown(Modifier.align(Alignment.TopCenter).offset(x = sprite * 0.12f, y = (-14).dp), width = 30.dp)
                 }
-                if (r.finished) {
-                    Tag(
-                        "${r.rank + 1}착", Pal.Sun, Pal.Ink, number = false, fontSize = 13.sp,
-                        modifier = Modifier.align(Alignment.TopStart).offset(y = (-6).dp),
-                    )
-                }
+            }
+            // 등수 태그는 코끝 앞(오른쪽)에, 레인 가운데 높이로 — 윗줄 동물을 가리지 않게
+            if (r.finished) {
+                val tagH = (laneH * 0.5f).coerceIn(18.dp, 28.dp)
+                Tag(
+                    "${r.rank + 1}등", if (r.rank == 0) Pal.Sun else if (r.rank == n - 1) Pal.Tomato else Pal.Paper,
+                    if (r.rank == n - 1) Color.White else Pal.Ink,
+                    fontSize = (tagH.value * 0.55f).sp,
+                    modifier = Modifier.offset(x = nose + sprite * 0.1f, y = trackTop + laneH * r.lane + (laneH - tagH) / 2),
+                )
             }
         }
     }
@@ -468,7 +476,12 @@ private fun Commentary(events: List<RaceEvent>, modifier: Modifier) {
             ) { InkIcon(Icons2.Mic, size = 26.dp, stroke = 2.2f) }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 val latest = events.getOrNull(0)?.text ?: "곧 출발해요! 응원할 동물을 지켜보세요"
-                AnimatedContent(targetState = latest, transitionSpec = { (slideInVertically { it / 2 } + fadeIn()) togetherWith fadeOut() }, label = "line1") { text ->
+                // 새 줄은 아래에서 올라오고, 이전 줄은 바로 사라져서 두 글자가 겹쳐 보이지 않게
+                AnimatedContent(
+                    targetState = latest,
+                    transitionSpec = { (slideInVertically(tween(180)) { it / 3 } + fadeIn(tween(180))) togetherWith fadeOut(tween(40)) },
+                    label = "line1",
+                ) { text ->
                     Text(
                         text, fontSize = 17.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
@@ -479,7 +492,8 @@ private fun Commentary(events: List<RaceEvent>, modifier: Modifier) {
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     )
                 }
-                events.getOrNull(1)?.let { ev ->
+                // 같은 문장이 연달아 나오면 두 줄이 똑같아 보이므로 다른 문장을 둘째 줄에
+                events.drop(1).firstOrNull { it.text != latest }?.let { ev ->
                     Text(
                         ev.text, fontSize = 14.sp, color = Color(0xFF3E3456), maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
@@ -539,7 +553,7 @@ private fun Overlays(frame: Frame, countdown: String?) {
                     .padding(horizontal = 18.dp, vertical = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("1착 골인!", fontSize = 22.sp, color = Pal.Ink)
+                Text("1등 골인!", fontSize = 22.sp, color = Pal.Ink)
                 AnimalSprite(w.animal, 150.dp, running = true)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     LaneSticker(w.lane, size = 26.dp, border = 3.dp)

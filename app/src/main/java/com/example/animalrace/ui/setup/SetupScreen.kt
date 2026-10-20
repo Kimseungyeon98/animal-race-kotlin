@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -183,7 +184,7 @@ fun SetupScreen(state: AppState) {
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 16.dp)
-                    .padding(top = 8.dp, bottom = 12.dp),
+                    .padding(bottom = 12.dp),
                 onTap = ::toggle,
             )
 
@@ -255,10 +256,12 @@ private fun AnimalGrid(state: AppState, modifier: Modifier, onTap: (Animal) -> U
         val animals = Animal.entries
         val rows = ceil(animals.size / cols.toDouble()).toInt()
         val gap = 10.dp
-        val tileH = ((maxHeight - gap * (rows - 1) - 6.dp) / rows).coerceIn(74.dp, 140.dp)
+        val stickerRoom = 10.dp // 첫 줄 번호 스티커가 위로 튀어나올 자리
+        // 각 줄 높이 = 타일 + 그림자 5dp
+        val tileH = ((maxHeight - stickerRoom - gap * (rows - 1)) / rows - 5.dp).coerceIn(70.dp, 140.dp)
         val tileW = (maxWidth - gap * (cols - 1)) / cols
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = stickerRoom),
             verticalArrangement = Arrangement.spacedBy(gap),
         ) {
             animals.chunked(cols).forEach { rowAnimals ->
@@ -357,7 +360,7 @@ private fun Dex(state: AppState, index: Int, onIndex: (Int) -> Unit, onToggle: (
     val animal = Animal.entries[index]
     val lane = state.selected.indexOf(animal)
     val full = lane < 0 && state.selected.size >= AppState.MAX_RACERS
-    Sheet(onClose) {
+    Sheet(onClose, fill = false) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("동물 도감", fontSize = 24.sp, color = Pal.Ink, modifier = Modifier.weight(1f))
             Text("${index + 1} / ${Animal.entries.size}", style = NumberStyle, fontSize = 15.sp, color = Pal.InkSoft)
@@ -377,12 +380,15 @@ private fun Dex(state: AppState, index: Int, onIndex: (Int) -> Unit, onToggle: (
             ) {
                 Box(Modifier.fillMaxWidth().height(52.dp).background(Pal.Dirt))
                 Box(Modifier.fillMaxWidth().padding(bottom = 49.dp).height(3.dp).background(Pal.Ink))
-                Box(Modifier.align(Alignment.TopStart).padding(18.dp).size(70.dp, 24.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.9f)))
+                if (lane < 0) {
+                    Box(Modifier.align(Alignment.TopStart).padding(18.dp).size(70.dp, 24.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.9f)))
+                }
                 AnimalSprite(animal, 190.dp, running = true, fx = Fx.SKILL, modifier = Modifier.padding(bottom = 12.dp))
+                // 스킬 말풍선이 오른쪽 위에 뜨므로 출전 배지는 왼쪽 위
                 if (lane >= 0) {
                     Row(
                         Modifier
-                            .align(Alignment.TopEnd)
+                            .align(Alignment.TopStart)
                             .padding(10.dp)
                             .clip(RoundedCornerShape(15.dp))
                             .background(Pal.Sun)
@@ -441,7 +447,7 @@ private fun Dex(state: AppState, index: Int, onIndex: (Int) -> Unit, onToggle: (
                 ) { AnimalSprite(a, 40.dp) }
             }
         }
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(4.dp))
         CartoonButton(
             onClick = { if (!full) onToggle(animal) },
             enabled = !full,
@@ -473,10 +479,10 @@ private fun SquareIcon(icon: List<String>, label: String, onClick: () -> Unit, t
     ) { InkIcon(icon, size = 18.dp, stroke = 3f) }
 }
 
-/** 아래에서 올라오는 시트 (어두운 배경을 누르면 닫힘). */
+/** 아래에서 올라오는 시트 (어두운 배경을 누르면 닫힘). [fill]이 false면 내용 높이만큼만 올라온다. */
 @Composable
-private fun Sheet(onClose: () -> Unit, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
-    Box(
+private fun Sheet(onClose: () -> Unit, fill: Boolean = true, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    BoxWithConstraints(
         Modifier
             .fillMaxSize()
             .background(Pal.Ink.copy(alpha = 0.55f))
@@ -486,13 +492,17 @@ private fun Sheet(onClose: () -> Unit, content: @Composable androidx.compose.fou
         Column(
             Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.88f)
+                .then(
+                    if (fill) Modifier.fillMaxHeight(0.88f)
+                    else Modifier.heightIn(max = maxHeight * 0.92f),
+                )
                 .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                 .background(Pal.Ivory)
                 .border(3.dp, Pal.Ink, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                 .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 18.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 18.dp)
+                .then(if (fill) Modifier else Modifier.verticalScroll(rememberScrollState())),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Box(Modifier.align(Alignment.CenterHorizontally).size(44.dp, 5.dp).clip(RoundedCornerShape(3.dp)).background(Pal.Disabled))

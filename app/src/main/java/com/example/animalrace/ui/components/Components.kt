@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -66,7 +67,8 @@ fun CartoonButton(
     val shape = RoundedCornerShape(corner)
     val edge = if (enabled) Pal.Ink else Pal.DisabledInk
     val drop = if (pressed && enabled) depth * 0.6f else 0.dp
-    Box(modifier.padding(bottom = depth)) {
+    // propagateMinConstraints: 바깥에서 준 폭(fillMaxWidth, weight, width)을 버튼 면이 그대로 채우게 한다
+    Box(modifier.padding(bottom = depth), propagateMinConstraints = true) {
         Box(
             Modifier
                 .matchParentSize()
@@ -101,12 +103,14 @@ fun OutlinedText(
     outlineWidth: Float = 7f,
     fontFamily: FontFamily = Jua,
 ) {
+    // 외곽선과 글자가 정확히 겹치도록 두 Text가 같은 스타일(자간 포함)을 쓴다
+    val base = TextStyle(fontSize = fontSize, fontFamily = fontFamily, letterSpacing = 0.sp)
     Box(modifier) {
         Text(
-            text, fontSize = fontSize, fontFamily = fontFamily, color = outline, maxLines = 1, softWrap = false,
-            style = TextStyle(drawStyle = Stroke(width = outlineWidth, join = StrokeJoin.Round)),
+            text, color = outline, maxLines = 1, softWrap = false,
+            style = base.copy(drawStyle = Stroke(width = outlineWidth, join = StrokeJoin.Round)),
         )
-        Text(text, fontSize = fontSize, fontFamily = fontFamily, color = color, maxLines = 1, softWrap = false)
+        Text(text, color = color, maxLines = 1, softWrap = false, style = base)
     }
 }
 
@@ -230,7 +234,7 @@ fun Tag(text: String, bg: Color, fg: Color = Color.White, modifier: Modifier = M
             .background(bg)
             .border(2.dp, Pal.Ink, RoundedCornerShape(10.dp))
             .padding(horizontal = 7.dp, vertical = 1.dp),
-    ) { Text(text, fontSize = fontSize, color = fg, style = if (number) NumberStyle else TextStyle.Default, maxLines = 1) }
+    ) { Text(text, fontSize = fontSize, color = fg, style = if (number) NumberStyle else LocalTextStyle.current, maxLines = 1, softWrap = false) }
 }
 
 /** 벌칙 문구에서 "꼴찌가 " 접두를 뗀 짧은 형태. */

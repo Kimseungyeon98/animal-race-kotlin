@@ -312,11 +312,15 @@ fun AnimalSprite(
 }
 
 @Composable
-private fun FxPartView(p: FxPart, s: Float) {
+private fun FxPartView(p: FxPart, s0: Float) {
+    // 말풍선은 작은 캐릭터(경주 화면)에서도 읽히도록 최소 배율을 두고, 아래 가운데를 기준으로 키운다
+    val s = if (p.text.isNotEmpty() && p.border != null) maxOf(s0, 0.72f) else s0
+    val x = (p.x + p.w / 2) * s0 - p.w * s / 2
+    val y = (p.y + p.h) * s0 - p.h * s
     val shape: Shape = if (p.top == null) CircleShape
     else RoundedCornerShape((p.top * s).dp, (p.top * s).dp, ((p.bottom ?: p.top) * s).dp, ((p.bottom ?: p.top) * s).dp)
     var m = Modifier
-        .offset((p.x * s).dp, (p.y * s).dp)
+        .offset(x.dp, y.dp)
         .size((p.w * s).coerceAtLeast(1f).dp, (p.h * s).coerceAtLeast(1f).dp)
         .graphicsLayer { alpha = p.alpha; rotationZ = p.rot }
     if (p.fill != Color.Transparent || p.border != null) {

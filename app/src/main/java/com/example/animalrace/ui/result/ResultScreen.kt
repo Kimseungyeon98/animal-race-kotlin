@@ -98,7 +98,7 @@ fun ResultScreen(record: RaceRecord, onAgain: () -> Unit, onHome: () -> Unit) {
                     OutlinedText("경기 결과", 30.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         StatChip("역전 ", "${record.leadChanges}", "회")
-                        StatChip("1착 ", "%.2f".format(winner.time), "초")
+                        StatChip("1등 ", "%.2f".format(winner.time), "초")
                         StatChip("1등과 꼴찌 ", "%.2f".format(loser.time - winner.time), "초 차이")
                     }
                 }
@@ -221,11 +221,11 @@ private fun PodiumColumn(place: Int, r: RaceResult, lane: Int, modifier: Modifie
     }
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         if (place == 0) Crown(width = 34.dp)
-        Box {
-            AnimalSprite(r.animal, if (place == 0) 108.dp else 96.dp, running = place == 0)
-            LaneSticker(lane, Modifier.align(Alignment.TopStart), size = 22.dp)
+        AnimalSprite(r.animal, if (place == 0) 108.dp else 96.dp, running = place == 0)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            LaneSticker(lane, size = 20.dp)
+            Text(r.animal.label, fontSize = if (place == 0) 19.sp else 17.sp, color = Pal.Ink, maxLines = 1)
         }
-        Text(r.animal.label, fontSize = if (place == 0) 19.sp else 17.sp, color = Pal.Ink)
         Text("%.2f초".format(r.time), style = NumberStyle, fontSize = 13.sp, color = Color(0xFF3E3456))
         Spacer(Modifier.height(4.dp))
         Box(

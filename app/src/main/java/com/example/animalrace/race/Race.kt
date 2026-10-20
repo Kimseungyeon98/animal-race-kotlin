@@ -78,7 +78,7 @@ class Racer internal constructor(val lane: Int, val animal: Animal, rnd: Random)
 class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
     val racers = animals.mapIndexed { i, a -> Racer(i, a, rnd) }
 
-    /** 레인별 결승 시각(초). 1착 16.8~18.4초, 이후 0.08~0.45초 간격. */
+    /** 레인별 결승 시각(초). 1등 16.8~18.4초, 이후 0.08~0.45초 간격. */
     private val finishAt = DoubleArray(racers.size).also { at ->
         var f = 16.8 + rnd.nextDouble() * 1.6
         racers.shuffled(rnd).forEach { r ->
@@ -149,7 +149,7 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
                 r.x = TRACK
                 r.fx = Fx.NONE
                 finishCount++
-                if (finishCount == 1) say("🏁 1착! ${tag(r)}", EventKind.FINISH)
+                if (finishCount == 1) say("🏁 1등! ${tag(r)}", EventKind.FINISH)
             }
         }
 
