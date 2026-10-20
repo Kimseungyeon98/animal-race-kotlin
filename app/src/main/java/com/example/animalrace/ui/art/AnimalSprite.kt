@@ -67,8 +67,17 @@ private val Star = Color(0xFFFFB020)
 private fun bubble(text: String, x: Float, y: Float, bg: Color = BubbleSelf) =
     FxPart(x, y, text.length * 15f + 20f, 28f, fill = bg, border = Ink, borderW = 3f, top = 14f, bottom = 14f, text = text, fontSize = 16f)
 
-private fun speedLine(x: Float, y: Float, w: Float) =
-    FxPart(x, y, w, 7f, fill = Color.White, border = Ink, top = 4f, bottom = 4f)
+private fun speedLine(x: Float, y: Float, w: Float, alpha: Float = 1f) =
+    FxPart(x, y, w, 7f, fill = Color.White, border = Ink, top = 4f, bottom = 4f, alpha = alpha)
+
+/**
+ * 반복해서 흘러가는 조각(속도선·불꽃)의 진행도 0~1. 처음 위치로 되돌아갈 때 툭 튀지 않도록
+ * 시작과 끝에서 서서히 나타나고 사라지는 투명도를 함께 준다.
+ */
+private fun loopFade(p: Float): Float = (sin(p * PI.toFloat())).coerceIn(0f, 1f)
+
+/** 좌우 떨림: 프레임마다 ±로 튀지 않고 부드럽게 흔들린다 (약 2Hz). */
+private fun wobble(t: Float, amp: Float) = sin(t * PI.toFloat() / 4f) * amp
 
 private fun blob(x: Float, y: Float, w: Float, h: Float, fill: Color, alpha: Float = 1f) =
     FxPart(x, y, w, h, fill = fill, border = Ink, alpha = alpha)
@@ -111,12 +120,12 @@ internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false)
             when (animal) {
                 HORSE -> {
                     pose = fast
-                    for (k in 0..2) back += speedLine(14 - (t * 7 + k * 9) % 26, 72f + k * 18, 34f - k * 6)
+                    for (k in 0..2) { val m = (t * 7 + k * 9) % 26; back += speedLine(14 - m, 72f + k * 18, 34f - k * 6, loopFade(m / 26)) }
                     front += bubble("스퍼트!", 112f, -16f)
                 }
                 CHEETAH -> if (!alt) {
                     pose = fast
-                    for (k in 0..2) back += blob(16 - (t * 5 + k * 7) % 14, 84f + k * 11, 30f - k * 6, 15f, if (k % 2 == 1) Flame2 else Flame1, 0.95f)
+                    for (k in 0..2) { val m = (t * 5 + k * 7) % 14; back += blob(16 - m, 84f + k * 11, 30f - k * 6, 15f, if (k % 2 == 1) Flame2 else Flame1, 0.95f * loopFade(m / 14)) }
                     front += bubble("슝!", 132f, -16f)
                 } else {
                     pose = 0; dy = 4f
@@ -133,9 +142,9 @@ internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false)
                     front += bubble("쿨쿨…", 70f, -16f)
                 }
                 TURTLE -> {
-                    val on = t % 20 < 10
-                    front += blob(78f, 62f, 12f, 7f, Color.White, if (on) 1f else 0.3f)
-                    front += blob(116f, 70f, 8f, 5f, Color.White, if (on) 0.3f else 1f)
+                    val on = (sin(t / 20 * 2 * PI.toFloat()) + 1) / 2
+                    front += blob(78f, 62f, 12f, 7f, Color.White, 0.3f + 0.7f * on)
+                    front += blob(116f, 70f, 8f, 5f, Color.White, 1f - 0.7f * on)
                     front += bubble("꾸준히~", 108f, -10f)
                 }
                 DOG -> {
@@ -145,7 +154,7 @@ internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false)
                 }
                 CAT -> if (!alt) {
                     pose = fast
-                    for (k in 0..1) back += speedLine(14 - (t * 7 + k * 11) % 24, 82f + k * 20, 30f)
+                    for (k in 0..1) { val m = (t * 7 + k * 11) % 24; back += speedLine(14 - m, 82f + k * 20, 30f, loopFade(m / 24)) }
                     front += bubble("냥!", 134f, -16f)
                 } else {
                     pose = 0; dy = 2f
@@ -162,7 +171,7 @@ internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false)
                 } else {
                     pose = fast
                     back += FxPart(20f, 40f, 160f, 120f, fill = Color(0xFFFFE36A), alpha = 0.5f)
-                    for (k in 0..1) back += speedLine(10 - (t * 7 + k * 11) % 24, 84f + k * 22, 32f)
+                    for (k in 0..1) { val m = (t * 7 + k * 11) % 24; back += speedLine(10 - m, 84f + k * 22, 32f, loopFade(m / 24)) }
                     front += bubble("힘이 넘쳐!", 92f, -18f)
                 }
                 MONKEY -> {
@@ -195,14 +204,14 @@ internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false)
                     front += bubble("쿵! 쿵!", 100f, -18f, BubbleMean)
                 }
                 DUCK -> {
-                    pose = 0; dx = if (t % 4 < 2) 2f else -2f
+                    pose = 0; dx = wobble(t, 2f)
                     for (k in 0..2) front += glyph(")", 186f + k * 8, 56f - k * 4, 22f + k * 6, Ink, 1 - ((t + k * 3) % 12) / 12)
                     front += bubble("꽥!!", 118f, -20f, BubbleMean)
                 }
                 SNAIL -> {
-                    dx = if (t % 4 < 2) 1f else -1f
-                    for (k in 0..2) back += blob(34 - (t * 4 + k * 6) % 12, 82f + k * 9, 32f - k * 7, 15f, if (k % 2 == 1) Flame2 else Flame1, 0.95f)
-                    for (k in 0..1) back += blob(-6 - (t * 3 + k * 12) % 30, 68f + k * 16, 16f, 16f, Color(0xFFE4E0EA), 0.75f)
+                    dx = wobble(t, 1f)
+                    for (k in 0..2) { val m = (t * 4 + k * 6) % 12; back += blob(34 - m, 82f + k * 9, 32f - k * 7, 15f, if (k % 2 == 1) Flame2 else Flame1, 0.95f * loopFade(m / 12)) }
+                    for (k in 0..1) { val m = (t * 3 + k * 12) % 30; back += blob(-6 - m, 68f + k * 16, 16f, 16f, Color(0xFFE4E0EA), 0.75f * loopFade(m / 30)) }
                     front += bubble("로켓 점화!", 92f, -16f)
                 }
                 CHICKEN -> {
@@ -240,7 +249,7 @@ internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false)
             pose = 0
             val q = t % cycle
             dy = if (q < 8) -14 * sin(q / 8 * PI.toFloat()) else 0f
-            dx = if (t.toInt() % 2 == 1) 2f else -2f
+            dx = wobble(t * 1.5f, 2f)
             front += glyph("!", 168f, -6f, 36f, Color(0xFFF2543F))
             front += blob(186f, 44f, 8f, 12f, Sweat)
             front += bubble("깜짝!", 30f, -14f, BubbleHurt)

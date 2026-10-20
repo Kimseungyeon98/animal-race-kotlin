@@ -108,6 +108,22 @@ private fun cameraTarget(v: RaceView): Pair<Double, Double> {
     return x to w
 }
 
+/** 화면 표시용으로 두 시뮬레이션 상태 사이를 [a](0~1) 비율로 섞는다. 순위·이벤트 등은 최신 상태를 쓴다. */
+private fun interpolate(prev: RaceView, cur: RaceView, a: Double): RaceView {
+    val k = a.coerceIn(0.0, 1.0)
+    val byLane = prev.racers.associateBy { it.lane }
+    return cur.copy(
+        t = prev.t + (cur.t - prev.t) * k,
+        racers = cur.racers.map { r ->
+            val p = byLane[r.lane] ?: return@map r
+            r.copy(
+                x = p.x + (r.x - p.x) * k,
+                fxElapsed = if (p.fx == r.fx && r.fxElapsed >= p.fxElapsed) p.fxElapsed + (r.fxElapsed - p.fxElapsed) * k else r.fxElapsed,
+            )
+        },
+    )
+}
+
 @Composable
 fun RaceScreen(animals: List<Animal>, bet: String, raceKey: Int, onFinished: (Race) -> Unit) {
     val race = remember(raceKey) { Race(animals) }
@@ -126,6 +142,8 @@ fun RaceScreen(animals: List<Animal>, bet: String, raceKey: Int, onFinished: (Ra
         countdown = null
         var last = withFrameNanos { it }
         var acc = 0.0
+        var prev = race.view()
+        var cur = prev
         var post = 0.0
         var camX = START_X
         var camW = START_W
@@ -136,12 +154,19 @@ fun RaceScreen(animals: List<Animal>, bet: String, raceKey: Int, onFinished: (Ra
             last = now
             if (!race.done) {
                 acc += step
-                while (acc >= DT && !race.done) { race.step(DT); acc -= DT }
+                while (acc >= DT && !race.done) {
+                    prev = cur
+                    race.step(DT)
+                    cur = race.view()
+                    acc -= DT
+                }
             } else {
                 post += step
                 if (post > 2.2) break
             }
-            val v = race.view()
+            // 시뮬레이션은 1/60초 단위로만 진행되므로, 120Hz 화면에서는 두 상태 사이를 보간해서 그린다.
+            // (보간 없이 그리면 동물은 두 프레임에 한 번, 카메라는 매 프레임 움직여 겹쳐 보인다)
+            val v = if (race.done) cur else interpolate(prev, cur, acc / DT)
             val (tx, tw) = cameraTarget(v)
             camX += (tx - camX) * (1 - exp(-step * 3.5))
             camW += (tw - camW) * (1 - exp(-step * 1.8))
@@ -327,7 +352,7 @@ private fun Track(frame: Frame, trackTop: Dp, laneH: Dp, width: Dp) {
     val n = view.racers.size
     fun sx(worldX: Double): Dp = width * ((worldX - frame.camX) / frame.camW).toFloat()
     fun visualX(r: RacerView): Double =
-        if (r.finished) TRACK + min(COAST, (frame.time - (r.finishTime ?: frame.time)) * 60) else r.x
+        if (r.finished) TRACK + min(COAST, (frame.time - (r.finishTime ?: frame.time)).coerceAtLeast(0.0) * 60) else r.x
 
     Canvas(Modifier.fillMaxSize()) {
         val top = trackTop.toPx()
