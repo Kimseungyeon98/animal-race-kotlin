@@ -264,6 +264,24 @@ internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false)
             front += banana(186 + b * 2, 40 - b * 1.6f + b * b * 0.05f, b * 25, 1 - b / 30)
             front += bubble("팅!", 120f, -14f)
         }
+        Fx.RALLY -> {
+            pose = fast
+            dy = -abs(sin(t / 2)) * 3
+            for (k in 0..2) { val m = (t * 7 + k * 9) % 26; back += speedLine(14 - m, 70f + k * 18, 34f - k * 6, loopFade(m / 26)) }
+            for (k in 0..1) { val m = (t * 3 + k * 10) % 20; back += blob(18 - m, 140f - k * 6, 18f + m, 12f + m * 0.4f, Color(0xFFE8D3B0), 0.85f * loopFade(m / 20)) }
+            front += bubble("분발!", 112f, -18f)
+        }
+        Fx.TRIP -> {
+            pose = 0
+            val q = (t / 6).coerceAtMost(1f)
+            rot = -18f * q; dy = 8f * q; dx = -4f * q
+            back += blob(120f, 146f, 44f, 14f, Color(0xFFE8D3B0), 0.85f)
+            for (k in 0..2) {
+                val ang = t / 4 + k * 2.1f
+                front += glyph("✦", 140 + cos(ang) * 24, 16 + sin(ang) * 7, 15f, Star)
+            }
+            front += bubble("꽈당!", 30f, -14f, BubbleHurt)
+        }
         Fx.NONE, Fx.HIT_CYCLE -> Unit
     }
     return FxFrame(back, front, dx, dy, rot, pose)

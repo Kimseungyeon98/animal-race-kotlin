@@ -3,10 +3,11 @@ package com.example.animalrace.race
 import com.example.animalrace.model.Animal
 import com.example.animalrace.model.Animal.*
 import com.example.animalrace.model.Fx
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil
-import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sin
 import kotlin.random.Random
 
 /** 트랙 길이(시뮬레이션 단위, m). */
@@ -15,8 +16,18 @@ const val TRACK = 1000.0
 /** 기준 곡선 x(τ) = 24τ + 1.5τ² 가 TRACK에 닿는 시각. 처음엔 느리고 갈수록 빨라지는 모양. */
 private const val REF_T = 19.0308
 
-/** 이 진행률(경과 시간 / 자기 결승 시각)이 지나면 스킬이 발동하지 않고 정해진 결과로 수렴한다. */
-private const val SETTLE = 0.8
+/** 이 진행률(경과 시간 / 자기 결승 시각) 이후로는 모두 기준 곡선(= 최종 순위 순서)으로 달린다. */
+private const val SETTLE = 0.93
+
+/** 출발 직후 연출 없이 다 같이 달리는 시간(초). */
+private const val CALM = 1.5
+
+/** 대본 위치를 계산하는 간격(초). */
+private const val GRID = 1.0 / 120
+
+/** 스킬이 아닌 구간에서 허용하는 속도 범위(기준 속도 대비). 이 밖으로 벗어나는 "이유 없는 급가속·급감속"은 없다. */
+internal const val PACE_MIN = 0.7
+internal const val PACE_MAX = 1.3
 
 enum class EventKind { SKILL, LEAD, FINISH }
 
@@ -45,38 +56,64 @@ data class RaceView(
     val done: Boolean,
 )
 
-internal class Effect(val mult: Double, val from: Double, val until: Double, val fx: Fx)
+/**
+ * 대본의 한 구간: [from, until) 동안 기준 속도 × [mult]로 달리고 [fx] 연출을 보여 준다.
+ * [mult]가 null이면 속도는 그대로 두고 연출만 보여 준다(공격하는 쪽, 거북이 방어 등).
+ */
+internal class Seg(val from: Double, val until: Double, val mult: Double?, var fx: Fx) {
+    operator fun contains(t: Double) = t >= from && t < until
+}
 
-class Racer internal constructor(val lane: Int, val animal: Animal, rnd: Random) {
+private class Cue(val t: Double, val text: String, val user: Racer?)
+
+class Racer internal constructor(val lane: Int, val animal: Animal) {
     var x = 0.0
         internal set
     var finish: Double? = null
         internal set
     var uses = 0
         internal set
-    internal var v = 0.0
-    internal var rank = lane
-    internal var fx: Fx = Fx.NONE
+    internal var rank = 0
+    internal var fx = Fx.NONE
     internal var fxFrom = 0.0
     internal var mult = 1.0
-    internal var cd = 1 + rnd.nextDouble() * 2
-    internal var noise = 1.0
-    internal var noiseT = 0.0
-    internal var flag = false
-    internal val effects = mutableListOf<Effect>()
+
+    /** 대본: [GRID] 간격의 위치. */
+    internal var path = DoubleArray(0)
+    internal val segs = mutableListOf<Seg>()
     val finished get() = finish != null
+
+    internal fun pathAt(t: Double): Double {
+        val p = t / GRID
+        val k = p.toInt().coerceIn(0, path.size - 2)
+        val a = (p - k).coerceIn(0.0, 1.0)
+        return path[k] + (path[k + 1] - path[k]) * a
+    }
+
+    /** 속도에 영향을 주는 구간의 배율 곱. */
+    internal fun motionAt(t: Double): Double {
+        var m = 1.0
+        for (s in segs) if (s.mult != null && t in s) m *= s.mult
+        return m
+    }
+
+    internal fun busy(a: Double, b: Double) = segs.any { it.from < b && it.until > a }
 }
 
 /**
- * 경주 시뮬레이션. UI와 무관한 순수 Kotlin이라 JVM에서 그대로 테스트할 수 있다.
+ * 경주. UI와 무관한 순수 Kotlin이라 JVM에서 그대로 테스트할 수 있다.
  *
- * 공정성: 최종 순위는 출발 시점에 균등한 무작위 순열로 먼저 정해지고([finishAt]),
+ * 공정성: 최종 순위는 출발 시점에 균등한 무작위 순열로 먼저 정해진다([finishAt]).
  * 동물 종류·스킬과 무관하게 모든 동물이 모든 순위에 같은 확률로 온다.
- * 스킬·특성·흔들림은 화면 속 위치만 흔드는 연출이고, 보정 항이 각 동물을
- * 자기 결승 시각으로 끌고 가서 결과는 바뀌지 않는다.
+ *
+ * 연출(스토리보드): 그 결과에 이르는 전개를 출발할 때 미리 짠다.
+ * 우승자는 밀렸다가 역전하고, 가짜 선두는 앞서다가 방해를 받는 식이다.
+ * 큰 순위 변화는 반드시 눈에 보이는 스킬(가속·방해) 구간에서만 일어나고,
+ * 그 밖의 구간은 기준 속도의 [PACE_MIN]~[PACE_MAX] 안에서만 움직인다.
+ * 그래서 "방해받고 멈췄다가 아무 이유 없이 훅 따라잡는" 장면이 나오지 않는다.
  */
 class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
-    val racers = animals.mapIndexed { i, a -> Racer(i, a, rnd) }
+    val racers = animals.mapIndexed { i, a -> Racer(i, a) }
 
     /** 레인별 결승 시각(초). 1등 16.8~18.4초, 이후 0.08~0.45초 간격. */
     private val finishAt = DoubleArray(racers.size).also { at ->
@@ -95,6 +132,12 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
     private var finishCount = 0
     private var leader: Racer? = null
     private val events = mutableListOf<RaceEvent>()
+    private val cues = mutableListOf<Cue>()
+    private var cueIndex = 0
+
+    init {
+        Director().plan()
+    }
 
     fun ranking(): List<Racer> =
         racers.sortedWith(compareBy<Racer>({ it.finish ?: Double.MAX_VALUE }, { -it.x }))
@@ -102,59 +145,33 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
     fun step(dt: Double) {
         if (done) return
         t += dt
-        ranking().forEachIndexed { i, r -> r.rank = i }
-        val active = racers.filter { !it.finished }
-
-        for (r in active) {
-            if (t >= r.noiseT) {
-                val spread = if (r.animal == TURTLE) 0.1 else 0.25
-                r.noise = 1 - spread + rnd.nextDouble() * spread * 2
-                r.noiseT = t + 0.6 + rnd.nextDouble() * 0.9
-            }
-            r.cd -= dt
-            tick(r)
-            val rate = skillRate(r.animal)
-            if (rate > 0 && r.cd <= 0 && t > 1.5 && progress(r, 2.0) < SETTLE &&
-                rnd.nextDouble() < rate * dt && act(r)
-            ) {
-                r.cd = cooldown(r.animal)
-                r.uses++
-            }
-
-            var m = 1.0
-            r.fx = Fx.NONE
-            for (e in r.effects) if (t >= e.from && t < e.until) { m *= e.mult; r.fx = e.fx; r.fxFrom = e.from }
-            r.effects.removeAll { it.until <= t }
-            r.mult = m
-
-            // 정해진 결승 시각 f에 맞춘 기준 위치 d와 기준 속도 dv
+        for (r in racers) {
+            if (r.finished) continue
             val f = finishAt[r.lane]
-            val q = t / f
-            val tau = t * REF_T / f
-            val d = min(TRACK, 24 * tau + 1.5 * tau * tau)
-            val dv = (24 + 3 * tau) * REF_T / f
-            // 연출(특성·흔들림·스킬) 속도 + 기준 위치로 끌어당기는 보정. 보정은 후반으로 갈수록 강해진다.
-            val pull = 0.5 + 3.0 * q * q
-            // 앞서 나간 동물도 멈추지 않고 느려지기만 하도록 최소 속도를 둔다 (스킬 정지는 예외)
-            val v = if (m == 0.0) 0.0 else max(0.4 * dv * min(1.0, m), dv * trait(r) * r.noise * m + pull * (d - r.x))
-            var nx = r.x + v * dt
-            // 마지막 구간은 기준 위치로 부드럽게 합류 (뒤로 가지는 않음)
-            val blend = smoothstep(SETTLE, 1.0, q)
-            nx = max(r.x + 0.2 * dv * dt * blend, nx * (1 - blend) + d * blend)
-            nx = if (t >= f) TRACK else min(nx, TRACK - 0.5)
-            r.v = (nx - r.x) / dt
-            r.x = nx
             if (t >= f) {
                 r.finish = f
                 r.x = TRACK
                 r.fx = Fx.NONE
+                r.mult = 1.0
                 finishCount++
                 if (finishCount == 1) say("🏁 1등! ${tag(r)}", EventKind.FINISH)
+                continue
             }
+            r.x = r.pathAt(t)
+            r.mult = r.motionAt(t)
+            val active = r.segs.filter { t in it }.maxByOrNull { it.from }
+            r.fx = active?.fx ?: Fx.NONE
+            if (active != null) r.fxFrom = active.from
         }
+        while (cueIndex < cues.size && cues[cueIndex].t <= t) {
+            val c = cues[cueIndex++]
+            c.user?.let { it.uses++ }
+            say(c.text)
+        }
+        ranking().forEachIndexed { i, r -> r.rank = i }
 
         if (finishCount == 0) {
-            val lead = active.maxBy { it.x }
+            val lead = racers.maxBy { it.x }
             val current = leader
             if (current == null) leader = lead
             else if (lead !== current && lead.x - current.x > 6) {
@@ -182,137 +199,374 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
         )
     }
 
-    // ---------- 동물별 특성 ----------
-
-    private fun trait(r: Racer): Double = when (r.animal) {
-        HORSE -> if (r.x > TRACK * 0.65) 1.27 else 0.96
-        RABBIT -> 1.1
-        TURTLE -> 0.76 + min(0.62, t * 0.032)
-        CAT -> 1.04
-        PIG, DOG, ELEPHANT, CHICKEN -> 0.98
-        PENGUIN -> 0.97
-        KANGAROO -> 0.95
-        SNAIL -> 0.8
-        CHEETAH, MONKEY, DUCK -> 1.0
-    }
-
-    private fun skillRate(a: Animal): Double = when (a) {
-        CHEETAH -> 0.2; RABBIT -> 0.5; DOG -> 0.25; CAT -> 0.28; PIG -> 0.16
-        MONKEY -> 0.24; PENGUIN -> 0.2; KANGAROO -> 0.3; ELEPHANT -> 0.16
-        DUCK -> 0.15; SNAIL -> 0.14; CHICKEN -> 0.28
-        HORSE, TURTLE -> 0.0
-    }
-
-    private fun cooldown(a: Animal): Double = when (a) {
-        CHEETAH, RABBIT -> 4.5; DOG -> 3.5; CAT, CHICKEN -> 3.0; PIG, ELEPHANT, DUCK -> 5.0
-        MONKEY, PENGUIN -> 4.0; KANGAROO -> 2.5; SNAIL -> 99.0
-        HORSE, TURTLE -> 0.0
-    }
-
-    /** 매 스텝 확인하는 지속형 특성. */
-    private fun tick(r: Racer) {
-        when (r.animal) {
-            HORSE -> if (!r.flag && r.x > TRACK * 0.65) {
-                r.flag = true; r.uses++
-                addFx(r, 1.0, 2.0, Fx.SKILL); say("${tag(r)} 막판 스퍼트 시작!")
-            }
-            SNAIL -> if (!r.flag && t > 11 && progress(r, 2.6) < SETTLE) { act(r); r.uses++ }
-            else -> Unit
-        }
-    }
-
-    /** 확률 발동형 스킬. 조건이 안 맞아 발동하지 않았으면 false. */
-    private fun act(r: Racer): Boolean {
-        val active = racers.filter { !it.finished }
-        when (r.animal) {
-            CHEETAH -> {
-                if (progress(r, 2.8) >= SETTLE) return false
-                addFx(r, 2.1, 1.2, Fx.SKILL); addFx(r, 0.5, 1.6, Fx.SKILL_ALT, delay = 1.2)
-                say("${tag(r)} 폭발 질주!")
-            }
-            RABBIT -> {
-                if (r.rank != 0 || active.any { it !== r && r.x - it.x < 35 } || progress(r, 1.5) >= SETTLE) return false
-                addFx(r, 0.0, 1.5, Fx.SKILL); say("${tag(r)} 너무 앞서서 방심, 낮잠…")
-            }
-            DOG -> {
-                if (r.rank < ceil(racers.size / 2.0)) return false
-                addFx(r, 1.65, 1.6, Fx.SKILL); say("${tag(r)} 추격 본능 발동!")
-            }
-            CAT -> if (rnd.nextBoolean() || progress(r, 1.2) >= SETTLE) {
-                addFx(r, 1.6, 1.0, Fx.SKILL); say("${tag(r)} 갑자기 전력질주!")
-            } else {
-                addFx(r, 0.2, 1.2, Fx.SKILL_ALT); say("${tag(r)} 멈춰서 그루밍 중…")
-            }
-            PIG -> {
-                if (progress(r, 2.8) >= SETTLE) return false
-                addFx(r, 0.0, 1.0, Fx.SKILL); addFx(r, 2.1, 1.8, Fx.SKILL_ALT, delay = 1.0)
-                say("${tag(r)} 간식 발견! 먹고 돌진")
-            }
-            MONKEY -> {
-                val target = active.filter { it !== r && it.x > r.x && it.x - r.x < 260 && progress(it, 1.6) < SETTLE }
-                    .minByOrNull { it.x }
-                    ?: return false
-                say("${tag(r)} 바나나 투척 → ${withSubject(tag(target))} 미끄러짐!")
-                addFx(r, 1.0, 1.6, Fx.SKILL)
-                addFx(target, 0.0, 1.1, Fx.SLIP, delay = 0.5, debuff = true)
-            }
-            PENGUIN -> { addFx(r, 1.75, 2.0, Fx.SKILL); say("${tag(r)} 배 슬라이딩!") }
-            KANGAROO -> {
-                if (progress(r, 1.0) >= SETTLE) return false
-                r.x += 45; addFx(r, 1.0, 0.7, Fx.SKILL)
-                if (rnd.nextDouble() < 0.35) say("${tag(r)} 껑충!")
-            }
-            ELEPHANT -> {
-                val hit = active.filter { it !== r && abs(it.x - r.x) < 150 && progress(it, 1.3) < SETTLE }
-                if (hit.isEmpty()) return false
-                say("${tag(r)} 쿵쿵! 주변 ${hit.size}마리 휘청")
-                addFx(r, 1.0, 1.3, Fx.SKILL)
-                hit.forEach { addFx(it, 0.45, 1.3, Fx.QUAKE, debuff = true) }
-            }
-            DUCK -> {
-                val lead = active.maxBy { it.x }
-                if (lead === r || progress(lead, 1.2) >= SETTLE) return false
-                say("${tag(r)} 꽥!! ${withSubject(tag(lead))} 깜짝 놀람")
-                addFx(r, 1.0, 1.2, Fx.SKILL)
-                addFx(lead, 0.0, 1.2, Fx.SCARED, debuff = true)
-            }
-            SNAIL -> {
-                if (t < 6 || r.flag) return false
-                r.flag = true
-                addFx(r, 2.2, 2.6, Fx.SKILL); say("${tag(r)} 로켓 점화!!!")
-            }
-            CHICKEN -> {
-                addFx(r, 1.6, 1.0, Fx.SKILL)
-                if (rnd.nextBoolean()) say("${tag(r)} 푸드덕!")
-            }
-            HORSE, TURTLE -> return false
-        }
-        return true
-    }
-
-    private fun addFx(r: Racer, mult: Double, dur: Double, fx: Fx, delay: Double = 0.0, debuff: Boolean = false) {
-        if (debuff && r.animal == TURTLE) {
-            say("${tag(r)} 등껍질로 막아냄!")
-            r.effects += Effect(1.0, t + delay, t + delay + 0.8, Fx.BLOCK)
-            return
-        }
-        val from = t + delay
-        r.effects += Effect(mult, from, from + dur, fx)
-    }
-
     private fun say(text: String, kind: EventKind = EventKind.SKILL) {
         events += RaceEvent(events.size, t, text, kind)
     }
 
-    /** [extra]초 뒤의 진행률. 스킬 효과가 끝나는 시점이 마무리 구간 전인지 확인할 때 쓴다. */
-    private fun progress(r: Racer, extra: Double = 0.0) = (t + extra) / finishAt[r.lane]
+    private fun tag(r: Racer) = "${r.animal.emoji} ${r.animal.label}"
+
+    // ================================================================ 스토리보드
+
+    private enum class Beat { BOOST, SETBACK }
+
+    private enum class Role { WINNER, DECOY, RUNNER_UP, LAST, OTHER }
+
+    /** 가속 스킬의 한 단계: 시작 후 [start]초부터 [dur]초 동안 기준 속도 × [mult]. */
+    private class Phase(val start: Double, val dur: Double, val mult: Double, val fx: Fx)
+
+    /** 한 동물의 대본 후보. 검증을 통과하면 [commit]으로 확정한다. */
+    private class Plan(val path: DoubleArray, val segs: List<Seg>, val setbacks: List<Seg>, val cues: List<Cue>)
+
+    private inner class Director {
+        private val order = racers.sortedBy { finishAt[it.lane] }
+        private val setbacks = mutableListOf<Pair<Racer, Seg>>()
+
+        /** 이번 판이 "처음부터 끝까지 선두를 지키는" 전개인가 (다섯 판에 한 번꼴). 아니면 역전승 전개. */
+        private val wire = racers.size >= 3 && rnd.nextDouble() < 0.2
+
+        fun plan() {
+            val n = racers.size
+            val winner = order[0]
+            // 가짜 선두: 초반에 치고 나갔다가 막판에 당하는 역할. 4마리 이상이면 3등 이하에서 고른다.
+            val decoy = when {
+                n >= 4 -> order[2 + rnd.nextInt(n - 2)]
+                n >= 2 -> order[1 + rnd.nextInt(n - 1)]
+                else -> null
+            }
+            val roles = racers.associateWith { r ->
+                when {
+                    r === winner -> Role.WINNER
+                    r === decoy -> Role.DECOY
+                    n >= 3 && r === order[1] -> Role.RUNNER_UP
+                    n >= 3 && r === order[n - 1] -> Role.LAST
+                    else -> Role.OTHER
+                }
+            }
+            // 우승자의 역전 가속 시각에 맞춰 가짜 선두가 직전에 당하도록 우승자부터 짠다
+            var winnerSurge: Double? = null
+            val sequence = listOf(winner) + racers.filter { it !== winner }
+            for (r in sequence) {
+                // 선두를 지키는 우승자는 초반 리드를 후반까지 유지하다가 막판에 기준 위치로 합류한다
+                val settleFrom = if (wire && r === winner) finishAt[r.lane] * 0.62 else CALM
+                val plan = (0 until 14).firstNotNullOfOrNull { build(r, arc(r, roles.getValue(r), winnerSurge), settleFrom) }
+                    ?: build(r, emptyList(), CALM)!!
+                commit(r, plan)
+                if (r === winner) winnerSurge = plan.segs.filter { (it.mult ?: 1.0) > 1.0 }.maxOfOrNull { it.from }
+            }
+            resolveSetbacks()
+            turtleShows()
+            cues.sortBy { it.t }
+        }
+
+        private fun commit(r: Racer, plan: Plan) {
+            r.path = plan.path
+            r.segs += plan.segs
+            plan.setbacks.forEach { setbacks += r to it }
+            cues += plan.cues
+        }
+
+        /** 역할별 전개. 진행률 구간을 시각으로 바꿔 (종류, 시각) 목록을 만든다. */
+        private fun arc(r: Racer, role: Role, winnerSurge: Double?): List<Pair<Beat, Double>> {
+            val f = finishAt[r.lane]
+            fun at(a: Double, b: Double) = f * (a + rnd.nextDouble() * (b - a))
+            val p = rnd.nextDouble()
+            val beats = when (role) {
+                // 역전승이 대부분이지만, 가끔은 처음부터 치고 나가 끝까지 지키는 판도 있어야 패턴이 읽히지 않는다
+                Role.WINNER -> when {
+                    wire -> listOfNotNull(Beat.BOOST to at(0.1, 0.22), if (rnd.nextBoolean()) Beat.BOOST to at(0.4, 0.5) else null)
+                    p < 0.55 -> listOf(Beat.SETBACK to at(0.18, 0.42), Beat.BOOST to at(0.66, 0.8))
+                    p < 0.8 -> listOf(Beat.BOOST to at(0.66, 0.82))
+                    else -> listOf(Beat.BOOST to at(0.12, 0.3), Beat.SETBACK to at(0.4, 0.55), Beat.BOOST to at(0.68, 0.8))
+                }
+                // 선두 수성 판: 나머지는 초반에 앞서 나가지 않고, 막판에 추격하다 아깝게 못 미친다
+                Role.DECOY, Role.RUNNER_UP -> if (wire) listOf(Beat.BOOST to at(0.66, 0.82)) else roleArc(r, role, winnerSurge, ::at, p)
+                Role.LAST, Role.OTHER -> if (wire) chaser(::at) else roleArc(r, role, winnerSurge, ::at, p)
+            }
+            // 거북이는 방해를 막아 내므로 당하는 장면이 없다
+            return if (r.animal == TURTLE) beats.filter { it.first == Beat.BOOST } else beats
+        }
+
+        private fun chaser(at: (Double, Double) -> Double): List<Pair<Beat, Double>> {
+            val p = rnd.nextDouble()
+            return when {
+                p < 0.4 -> listOf(Beat.SETBACK to at(0.15, 0.4), Beat.BOOST to at(0.55, 0.82))
+                p < 0.65 -> listOf(Beat.SETBACK to at(0.15, 0.7))
+                else -> emptyList()
+            }
+        }
+
+        private fun roleArc(r: Racer, role: Role, winnerSurge: Double?, at: (Double, Double) -> Double, p: Double): List<Pair<Beat, Double>> {
+            val f = finishAt[r.lane]
+            return when (role) {
+                Role.WINNER -> emptyList()
+                Role.DECOY -> {
+                    val fall = (winnerSurge ?: at(0.62, 0.76)) - 0.3 - rnd.nextDouble() * 0.9
+                    listOfNotNull(
+                        Beat.BOOST to at(0.12, 0.32),
+                        if (rnd.nextDouble() < 0.4) Beat.BOOST to at(0.38, 0.48) else null,
+                        Beat.SETBACK to fall,
+                    )
+                }
+                Role.RUNNER_UP -> if (p < 0.5) listOf(Beat.SETBACK to at(0.2, 0.45), Beat.BOOST to at(0.6, 0.8)) else other(at)
+                Role.LAST -> when {
+                    p < 0.5 -> listOf(Beat.BOOST to at(0.12, 0.35), Beat.SETBACK to at(0.45, 0.7))
+                    p < 0.8 -> listOf(Beat.SETBACK to at(0.2, 0.45))
+                    else -> emptyList()
+                }
+                Role.OTHER -> other(at)
+            }
+        }
+
+        private fun other(at: (Double, Double) -> Double): List<Pair<Beat, Double>> {
+            val p = rnd.nextDouble()
+            return when {
+                p < 0.35 -> listOf(Beat.BOOST to at(0.12, 0.42), Beat.SETBACK to at(0.48, 0.82))
+                p < 0.65 -> listOf(Beat.SETBACK to at(0.12, 0.42), Beat.BOOST to at(0.48, 0.82))
+                p < 0.75 -> listOf(Beat.BOOST to at(0.15, 0.8))
+                p < 0.85 -> listOf(Beat.SETBACK to at(0.15, 0.8))
+                else -> emptyList()
+            }
+        }
+
+        /**
+         * 전개를 위치 곡선으로 만든다. 스킬 구간은 기준 속도 × 배율로 달리고,
+         * 스킬로 생긴 앞섬/뒤처짐의 합은 스킬이 아닌 구간에 완만하게 나눠서 [SETTLE] 시점에 0이 되게 한다.
+         * 조건(겹침 없음, 완만함, 결승 전 도착 안 함)을 어기면 null.
+         */
+        private fun build(r: Racer, beats: List<Pair<Beat, Double>>, settleFrom: Double): Plan? {
+            val f = finishAt[r.lane]
+            val settle = SETTLE * f
+            val segs = mutableListOf<Seg>()
+            val setbackSegs = mutableListOf<Seg>()
+            val planCues = mutableListOf<Cue>()
+            var boosts = 0
+            var lastEnd = CALM
+            for ((kind, t0) in beats.sortedBy { it.second }) {
+                if (t0 < lastEnd + 1.5) return null
+                when (kind) {
+                    Beat.BOOST -> {
+                        val generic = r.animal == SNAIL && boosts > 0
+                        val phases = boostPhases(r.animal, generic)
+                        phases.forEach { segs += Seg(t0 + it.start, t0 + it.start + it.dur, it.mult, it.fx) }
+                        planCues += Cue(t0, "${tag(r)} ${boostText(r.animal, t0 / f, generic)}", r)
+                        if (r.animal == CHEETAH) planCues += Cue(t0 + phases[1].start, "${tag(r)} 숨이 차서 헉헉…", null)
+                        lastEnd = t0 + phases.maxOf { it.start + it.dur }
+                        boosts++
+                    }
+                    Beat.SETBACK -> {
+                        val d = 1.6 + rnd.nextDouble() * 0.8
+                        val s = Seg(t0, t0 + d, 0.0, Fx.TRIP)
+                        segs += s
+                        setbackSegs += s
+                        lastEnd = t0 + d
+                    }
+                }
+            }
+            if (lastEnd > settle - 0.2) return null
+
+            // 스킬이 아닌 구간의 자연스러운 완급 (±10%)
+            val wAmp = 0.1
+            val wOmega = 2 * PI / (4 + rnd.nextDouble() * 4)
+            val wPhase = rnd.nextDouble() * 2 * PI
+            fun motion(tm: Double): Double {
+                var m = 1.0
+                for (s in segs) if (tm in s) m *= s.mult!!
+                return m
+            }
+
+            val steps = ceil(f / GRID).toInt() + 2
+            val kS = (settle / GRID).toInt()
+            val raw = DoubleArray(steps + 1)
+            val free = BooleanArray(steps)
+            for (k in 0 until steps) {
+                val tm = (k + 0.5) * GRID
+                var m = motion(tm)
+                free[k] = m == 1.0
+                if (k < kS && m > 0) m *= 1 + wAmp * sin(wOmega * tm + wPhase) * envelope(tm, settle)
+                raw[k + 1] = raw[k] + baseV(tm, f) * m * GRID
+            }
+            // 스킬로 생긴 차이를 스킬이 아닌 구간에 나눠서 되돌린다
+            val net = raw[kS] - base(kS * GRID, f)
+            val cum = DoubleArray(kS + 1)
+            for (k in 0 until kS) {
+                val tm = (k + 0.5) * GRID
+                val rho = if (free[k] && tm > settleFrom) sin(PI * (tm - settleFrom) / (settle - settleFrom)).coerceAtLeast(0.0) else 0.0
+                cum[k + 1] = cum[k] + rho
+            }
+            val total = cum[kS].takeIf { it > 0 } ?: return null
+            val path = DoubleArray(steps + 1) { k ->
+                when {
+                    k <= kS -> raw[k] - net * cum[k] / total
+                    else -> base(k * GRID, f)
+                }
+            }
+
+            // 검증: 스킬이 아닌 구간은 완만하게, 결승 시각 전에는 결승선에 닿지 않게
+            for (k in 0 until kS) {
+                val tm = (k + 0.5) * GRID
+                val v = (path[k + 1] - path[k]) / GRID
+                if (v < -1e-9) return null
+                if (free[k] && tm > CALM) {
+                    val pace = v / baseV(tm, f)
+                    if (pace < PACE_MIN || pace > PACE_MAX) return null
+                }
+                if (path[k] > TRACK - 30) return null
+            }
+            return Plan(path, segs, setbackSegs, planCues)
+        }
+
+        /** 방해 장면마다 그 순간 상황에 맞는 원인을 붙인다 (오리는 1등에게, 원숭이는 바로 앞에게, 코끼리는 근처에게). */
+        private fun resolveSetbacks() {
+            for ((v, seg) in setbacks.sortedBy { it.second.from }) {
+                val t0 = seg.from
+                val options = mutableListOf<Pair<Double, () -> Unit>>()
+                val running = racers.filter { t0 < finishAt[it.lane] }
+                val leaderNow = running.maxByOrNull { it.pathAt(t0) }
+                fun gap(a: Racer) = v.pathAt(t0) - a.pathAt(t0)
+
+                racers.filter { it.animal == DUCK && it !== v && it in running && leaderNow === v && !it.busy(t0 - 0.3, t0 + 1.2) }
+                    .forEach { d ->
+                        options += 3.0 to {
+                            seg.fx = Fx.SCARED
+                            d.segs += Seg(t0 - 0.2, t0 + 1.2, null, Fx.SKILL)
+                            cues += Cue(t0 - 0.2, "${tag(d)} 꽥!! ${withSubject(tag(v))} 깜짝 놀라 멈춤", d)
+                        }
+                    }
+                racers.filter { it.animal == MONKEY && it !== v && it in running && gap(it) in 5.0..260.0 && !it.busy(t0 - 0.7, t0 + 1.0) }
+                    .forEach { m ->
+                        options += 3.0 to {
+                            seg.fx = Fx.SLIP
+                            m.segs += Seg(t0 - 0.5, t0 + 1.0, null, Fx.SKILL)
+                            cues += Cue(t0 - 0.5, "${tag(m)} 바나나 투척 → ${withSubject(tag(v))} 미끄러짐!", m)
+                        }
+                    }
+                racers.filter { it.animal == ELEPHANT && it !== v && it in running && abs(gap(it)) < 160 && !it.busy(t0 - 0.3, t0 + 1.3) }
+                    .forEach { e ->
+                        options += 3.0 to {
+                            seg.fx = Fx.QUAKE
+                            e.segs += Seg(t0 - 0.2, t0 + 1.3, null, Fx.SKILL)
+                            cues += Cue(t0 - 0.2, "${tag(e)} 쿵쿵! ${withSubject(tag(v))} 휘청", e)
+                        }
+                    }
+                if (v.animal == RABBIT && running.count { it.pathAt(t0) > v.pathAt(t0) } <= 1) {
+                    options += 2.5 to {
+                        seg.fx = Fx.SKILL
+                        cues += Cue(t0, "${tag(v)} 너무 앞서서 방심, 낮잠…", v)
+                    }
+                }
+                if (v.animal == CAT) {
+                    options += 2.5 to {
+                        seg.fx = Fx.SKILL_ALT
+                        cues += Cue(t0, "${tag(v)} 멈춰서 그루밍 중…", v)
+                    }
+                }
+                options += 1.0 to {
+                    seg.fx = Fx.TRIP
+                    val why = listOf("발이 꼬여 꽈당!", "돌부리에 걸려 꽈당!", "웅덩이에 미끄러져 꽈당!", "한눈팔다 꽈당!")
+                    cues += Cue(t0, "${tag(v)} ${why[rnd.nextInt(why.size)]}", null)
+                }
+                pick(options)()
+            }
+        }
+
+        /** 거북이가 있으면 가끔 방해를 등껍질로 막아 내는 장면을 넣는다 (결과에는 영향 없음). */
+        private fun turtleShows() {
+            for (tt in racers.filter { it.animal == TURTLE }) {
+                if (rnd.nextDouble() > 0.6) continue
+                repeat(8) {
+                    val t0 = 3.0 + rnd.nextDouble() * (finishAt[tt.lane] * 0.75 - 3.0)
+                    if (tt.busy(t0 - 0.5, t0 + 1.2)) return@repeat
+                    val gap: (Racer) -> Double = { tt.pathAt(t0) - it.pathAt(t0) }
+                    val running = racers.filter { t0 < finishAt[it.lane] }
+                    val attacker = running.firstOrNull { a ->
+                        !a.busy(t0 - 0.7, t0 + 1.2) && when (a.animal) {
+                            MONKEY -> gap(a) in 5.0..260.0
+                            ELEPHANT -> abs(gap(a)) < 160
+                            DUCK -> running.maxBy { it.pathAt(t0) } === tt
+                            else -> false
+                        }
+                    } ?: return@repeat
+                    attacker.segs += Seg(t0 - 0.5, t0 + 0.9, null, Fx.SKILL)
+                    tt.segs += Seg(t0, t0 + 1.0, null, Fx.BLOCK)
+                    val what = when (attacker.animal) {
+                        MONKEY -> "바나나 투척"
+                        ELEPHANT -> "쿵쿵!"
+                        else -> "꽥!!"
+                    }
+                    cues += Cue(t0 - 0.5, "${tag(attacker)} $what → ${tag(tt)} 등껍질로 막아냄!", attacker)
+                    return
+                }
+            }
+        }
+
+        private fun <T> pick(options: List<Pair<Double, T>>): T {
+            var x = rnd.nextDouble() * options.sumOf { it.first }
+            for ((w, o) in options) {
+                x -= w
+                if (x <= 0) return o
+            }
+            return options.last().second
+        }
+    }
+
+    // ---------- 동물별 가속 스킬 ----------
+
+    private fun boostPhases(a: Animal, generic: Boolean): List<Phase> {
+        if (generic) return listOf(Phase(0.0, 1.6, 1.9, Fx.RALLY))
+        return when (a) {
+            HORSE -> listOf(Phase(0.0, 2.0, 1.9, Fx.SKILL))
+            CHEETAH -> listOf(Phase(0.0, 1.3, 2.3, Fx.SKILL), Phase(1.3, 1.6, 0.55, Fx.SKILL_ALT))
+            DOG -> listOf(Phase(0.0, 1.8, 1.8, Fx.SKILL))
+            CAT -> listOf(Phase(0.0, 1.3, 2.0, Fx.SKILL))
+            PIG -> listOf(Phase(0.0, 1.0, 0.0, Fx.SKILL), Phase(1.0, 1.8, 2.4, Fx.SKILL_ALT))
+            PENGUIN -> listOf(Phase(0.0, 2.0, 1.85, Fx.SKILL))
+            KANGAROO -> listOf(Phase(0.0, 1.5, 2.0, Fx.SKILL))
+            SNAIL -> listOf(Phase(0.0, 2.6, 2.3, Fx.SKILL))
+            CHICKEN -> listOf(Phase(0.0, 1.4, 1.9, Fx.SKILL))
+            TURTLE -> listOf(Phase(0.0, 2.0, 1.7, Fx.SKILL))
+            RABBIT, MONKEY, ELEPHANT, DUCK -> listOf(Phase(0.0, 1.6, 1.9, Fx.RALLY))
+        }
+    }
+
+    private fun boostText(a: Animal, q: Double, generic: Boolean): String = if (generic) "이를 악물고 분발!" else when (a) {
+        HORSE -> if (q >= 0.5) "막판 스퍼트!" else "갈기를 휘날리며 질주!"
+        CHEETAH -> "폭발 질주!"
+        DOG -> "추격 본능 발동!"
+        CAT -> "갑자기 전력질주!"
+        PIG -> "간식 발견! 먹고 돌진"
+        PENGUIN -> "배 슬라이딩!"
+        KANGAROO -> "껑충! 껑충!"
+        SNAIL -> "로켓 점화!!!"
+        CHICKEN -> "푸드덕!"
+        TURTLE -> "성큼성큼 가속!"
+        RABBIT -> "깡충깡충 전력질주!"
+        MONKEY, ELEPHANT, DUCK -> "이를 악물고 분발!"
+    }
+
+    private fun base(t: Double, f: Double): Double {
+        val tau = t * REF_T / f
+        return min(TRACK, 24 * tau + 1.5 * tau * tau)
+    }
+
+    private fun baseV(t: Double, f: Double): Double = (24 + 3 * t * REF_T / f) * REF_T / f
+
+    /** 출발 직후와 마무리 구간에서는 0, 그 사이에서 1. */
+    private fun envelope(t: Double, settle: Double): Double =
+        smoothstep(CALM, CALM + 2.5, t) * (1 - smoothstep(settle * 0.8, settle, t))
 
     private fun smoothstep(a: Double, b: Double, x: Double): Double {
         val k = ((x - a) / (b - a)).coerceIn(0.0, 1.0)
         return k * k * (3 - 2 * k)
     }
 
-    private fun tag(r: Racer) = "${r.animal.emoji} ${r.animal.label}"
+    // ---------- 테스트용 ----------
+
+    /** 대본 검증용: 해당 동물이 [t]초에 스킬(가속·방해) 구간 안에 있는가. */
+    internal fun inSkill(r: Racer, t: Double) = r.segs.any { it.mult != null && t in it }
+
+    internal fun finishTimeOf(r: Racer) = finishAt[r.lane]
+
+    internal fun baseSpeed(r: Racer, t: Double) = baseV(t, finishAt[r.lane])
 }
 
 /** 받침 유무에 따라 주격 조사(이/가)를 붙인다. */

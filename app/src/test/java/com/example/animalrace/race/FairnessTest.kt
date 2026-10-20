@@ -4,6 +4,7 @@ import com.example.animalrace.model.Animal
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.abs
 import kotlin.random.Random
 
 /**
@@ -41,6 +42,35 @@ class FairnessTest {
             val times = race.ranking().map { it.finish!! }
             assertEquals(times.sorted(), times)
             assertTrue(race.racers.all { it.x == TRACK })
+        }
+    }
+
+    /**
+     * 큰 움직임은 눈에 보이는 스킬 구간에서만 일어나야 한다.
+     * 스킬이 아닌 구간에서는 기준 속도의 PACE_MIN~PACE_MAX 배 안에서만 달리고(방해받은 뒤 이유 없이 훅 따라잡지 않음),
+     * 멈춤(방해·낮잠) 구간에서는 정말 멈춰 있어야 한다.
+     */
+    @Test
+    fun bigMovesOnlyHappenDuringVisibleSkills() {
+        val rnd = Random(11)
+        val dt = 1 / 60.0
+        repeat(400) {
+            val race = Race(Animal.entries.shuffled(rnd).take(2 + rnd.nextInt(13)), rnd)
+            val prev = DoubleArray(race.racers.size)
+            while (!race.done) {
+                race.racers.forEachIndexed { i, r -> prev[i] = r.x }
+                race.step(dt)
+                race.racers.forEachIndexed { i, r ->
+                    if (r.finished || race.t < 1.6) return@forEachIndexed
+                    val pace = (r.x - prev[i]) / dt / race.baseSpeed(r, race.t)
+                    if (!race.inSkill(r, race.t) && !race.inSkill(r, race.t - dt)) {
+                        assertTrue("${r.animal} t=${race.t} pace=$pace", pace in (PACE_MIN - 0.02)..(PACE_MAX + 0.02))
+                    }
+                    if (r.motionAt(race.t) == 0.0 && r.motionAt(race.t - dt) == 0.0) {
+                        assertTrue("${r.animal} 멈춤 중 이동 t=${race.t}", abs(pace) < 0.02)
+                    }
+                }
+            }
         }
     }
 }
