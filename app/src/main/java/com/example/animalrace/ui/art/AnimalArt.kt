@@ -106,14 +106,15 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
                 svg("M40 84 q-28 6 -24 44 q14 -10 22 -26 z", c(0xFF6B3E22))
                 rrect(58f, 104f, 16f, 48f, 7f, c(0xFFA86B3C), b, 66f, 108f)
                 rrect(118f, 104f, 16f, 48f, 7f, c(0xFFA86B3C), a, 126f, 108f)
-                ellipse(90f, 96f, 56f, 30f, c(0xFFC98A52))
+                // 몸통과 목을 하나의 곡선 윤곽으로 그려 어깨에 이음새 선이 생기지 않게 한다
+                svg("M36 98 C36 76 56 66 86 66 C104 66 116 64 124 56 C130 50 134 44 140 38 L164 50 C160 62 156 74 154 86 C152 104 140 124 104 126 C72 128 36 122 36 98 Z", c(0xFFC98A52))
                 rrect(70f, 104f, 16f, 48f, 7f, c(0xFFC98A52), a, 78f, 108f)
                 rrect(130f, 104f, 16f, 48f, 7f, c(0xFFC98A52), b, 138f, 108f)
-                svg("M118 90 L138 44 L162 52 L146 102 Z", c(0xFFC98A52))
+                svg("M144 30 C134 42 124 56 104 66 L112 72 C128 64 140 52 152 38 Z", c(0xFF6B3E22))
                 svg("M140 36 l4 -18 l12 16 z", c(0xFFC98A52))
                 ellipse(160f, 52f, 28f, 17f, c(0xFFC98A52), rot = 24f)
                 ellipse(180f, 66f, 12f, 10f, c(0xFFE8B98A))
-                svg("M138 38 q-14 22 -22 52 l10 -2 q6 -26 20 -44 z", c(0xFF6B3E22))
+                svg("M148 34 q2 -9 11 -9 q-1 8 -6 13 z", c(0xFF6B3E22), sw = 3.5f)
                 eye(160f, 48f, 4.5f, 161.5f, 46.5f, 1.6f)
                 dot(186f, 66f, 2.2f)
             }
