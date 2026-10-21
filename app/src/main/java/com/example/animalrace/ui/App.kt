@@ -27,6 +27,9 @@ fun App(state: AppState) {
                 bet = state.bet.trim(),
                 raceKey = state.raceSeq,
                 onFinished = state::finishRace,
+                confirmExit = state.confirmExit,
+                onKeepRacing = state::keepRacing,
+                onQuit = state::goHome,
             )
             Screen.Result -> state.lastRecord?.let { record ->
                 ResultScreen(record, onAgain = state::startRace, onHome = state::goHome)

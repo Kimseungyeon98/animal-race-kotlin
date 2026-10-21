@@ -14,6 +14,9 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import com.example.animalrace.ui.components.CartoonButton
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -127,7 +130,15 @@ private fun interpolate(prev: RaceView, cur: RaceView, a: Double): RaceView {
 }
 
 @Composable
-fun RaceScreen(animals: List<Animal>, bet: String, raceKey: Int, onFinished: (Race, Venue) -> Unit) {
+fun RaceScreen(
+    animals: List<Animal>,
+    bet: String,
+    raceKey: Int,
+    onFinished: (Race, Venue) -> Unit,
+    confirmExit: Boolean = false,
+    onKeepRacing: () -> Unit = {},
+    onQuit: () -> Unit = {},
+) {
     val stadium = remember(raceKey) { Stadium.entries.random() }
     val race = remember(raceKey) { Race(animals, venue = stadium.venue) }
     var frame by remember(raceKey) { mutableStateOf(Frame(race.view(), START_X, START_W, 0.0)) }
@@ -135,13 +146,17 @@ fun RaceScreen(animals: List<Animal>, bet: String, raceKey: Int, onFinished: (Ra
     var speed by remember { mutableFloatStateOf(1f) }
     val haptic = LocalHapticFeedback.current
     val finish by rememberUpdatedState(onFinished)
+    // 확인창이 떠 있는 동안 카운트다운·경주 시간이 흐르지 않는다
+    val paused by rememberUpdatedState(confirmExit)
 
     LaunchedEffect(race) {
         for (c in listOf("3", "2", "1", "출발!")) {
+            while (paused) delay(50)
             countdown = c
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             delay(if (c == "출발!") 500 else 750)
         }
+        while (paused) delay(50)
         countdown = null
         var last = withFrameNanos { it }
         var acc = 0.0
@@ -153,7 +168,7 @@ fun RaceScreen(animals: List<Animal>, bet: String, raceKey: Int, onFinished: (Ra
         var lastEventId = -1
         while (true) {
             val now = withFrameNanos { it }
-            val step = min(0.1, (now - last) / 1e9) * speed
+            val step = if (paused) 0.0 else min(0.1, (now - last) / 1e9) * speed
             last = now
             if (!race.done) {
                 acc += step
@@ -217,6 +232,8 @@ fun RaceScreen(animals: List<Animal>, bet: String, raceKey: Int, onFinished: (Ra
         )
 
         Overlays(frame, stadium, countdown)
+
+        if (confirmExit) ExitDialog(frame.view, onKeepRacing, onQuit, topInset)
     }
 }
 
@@ -518,6 +535,77 @@ private fun Commentary(events: List<RaceEvent>, modifier: Modifier) {
                             .background(Color.White.copy(alpha = 0.7f))
                             .border(2.dp, Pal.Ink.copy(alpha = 0.45f), RoundedCornerShape(14.dp))
                             .padding(horizontal = 12.dp, vertical = 5.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------- 나가기 확인
+
+/**
+ * 경주 중 뒤로 가기를 눌렀을 때의 확인창 (시안: "경기 나가기 확인창" 개선 B).
+ * 떠 있는 동안 경주는 일시정지. 바깥을 누르거나 뒤로 가기를 다시 누르면 계속 본다.
+ */
+@Composable
+private fun ExitDialog(view: RaceView, onKeep: () -> Unit, onQuit: () -> Unit, topInset: Dp) {
+    // 1~3번 출전 동물이 카드 위로 깜짝 놀라 고개를 내민다
+    val peek = view.racers.sortedBy { it.lane }.take(3)
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Pal.Ink.copy(alpha = 0.55f))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onKeep),
+    ) {
+        Row(
+            Modifier
+                .padding(start = 20.dp, top = topInset + 64.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Pal.Paper)
+                .border(2.dp, Pal.Ink, RoundedCornerShape(12.dp))
+                .padding(horizontal = 10.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Box(Modifier.size(3.dp, 12.dp).background(Pal.Ink))
+            Box(Modifier.size(3.dp, 12.dp).background(Pal.Ink))
+            Text("일시정지", fontSize = 14.sp, color = Pal.Ink)
+        }
+        Box(Modifier.align(Alignment.Center).padding(horizontal = 20.dp), contentAlignment = Alignment.TopCenter) {
+            Column(
+                Modifier
+                    .padding(top = 56.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Pal.Ivory)
+                    .border(3.dp, Pal.Ink, RoundedCornerShape(24.dp))
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
+                    .padding(start = 18.dp, end = 18.dp, top = 64.dp, bottom = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("아직 경기 중이에요!", fontSize = 24.sp, color = Pal.Ink)
+                Text(
+                    "지금 나가면 이번 판은 결과도 기록도 남지 않아요.\n그래도 그만둘까요?",
+                    fontSize = 16.sp, color = Pal.InkSoft, textAlign = TextAlign.Center, lineHeight = 22.sp,
+                )
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CartoonButton(onClick = onQuit, color = Pal.Paper, modifier = Modifier.weight(1f), height = 50.dp, depth = 4.dp) {
+                        Text("그만두기", fontSize = 18.sp, color = Pal.Ink)
+                    }
+                    CartoonButton(onClick = onKeep, color = Pal.Sun, modifier = Modifier.weight(1.3f), height = 50.dp, depth = 4.dp) {
+                        Text("계속 볼래요!", fontSize = 18.sp, color = Pal.Ink)
+                    }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
+                peek.forEachIndexed { i, r ->
+                    val side = i - (peek.size - 1) / 2f
+                    AnimalSprite(
+                        r.animal, 100.dp, fx = com.example.animalrace.model.Fx.SCARED,
+                        modifier = Modifier.offset(y = if (side == 0f) 0.dp else 18.dp).rotate(side * 10f),
                     )
                 }
             }

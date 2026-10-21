@@ -34,6 +34,10 @@ class AppState(private val repo: AppRepository) {
 
     val canStart get() = selected.size >= MIN_RACERS
 
+    /** 경주 중 뒤로 가기를 눌러 "그만둘까요?" 확인창이 떠 있는지 (떠 있는 동안 경주 일시정지) */
+    var confirmExit by mutableStateOf(false)
+        private set
+
     init {
         // 앱을 켤 때마다 출전 동물은 비운 채로 시작하고, 벌칙 문구만 지난번 것을 이어 쓴다
         repo.loadSetup()?.let { bet = it.bet }
@@ -62,6 +66,7 @@ class AppState(private val repo: AppRepository) {
     fun startRace() {
         if (!canStart) return
         raceSeq++
+        confirmExit = false
         screen = Screen.Race
     }
 
@@ -82,7 +87,14 @@ class AppState(private val repo: AppRepository) {
 
     fun clearHistory() { history.clear(); repo.saveHistory(emptyList()) }
 
-    fun goHome() { screen = Screen.Setup }
+    fun goHome() { confirmExit = false; screen = Screen.Setup }
+
+    /** 뒤로 가기: 경주 중이면 확인창을 열고(이미 열려 있으면 닫고 계속), 결과 화면이면 바로 메인으로 */
+    fun back() {
+        if (screen == Screen.Race) confirmExit = !confirmExit else goHome()
+    }
+
+    fun keepRacing() { confirmExit = false }
 
     private fun persistSetup() = repo.saveSetup(SavedSetup(selected.toList(), bet))
 

@@ -27,8 +27,8 @@ class MainActivity : ComponentActivity() {
         val repository = PrefsRepository(applicationContext)
         setContent {
             val state = remember { AppState(repository) }
-            // 경기·결과 화면에서 뒤로가기 → 메인. 메인에서는 기본 동작(앱 종료)
-            BackHandler(enabled = state.screen != Screen.Setup) { state.goHome() }
+            // 경기 중 뒤로가기 → "그만둘까요?" 확인창, 결과 화면 → 메인. 메인에서는 기본 동작(앱 종료)
+            BackHandler(enabled = state.screen != Screen.Setup) { state.back() }
             AnimalRaceTheme { App(state) }
         }
     }
