@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.7.2-4C9A2A" alt="version 3.7.2">
+  <img src="https://img.shields.io/badge/version-3.7.3-4C9A2A" alt="version 3.7.3">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -20,9 +20,10 @@
 |:-:|:-:|
 | <img src="docs/media/reversal.gif" width="240" alt="원숭이가 넘어지고 토끼가 역전해 1등"> | <img src="docs/media/venues.gif" width="240" alt="초원·해변·설원·사막 경기장"> |
 | **🎬 역전 드라마**<br>방해·실수·분발로 순위가 뒤집혀요.<br>끝날 때까지 아무도 몰라요. | **🏟️ 경기장 4종**<br>초원·해변·설원·사막 중 매 판 무작위.<br>경기장마다 하늘·소품·바닥이 달라요. |
+| <img src="docs/media/dex.gif" width="240" alt="동물 도감을 넘기며 스킬 장면 보기"> | <img src="docs/media/history.gif" width="240" alt="최근 경기 기록 창"> |
+| **🐾 동물 20종 도감**<br>말·치타·토끼부터 카피바라·판다까지,<br>동물마다 다른 스킬 장면과 설명. | **📒 최근 경기 기록**<br>최근 10판의 벌칙·꼴찌·순위,<br>어느 경기장이었는지까지 남아요. |
 
 - **🎲 완전 공정** — 최종 순위는 출발하는 순간 균등 무작위로 정해져요. 스킬과 역전은 보는 재미를 위한 연출이라, 어떤 동물이든 모든 순위에 같은 확률로 와요. ([검증 결과](docs/fairness.md))
-- **🐾 동물 20종** — 말·치타·토끼부터 카피바라·판다까지, 동물마다 다른 스킬 장면과 대사가 있어요.
 
 ## 🎮 이렇게 놀아요
 
@@ -59,6 +60,9 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.7.3 — README 도감·기록 움짤
+- "이런 게임이에요"에 동물 도감 넘기기와 최근 경기 기록(경기장 표시) 움짤 추가
 
 ### 3.7.2 — README 말 캐릭터 변화
 - 3.3 항목에 말 캐릭터가 이모지 → 3.0 카툰 → 3.2.3 목 이음새 → 3.3 다리로 바뀐 과정을 달리는 그림으로 (디자인 시안의 그림을 그대로 사용)
