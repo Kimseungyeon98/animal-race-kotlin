@@ -29,6 +29,13 @@ private const val GRID = 1.0 / 120
 internal const val PACE_MIN = 0.7
 internal const val PACE_MAX = 1.3
 
+/** 가속 한 번의 최대 이득(기준 속도로 달리는 시간 기준, 초). 배율은 1 + 이 값 / 지속 시간을 넘지 않는다. */
+private const val BOOST_GAIN = 1.3
+
+/** 중반(우승자 결승 시각의 절반) 선두가 그대로 이기는 판의 목표 비율. */
+internal const val LEADER_WINS_2 = 0.5
+internal const val LEADER_WINS_N = 0.4
+
 /** 방해를 받지 않는 동물(거북이 등껍질, 카피바라 무념무상). */
 private val IMMUNE = setOf(TURTLE, CAPYBARA)
 
@@ -217,6 +224,15 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
 
     private enum class Role { WINNER, DECOY, RUNNER_UP, LAST, OTHER }
 
+    /**
+     * 판 전체의 전개 모양. 중반 선두가 이기는 판(수성·재역전)과 뒤집히는 판(역전)을 섞어
+     * "중반에 앞선 동물은 진다" 같은 패턴이 읽히지 않게 한다.
+     * - WIRE: 우승자가 초반에 치고 나가 끝까지 지킴, 나머지는 막판 추격하다 아깝게 못 미침
+     * - SEESAW: 우승자가 앞서다 중후반에 잠깐 뒤집히고, 막판에 재역전
+     * - COMEBACK: 우승자가 밀렸다가 막판 역전, 가짜 선두는 막판에 당함
+     */
+    private enum class Story { WIRE, SEESAW, COMEBACK }
+
     /** 가속 스킬의 한 단계: 시작 후 [start]초부터 [dur]초 동안 기준 속도 × [mult]. */
     private class Phase(val start: Double, val dur: Double, val mult: Double, val fx: Fx)
 
@@ -227,8 +243,19 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
         private val order = racers.sortedBy { finishAt[it.lane] }
         private val setbacks = mutableListOf<Pair<Racer, Seg>>()
 
-        /** 이번 판이 "처음부터 끝까지 선두를 지키는" 전개인가 (다섯 판에 한 번꼴). 아니면 역전승 전개. */
-        private val wire = racers.size >= 3 && rnd.nextDouble() < 0.2
+        /** 중반 선두가 이기는 판의 목표 비율: 2마리면 절반, 3마리 이상이면 40%. */
+        private val story = run {
+            val leaderWins = if (racers.size <= 2) LEADER_WINS_2 else LEADER_WINS_N
+            val p = rnd.nextDouble()
+            when {
+                racers.size < 2 -> Story.COMEBACK
+                p < leaderWins * 0.6 -> Story.WIRE
+                p < leaderWins -> Story.SEESAW
+                else -> Story.COMEBACK
+            }
+        }
+        private val wire = story == Story.WIRE
+        private val seesaw = story == Story.SEESAW
 
         fun plan() {
             val n = racers.size
@@ -248,16 +275,25 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
                     else -> Role.OTHER
                 }
             }
-            // 우승자의 역전 가속 시각에 맞춰 가짜 선두가 직전에 당하도록 우승자부터 짠다
+            // 우승자의 역전 가속 시각(과 재역전 판의 주춤 시각)에 맞춰 나머지를 짜도록 우승자부터 짠다
             var winnerSurge: Double? = null
+            var winnerDip: Double? = null
             val sequence = listOf(winner) + racers.filter { it !== winner }
             for (r in sequence) {
-                // 선두를 지키는 우승자는 초반 리드를 후반까지 유지하다가 막판에 기준 위치로 합류한다
-                val settleFrom = if (wire && r === winner) finishAt[r.lane] * 0.62 else CALM
-                val plan = (0 until 14).firstNotNullOfOrNull { build(r, arc(r, roles.getValue(r), winnerSurge), settleFrom) }
+                // 앞서 나가는 우승자는 초반 리드를 중반 이후까지 유지하다가 막판에 기준 위치로 합류한다
+                val settleFrom = when {
+                    r !== winner -> CALM
+                    wire -> finishAt[r.lane] * 0.5
+                    seesaw -> finishAt[r.lane] * 0.36
+                    else -> CALM
+                }
+                val plan = (0 until 14).firstNotNullOfOrNull { build(r, arc(r, roles.getValue(r), winnerSurge, winnerDip), settleFrom) }
                     ?: build(r, emptyList(), CALM)!!
                 commit(r, plan)
-                if (r === winner) winnerSurge = plan.segs.filter { (it.mult ?: 1.0) > 1.0 }.maxOfOrNull { it.from }
+                if (r === winner) {
+                    winnerSurge = plan.segs.filter { (it.mult ?: 1.0) > 1.0 }.maxOfOrNull { it.from }
+                    winnerDip = plan.setbacks.maxOfOrNull { it.from }
+                }
             }
             resolveSetbacks()
             immuneShows()
@@ -272,7 +308,7 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
         }
 
         /** 역할별 전개. 진행률 구간을 시각으로 바꿔 (종류, 시각) 목록을 만든다. */
-        private fun arc(r: Racer, role: Role, winnerSurge: Double?): List<Pair<Beat, Double>> {
+        private fun arc(r: Racer, role: Role, winnerSurge: Double?, winnerDip: Double?): List<Pair<Beat, Double>> {
             val f = finishAt[r.lane]
             fun at(a: Double, b: Double) = f * (a + rnd.nextDouble() * (b - a))
             val p = rnd.nextDouble()
@@ -280,13 +316,21 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
                 // 역전승이 대부분이지만, 가끔은 처음부터 치고 나가 끝까지 지키는 판도 있어야 패턴이 읽히지 않는다
                 Role.WINNER -> when {
                     wire -> listOfNotNull(Beat.BOOST to at(0.1, 0.22), if (rnd.nextBoolean()) Beat.BOOST to at(0.4, 0.5) else null)
+                    seesaw && r.animal in IMMUNE -> listOf(Beat.BOOST to at(0.1, 0.22), Beat.BOOST to at(0.72, 0.84))
+                    seesaw -> listOf(Beat.BOOST to at(0.1, 0.24), Beat.SETBACK to at(0.53, 0.62), Beat.BOOST to at(0.72, 0.84))
                     p < 0.55 -> listOf(Beat.SETBACK to at(0.18, 0.42), Beat.BOOST to at(0.66, 0.8))
                     p < 0.8 -> listOf(Beat.BOOST to at(0.66, 0.82))
                     else -> listOf(Beat.BOOST to at(0.12, 0.3), Beat.SETBACK to at(0.4, 0.55), Beat.BOOST to at(0.68, 0.8))
                 }
                 // 선두 수성 판: 나머지는 초반에 앞서 나가지 않고, 막판에 추격하다 아깝게 못 미친다
-                Role.DECOY, Role.RUNNER_UP -> if (wire) listOf(Beat.BOOST to at(0.66, 0.82)) else roleArc(r, role, winnerSurge, ::at, p)
-                Role.LAST, Role.OTHER -> if (wire) chaser(::at) else roleArc(r, role, winnerSurge, ::at, p)
+                // 재역전 판: 가짜 선두가 우승자가 주춤할 때 치고 나갔다가 막판에 다시 뒤집힌다
+                Role.DECOY -> when {
+                    wire -> listOf(Beat.BOOST to at(0.66, 0.82))
+                    seesaw -> listOf(Beat.BOOST to (winnerDip ?: at(0.53, 0.62)) + 0.1 + rnd.nextDouble() * 0.4)
+                    else -> roleArc(r, role, winnerSurge, ::at, p)
+                }
+                Role.RUNNER_UP -> if (wire || seesaw) listOf(Beat.BOOST to at(0.66, 0.82)) else roleArc(r, role, winnerSurge, ::at, p)
+                Role.LAST, Role.OTHER -> if (wire || seesaw) chaser(::at) else roleArc(r, role, winnerSurge, ::at, p)
             }
             // 거북이(등껍질)·카피바라(무념무상)는 방해를 받지 않으므로 당하는 장면이 없다
             return if (r.animal in IMMUNE) beats.filter { it.first == Beat.BOOST } else beats
@@ -353,7 +397,11 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
                     Beat.BOOST -> {
                         val generic = r.animal == SNAIL && boosts > 0
                         val phases = boostPhases(r.animal, generic)
-                        phases.forEach { segs += Seg(t0 + it.start, t0 + it.start + it.dur, it.mult, it.fx) }
+                        // 가속 한 번으로 앞서 나가는 양에 상한을 둔다 (길고 강한 가속은 되돌릴 수 없어 전개가 통째로 실패하므로)
+                        phases.forEach {
+                            val m = if (it.mult > 1) min(it.mult, 1 + BOOST_GAIN / it.dur) else it.mult
+                            segs += Seg(t0 + it.start, t0 + it.start + it.dur, m, it.fx)
+                        }
                         planCues += Cue(t0, "${tag(r)} ${boostText(r.animal, t0 / f, generic)}", r)
                         if (r.animal == CHEETAH) planCues += Cue(t0 + phases[1].start, "${tag(r)} 숨이 차서 헉헉…", null)
                         lastEnd = t0 + phases.maxOf { it.start + it.dur }
