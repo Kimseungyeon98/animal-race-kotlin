@@ -56,7 +56,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.rotate as rotateDraw
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
@@ -129,6 +128,7 @@ private fun interpolate(prev: RaceView, cur: RaceView, a: Double): RaceView {
 @Composable
 fun RaceScreen(animals: List<Animal>, bet: String, raceKey: Int, onFinished: (Race) -> Unit) {
     val race = remember(raceKey) { Race(animals) }
+    val stadium = remember(raceKey) { Stadium.entries.random() }
     var frame by remember(raceKey) { mutableStateOf(Frame(race.view(), START_X, START_W, 0.0)) }
     var countdown by remember(raceKey) { mutableStateOf<String?>(null) }
     var speed by remember { mutableFloatStateOf(1f) }
@@ -183,7 +183,7 @@ fun RaceScreen(animals: List<Animal>, bet: String, raceKey: Int, onFinished: (Ra
         finish(race)
     }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Pal.Sky)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(stadium.skyTop)) {
         val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
         val n = frame.view.racers.size
@@ -193,8 +193,8 @@ fun RaceScreen(animals: List<Animal>, bet: String, raceKey: Int, onFinished: (Ra
         val laneH = (trackSpace / n).coerceAtMost(110.dp)
         val trackTop = maxHeight - bottomH - laneH * n
 
-        Scenery(frame, trackTop, Modifier.fillMaxSize())
-        Track(frame, trackTop, laneH, maxWidth)
+        Scenery(frame, stadium, trackTop, Modifier.fillMaxSize())
+        Track(frame, stadium, trackTop, laneH, maxWidth)
 
         Column(
             Modifier
@@ -215,7 +215,7 @@ fun RaceScreen(animals: List<Animal>, bet: String, raceKey: Int, onFinished: (Ra
                 .height(bottomH),
         )
 
-        Overlays(frame, countdown)
+        Overlays(frame, stadium, countdown)
     }
 }
 
@@ -301,57 +301,19 @@ private fun Standings(view: RaceView) {
 
 // ---------------------------------------------------------------- 배경
 
-/** 하늘·구름·언덕(느리게)·울타리(트랙과 같은 속도). */
+/** 경기장 배경(하늘·언덕/바다·소품, 느리게)과 울타리(트랙과 같은 속도). */
 @Composable
-private fun Scenery(frame: Frame, trackTop: Dp, modifier: Modifier) {
+private fun Scenery(frame: Frame, stadium: Stadium, trackTop: Dp, modifier: Modifier) {
     Canvas(modifier) {
         val pxPerM = size.width / frame.camW.toFloat()
-        val camPx = (frame.camX * pxPerM).toFloat()
         val top = trackTop.toPx()
-        val ink = Pal.Ink
-        val line = 3.dp.toPx()
-
-        // 구름 (아주 느리게)
-        val cloudShift = (camPx * 0.08f) % (size.width + 200f)
-        listOf(0.1f to 0.35f, 0.62f to 0.5f).forEach { (fx, fy) ->
-            var cx = fx * size.width - cloudShift
-            if (cx < -160f) cx += size.width + 200f
-            val cy = top * fy
-            drawRoundRect(Color.White.copy(alpha = 0.9f), Offset(cx, cy), Size(120.dp.toPx(), 34.dp.toPx()),
-                androidx.compose.ui.geometry.CornerRadius(20.dp.toPx()))
-        }
-        // 언덕 (중간 속도)
-        val hillW = 320.dp.toPx()
-        val hillShift = (camPx * 0.35f) % hillW
-        var hx = -hillShift - hillW
-        var i = 0
-        while (hx < size.width + hillW) {
-            val color = if (i % 2 == 0) Pal.HillLight else Pal.HillDark
-            val hTop = top - (if (i % 2 == 0) 96.dp else 80.dp).toPx()
-            drawOval(color, Offset(hx, hTop), Size(hillW, 220.dp.toPx()))
-            drawOval(ink, Offset(hx, hTop), Size(hillW, 220.dp.toPx()), style = androidx.compose.ui.graphics.drawscope.Stroke(line))
-            hx += hillW * 0.62f; i++
-        }
-        // 울타리: 10m마다 기둥 + 가로 레일
-        var m = floor(frame.camX / 10) * 10
-        while (true) {
-            val x = ((m - frame.camX) * pxPerM).toFloat()
-            if (x > size.width) break
-            drawRect(Color.White, Offset(x - 4.dp.toPx(), top - 30.dp.toPx()), Size(8.dp.toPx(), 30.dp.toPx()))
-            drawRect(ink, Offset(x - 4.dp.toPx(), top - 30.dp.toPx()), Size(8.dp.toPx(), 30.dp.toPx()),
-                style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
-            m += 10
-        }
-        // 울타리 아래 잔디 띠 (기둥이 잔디에 박혀 보이게 기둥 다음에)
-        drawRect(Pal.Grass, Offset(0f, top - 12.dp.toPx()), Size(size.width, 12.dp.toPx()))
-        drawRect(Color.White, Offset(0f, top - 22.dp.toPx()), Size(size.width, 10.dp.toPx()))
-        drawLine(ink, Offset(0f, top - 22.dp.toPx()), Offset(size.width, top - 22.dp.toPx()), line)
-        drawLine(ink, Offset(0f, top - 12.dp.toPx()), Offset(size.width, top - 12.dp.toPx()), line)
+        stadiumBackdrop(stadium, top, (frame.camX * pxPerM).toFloat(), frame.time)
+        fence(stadium, top, frame.camX, pxPerM)
     }
 }
 
 @Composable
-private fun Track(frame: Frame, trackTop: Dp, laneH: Dp, width: Dp) {
+private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width: Dp) {
     val view = frame.view
     val n = view.racers.size
     fun sx(worldX: Double): Dp = width * ((worldX - frame.camX) / frame.camW).toFloat()
@@ -364,9 +326,9 @@ private fun Track(frame: Frame, trackTop: Dp, laneH: Dp, width: Dp) {
         val pxPerM = size.width / frame.camW.toFloat()
         fun px(m: Double) = ((m - frame.camX) * pxPerM).toFloat()
         for (i in 0 until n) {
-            drawRect(if (i % 2 == 0) Pal.Dirt else Pal.DirtAlt, Offset(0f, top + i * lh), Size(size.width, lh))
-            dashes(top + (i + 1) * lh - 4.dp.toPx(), (frame.camX * pxPerM).toFloat())
-            ground(i, top + i * lh, lh, frame.camX, frame.camW, pxPerM)
+            drawRect(if (i % 2 == 0) stadium.dirt else stadium.dirtAlt, Offset(0f, top + i * lh), Size(size.width, lh))
+            dashes(stadium.line, top + (i + 1) * lh - 4.dp.toPx(), (frame.camX * pxPerM).toFloat())
+            ground(stadium, i, top + i * lh, lh, frame.camX, frame.camW, pxPerM)
         }
         drawLine(Pal.Ink, Offset(0f, top), Offset(size.width, top), 3.dp.toPx())
         // 출발 게이트
@@ -431,7 +393,7 @@ private fun Track(frame: Frame, trackTop: Dp, laneH: Dp, width: Dp) {
             OffscreenTag(r, view, Modifier.offset(x = 40.dp, y = trackTop + laneH * r.lane + (laneH - 30.dp) / 2))
         } else if (nose - sprite < width) {
             Box(Modifier.offset(x = nose - sprite * 0.92f, y = y)) {
-                if (!r.finished && !r.stopped) Dust(r.lane, frame.time, Modifier.size(sprite, spriteH))
+                if (!r.finished && !r.stopped) Dust(stadium.dust, r.lane, frame.time, Modifier.size(sprite, spriteH))
                 AnimalSprite(
                     r.animal, sprite,
                     running = !r.finished && !r.stopped,
@@ -456,101 +418,18 @@ private fun Track(frame: Frame, trackTop: Dp, laneH: Dp, width: Dp) {
     }
 }
 
-private fun DrawScope.dashes(y: Float, scrollPx: Float) {
+private fun DrawScope.dashes(color: Color, y: Float, scrollPx: Float) {
     val period = 30.dp.toPx()
     var x = -(scrollPx % period)
     while (x < size.width) {
-        drawRect(Pal.DirtLine, Offset(x, y), Size(18.dp.toPx(), 4.dp.toPx()))
+        drawRect(color, Offset(x, y), Size(18.dp.toPx(), 4.dp.toPx()))
         x += period
     }
 }
 
-// ---------------------------------------------------------------- 바닥 디테일
-
-private enum class Ground { SPECK, PRINT, PEBBLE, TUFT }
-
-/** 바닥 무늬 하나. [x]는 한 주기 안의 위치(m), [y]는 레인 높이 대비 위치, 크기는 레인 높이 79dp 기준. */
-private class GroundItem(val kind: Ground, val x: Double, val y: Float, val w: Float = 0f, val h: Float = 0f, val color: Color = Color.Unspecified)
-
-/** 바닥 무늬가 반복되는 간격(m). 기본 화면 폭(130m)보다 약간 길게. */
-private const val GROUND_PERIOD = 140.0
-
-/** 결정적인 의사 난수: 같은 레인·같은 자리에는 언제나 같은 무늬가 나온다. */
-private fun rnd(seed: Double): Float {
-    val x = kotlin.math.sin(seed * 127.1 + 311.7) * 43758.5453
-    return (x - floor(x)).toFloat()
-}
-
-private fun laneGround(lane: Int): List<GroundItem> {
-    val l = lane.toDouble()
-    val p = GROUND_PERIOD
-    return buildList {
-        for (k in 0 until 14) {
-            add(GroundItem(Ground.SPECK, rnd(l * 50 + k) * p, (8 + rnd(l * 70 + k) * 62) / 79,
-                3 + rnd(k * 3 + l) * 3, 2 + rnd(k * 5 + l) * 2,
-                if (rnd(k + l * 9) > 0.5f) Color(0xFFD9A866) else Color(0xFFE7BD7E)))
-        }
-        for (k in 0 until 3) add(GroundItem(Ground.PRINT, rnd(l * 31 + k * 7) * p, (30 + rnd(l * 17 + k) * 30) / 79))
-        for (k in 0 until 4) {
-            val w = if (k == 0) 18f else 8 + rnd(l * 13 + k) * 6
-            add(GroundItem(Ground.PEBBLE, rnd(l * 91 + k * 5) * p, (12 + rnd(l * 23 + k * 3) * 52) / 79,
-                w, w * 0.68f, if (rnd(l + k * 11) > 0.5f) Color(0xFFC9B79C) else Color(0xFFB9A88E)))
-        }
-        if (rnd(l * 3.3) > 0.4f) add(GroundItem(Ground.TUFT, rnd(l * 77) * p, 2f / 79))
-    }
-}
-
-private val GROUND = List(10) { laneGround(it) }
-
-/** 레인 바닥의 흙 알갱이·발자국·조약돌·풀 포기. 트랙(월드 좌표)에 붙어 있어 동물과 같은 속도로 흘러간다. */
-private fun DrawScope.ground(lane: Int, laneTop: Float, lh: Float, camX: Double, camW: Double, pxPerM: Float) {
-    val s = (lh / 79.dp.toPx()).coerceIn(0.55f, 1.2f) * density
-    val ink = Pal.Ink
-    var base = floor(camX / GROUND_PERIOD) * GROUND_PERIOD
-    while (base < camX + camW) {
-        for (g in GROUND[lane % GROUND.size]) {
-            val x = ((base + g.x - camX) * pxPerM).toFloat()
-            if (x < -30 * s || x > size.width) continue
-            val y = laneTop + g.y * lh
-            when (g.kind) {
-                Ground.SPECK -> drawOval(g.color, Offset(x, y), Size(g.w * s, g.h * s))
-                Ground.PRINT -> for ((dx, dy) in listOf(0f to 0f, 14f to 8f)) {
-                    val o = Offset(x + dx * s, y + dy * s)
-                    rotateDraw(-12f, o + Offset(4.5f * s, 3f * s)) { drawOval(Color(0xFFDDAE72), o, Size(9 * s, 6 * s)) }
-                }
-                Ground.PEBBLE -> {
-                    val sz = Size(g.w * s, g.h * s)
-                    drawOval(g.color, Offset(x, y), sz)
-                    drawOval(ink, Offset(x, y), sz, style = androidx.compose.ui.graphics.drawscope.Stroke(2 * s))
-                    drawOval(Color.White.copy(alpha = 0.55f), Offset(x + sz.width * 0.22f, y + sz.height * 0.18f),
-                        Size(sz.width * 0.3f, sz.height * 0.26f))
-                }
-                Ground.TUFT -> {
-                    val path = tuftPath(x, y, s)
-                    drawPath(path, Pal.HillDark)
-                    drawPath(path, ink, style = androidx.compose.ui.graphics.drawscope.Stroke(2 * s,
-                        join = androidx.compose.ui.graphics.StrokeJoin.Round))
-                }
-            }
-        }
-        base += GROUND_PERIOD
-    }
-}
-
-/** 22×16 풀 포기(세 갈래 잎). */
-private fun tuftPath(x: Float, y: Float, s: Float) = androidx.compose.ui.graphics.Path().apply {
-    fun p(px: Float, py: Float) = Offset(x + px * s, y + py * s)
-    fun q(cx: Float, cy: Float, ex: Float, ey: Float) { val c = p(cx, cy); val e = p(ex, ey); quadraticTo(c.x, c.y, e.x, e.y) }
-    p(3f, 15f).let { moveTo(it.x, it.y) }
-    q(4f, 7f, 2f, 2f); q(7f, 7f, 8f, 15f)
-    q(9f, 5f, 11f, 1f); q(13f, 6f, 13f, 15f)
-    q(15f, 8f, 20f, 4f); q(18f, 10f, 18f, 15f)
-    close()
-}
-
 /** 달리는 동물 꼬리 쪽에서 피어올라 뒤로 흩어지는 흙먼지. 크기는 90×77 스프라이트 기준. */
 @Composable
-private fun Dust(lane: Int, time: Double, modifier: Modifier) {
+private fun Dust(color: Color, lane: Int, time: Double, modifier: Modifier) {
     Canvas(modifier) {
         val u = size.width / 90f
         for (k in 0 until 3) {
@@ -558,7 +437,7 @@ private fun Dust(lane: Int, time: Double, modifier: Modifier) {
             val d = (8 + ph * 12) * u
             val o = Offset((14 - ph * 34) * u, (58 - ph * 10) * u)
             val a = (1 - ph) * 0.9f
-            drawOval(Color(0xFFE8D3B0), o, Size(d, d), alpha = a)
+            drawOval(color, o, Size(d, d), alpha = a)
             drawOval(Pal.Ink, o, Size(d, d), alpha = a, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
         }
     }
@@ -642,7 +521,7 @@ private fun Commentary(events: List<RaceEvent>, modifier: Modifier) {
 // ---------------------------------------------------------------- 오버레이
 
 @Composable
-private fun Overlays(frame: Frame, countdown: String?) {
+private fun Overlays(frame: Frame, stadium: Stadium, countdown: String?) {
     val view = frame.view
     val winner = view.racers.firstOrNull { it.finished && it.rank == 0 }
     val showWinner = winner != null && frame.time - (winner.finishTime ?: 0.0) < 2.2
@@ -670,6 +549,16 @@ private fun Overlays(frame: Frame, countdown: String?) {
             OutlinedText(
                 if (countdown == "출발!") "달려라!" else "준비…", 24.sp, outlineWidth = 6f,
                 modifier = Modifier.offset(y = 130.dp),
+            )
+            // 이번 경기장 이름표 (카운트다운 때만)
+            Text(
+                stadium.label, fontSize = 20.sp, color = Pal.Ink,
+                modifier = Modifier
+                    .offset(y = (-150).dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Pal.Paper)
+                    .border(3.dp, Pal.Ink, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 14.dp, vertical = 4.dp),
             )
         }
     }
