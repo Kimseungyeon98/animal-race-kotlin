@@ -1,10 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    앱 아이콘: 1등 왕관 쓴 말 얼굴 (디자인 캔버스 "앱 아이콘 시안" D안).
+    캐릭터 그림(ui/art/AnimalArt.kt 의 말, 200×170 좌표)에서 머리·목·갈기만 가져와
+    0.68배로 줄여 108 아이콘의 가운데 안전 영역에 놓았다. 다리·꼬리는 보이는 영역 밖이라 뺐다.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <!-- 깃대 -->
-    <path android:fillColor="#F2C230" android:pathData="M35,32h4v46h-4z" />
-    <!-- 깃발 바탕 -->
-    <path android:fillColor="#FFFFFF" android:pathData="M39,34h35v28h-35z" />
-    <path android:fillColor="#111111" android:pathData="M40,34h7v7h-7zM54,34h7v7h-7zM68,34h7v7h-7zM47,41h7v7h-7zM61,41h7v7h-7zM40,48h7v7h-7zM54,48h7v7h-7zM68,48h7v7h-7zM47,55h7v7h-7zM61,55h7v7h-7z" />
+    <group
+        android:scaleX="0.68" android:scaleY="0.68"
+        android:translateX="-55.44" android:translateY="26">
+        <!-- 몸통·목 -->
+        <path
+            android:fillColor="#C98A52" android:strokeColor="#2B2140" android:strokeWidth="5"
+            android:strokeLineJoin="round" android:strokeLineCap="round"
+            android:pathData="M36,98 C36,76 56,66 86,66 C104,66 116,64 124,56 C130,50 134,44 140,38 L164,50 C160,62 156,74 154,86 C152,104 140,124 104,126 C72,128 36,122 36,98 Z" />
+        <!-- 목 앞선 -->
+        <path
+            android:strokeColor="#2B2140" android:strokeWidth="5"
+            android:strokeLineJoin="round" android:strokeLineCap="round"
+            android:pathData="M160,62 C157,72 155,80 154,88 C153,96 151.5,102 149,108" />
+        <!-- 갈기 -->
+        <path
+            android:fillColor="#6B3E22" android:strokeColor="#2B2140" android:strokeWidth="5"
+            android:strokeLineJoin="round" android:strokeLineCap="round"
+            android:pathData="M144,30 C134,42 124,56 104,66 L112,72 C128,64 140,52 152,38 Z" />
+        <!-- 귀 -->
+        <path
+            android:fillColor="#C98A52" android:strokeColor="#2B2140" android:strokeWidth="5"
+            android:strokeLineJoin="round" android:strokeLineCap="round"
+            android:pathData="M140,36 l4,-18 l12,16 z" />
+        <!-- 머리 (24도 기운 타원) -->
+        <group android:rotation="24" android:pivotX="160" android:pivotY="52">
+            <path
+                android:fillColor="#C98A52" android:strokeColor="#2B2140" android:strokeWidth="5"
+                android:strokeLineJoin="round"
+                android:pathData="M132,52 a28,17 0 1,0 56,0 a28,17 0 1,0 -56,0 z" />
+        </group>
+        <!-- 주둥이 -->
+        <path
+            android:fillColor="#E8B98A" android:strokeColor="#2B2140" android:strokeWidth="5"
+            android:strokeLineJoin="round"
+            android:pathData="M168,66 a12,10 0 1,0 24,0 a12,10 0 1,0 -24,0 z" />
+        <!-- 앞머리 -->
+        <path
+            android:fillColor="#6B3E22" android:strokeColor="#2B2140" android:strokeWidth="3.5"
+            android:strokeLineJoin="round" android:strokeLineCap="round"
+            android:pathData="M148,34 q2,-9 11,-9 q-1,8 -6,13 z" />
+        <!-- 눈·콧구멍 -->
+        <path android:fillColor="#2B2140" android:pathData="M155.5,48 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0 z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M159.9,46.5 a1.6,1.6 0 1,0 3.2,0 a1.6,1.6 0 1,0 -3.2,0 z" />
+        <path android:fillColor="#2B2140" android:pathData="M183.8,66 a2.2,2.2 0 1,0 4.4,0 a2.2,2.2 0 1,0 -4.4,0 z" />
+        <!-- 1등 왕관 -->
+        <group android:rotation="22" android:pivotX="166" android:pivotY="26">
+            <path
+                android:fillColor="#FFC93C" android:strokeColor="#2B2140" android:strokeWidth="3.5"
+                android:strokeLineJoin="round"
+                android:pathData="M152,34 L154,18 L161,26 L166,14 L171,26 L178,18 L180,34 Z" />
+            <path android:fillColor="#F2543F" android:pathData="M164,29 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 z" />
+        </group>
+    </group>
 </vector>
