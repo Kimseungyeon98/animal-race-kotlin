@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.7.1-4C9A2A" alt="version 3.7.1">
+  <img src="https://img.shields.io/badge/version-3.7.2-4C9A2A" alt="version 3.7.2">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -41,7 +41,7 @@
 | **3.0** | **카툰 리디자인** — 직접 그린 캐릭터 일러스트, 스킬·피격 연출, 동물 도감 |
 | **3.1** | **모든 역전에 보이는 이유** — 스토리보드 엔진: 큰 순위 변화는 눈에 보이는 방해·실수·분발로만 |
 | **3.2** | **신규 캐릭터 6종** — 스컹크·고슴도치·카피바라·나무늘보·햄스터·판다 (총 20종)<br><img src="docs/media/species.png" width="220" alt="닭·오리·스컹크·나무늘보가 달리는 해변"> |
-| **3.3** | **다리 다듬기** — 막대 다리 → 몸과 이어지고 아래로 가늘어지는 다리와 발<br><img src="docs/media/legs.png" width="220" alt="원숭이·강아지·토끼가 달리는 초원"> |
+| **3.3** | **다리 다듬기** — 막대 다리 → 몸과 이어지고 아래로 가늘어지는 다리와 발<br><img src="docs/media/horse-evolution.gif" width="460" alt="말 캐릭터 변화: 이모지에서 3.0 카툰, 3.2.3 목 이음새, 3.3 다리까지"><br><sub>🐴 말 캐릭터의 변화 — 이모지(1.0~2.1) → 첫 카툰 일러스트(3.0) → 목과 몸통을 한 윤곽으로(3.2.3) → 몸과 이어지는 다리·발굽(3.3)</sub> |
 | **3.4** | **트랙 바닥 디테일** — 조약돌·풀 포기·발자국, 달리는 동물 뒤로 흙먼지 |
 | **3.5** | **경기장 4종** — 초원·해변·설원·사막 무작위, 기록에 경기장 저장 |
 | **3.6** | **경기장별 연출** — 혼자 넘어지는 장면이 경기장마다 달라요 (아래) |
@@ -59,6 +59,9 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.7.2 — README 말 캐릭터 변화
+- 3.3 항목에 말 캐릭터가 이모지 → 3.0 카툰 → 3.2.3 목 이음새 → 3.3 다리로 바뀐 과정을 달리는 그림으로 (디자인 시안의 그림을 그대로 사용)
 
 ### 3.7.1 — README 소개 페이지
 - README를 게임 소개 페이지로: 실제 플레이 녹화에서 자른 움짤(경주·역전·경기장 4종·경기장별 넘어짐·고르기·카운트다운·결과)과 버전별 큰 변화
