@@ -15,8 +15,8 @@ android {
         applicationId = "com.example.animalrace.kt"
         minSdk = 24
         targetSdk = 34
-        versionCode = 21
-        versionName = "3.6"
+        versionCode = 22
+        versionName = "3.6.1"
     }
 
     buildTypes {

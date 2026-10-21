@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -79,7 +80,7 @@ private val Gas = Color(0xFFB9E07A)
 private val Bamboo = Color(0xFF7BC86C)
 
 private fun bubble(text: String, x: Float, y: Float, bg: Color = BubbleSelf) =
-    FxPart(x, y, text.length * 17f + 30f, 30f, fill = bg, border = Ink, borderW = 3f, top = 15f, bottom = 15f, text = text, fontSize = 16f)
+    FxPart(x, y, text.length * 17f + 40f, 30f, fill = bg, border = Ink, borderW = 3f, top = 15f, bottom = 15f, text = text, fontSize = 16f)
 
 private fun speedLine(x: Float, y: Float, w: Float, alpha: Float = 1f) =
     FxPart(x, y, w, 7f, fill = Color.White, border = Ink, top = 4f, bottom = 4f, alpha = alpha)
@@ -463,8 +464,9 @@ private fun FxPartView(p: FxPart, s0: Float) {
     var m = Modifier
         .offset(x.dp, y.dp)
         .then(
-            // 말풍선은 최소 폭만 정하고 문장이 길면 그만큼 넓어진다
-            if (isBubble) Modifier.height((p.h * s).dp).widthIn(min = (p.w * s).dp)
+            // 말풍선은 최소 폭만 정하고 문장이 길면 그만큼 넓어진다.
+            // 동물 그림 칸보다 넓어져도 잘리지 않게 폭 제한을 풀고, 시작 위치에서 오른쪽으로 늘어난다
+            if (isBubble) Modifier.height((p.h * s).dp).wrapContentWidth(Alignment.Start, unbounded = true).widthIn(min = (p.w * s).dp)
             else Modifier.size((p.w * s).coerceAtLeast(1f).dp, (p.h * s).coerceAtLeast(1f).dp),
         )
         .graphicsLayer { alpha = p.alpha; rotationZ = p.rot }
@@ -483,7 +485,7 @@ private fun FxPartView(p: FxPart, s0: Float) {
                 maxLines = 1,
                 softWrap = false,
                 overflow = TextOverflow.Visible,
-                modifier = if (isBubble) Modifier.padding(horizontal = (10 * s).dp) else Modifier,
+                modifier = if (isBubble) Modifier.padding(horizontal = (14 * s).dp) else Modifier,
             )
         }
     }

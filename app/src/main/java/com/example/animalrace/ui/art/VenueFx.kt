@@ -73,7 +73,7 @@ private fun DrawScope.dot(cx: Float, cy: Float, d: Float, fill: Color, line: Flo
 private const val STAR = "M10 0 L12.5 6.5 L20 7 L14 11.5 L16 19 L10 14.5 L4 19 L6 11.5 L0 7 L7.5 6.5 Z"
 
 private fun hurt(text: String) =
-    FxPart(30f, -14f, text.length * 17f + 30f, 30f, fill = BubbleHurtBg, border = Ink, borderW = 3f, top = 15f, bottom = 15f, text = text, fontSize = 16f)
+    FxPart(30f, -14f, text.length * 17f + 40f, 30f, fill = BubbleHurtBg, border = Ink, borderW = 3f, top = 15f, bottom = 15f, text = text, fontSize = 16f)
 
 /** 경기장에 맞는 "혼자 넘어짐" 장면. [loop]이면 한 주기를 반복, 아니면 시간 순서대로 한 번. */
 internal fun venueTrip(venue: Venue, t: Float, loop: Boolean): FxFrame = when (venue) {
