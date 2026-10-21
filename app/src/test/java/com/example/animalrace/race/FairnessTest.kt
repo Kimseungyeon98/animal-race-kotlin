@@ -1,6 +1,7 @@
 package com.example.animalrace.race
 
 import com.example.animalrace.model.Animal
+import com.example.animalrace.model.Venue
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -45,6 +46,20 @@ class FairnessTest {
             val times = race.ranking().map { it.finish!! }
             assertEquals(times.sorted(), times)
             assertTrue(race.racers.all { it.x == TRACK })
+        }
+    }
+
+    /** 경기장은 해설 문구만 바꾼다: 같은 난수면 어느 경기장이든 순위·기록이 같아야 한다. */
+    @Test
+    fun venueNeverChangesTheRace() {
+        repeat(200) { seed ->
+            val animals = Animal.entries.shuffled(Random(seed)).take(2 + seed % 9)
+            val runs = Venue.entries.map { venue ->
+                val race = Race(animals, Random(seed), venue)
+                while (!race.done) race.step(1 / 60.0)
+                race.ranking().map { it.animal to it.finish }
+            }
+            runs.forEach { assertEquals(runs.first(), it) }
         }
     }
 

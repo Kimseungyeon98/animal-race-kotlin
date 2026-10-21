@@ -128,8 +128,8 @@ private fun interpolate(prev: RaceView, cur: RaceView, a: Double): RaceView {
 
 @Composable
 fun RaceScreen(animals: List<Animal>, bet: String, raceKey: Int, onFinished: (Race, Venue) -> Unit) {
-    val race = remember(raceKey) { Race(animals) }
     val stadium = remember(raceKey) { Stadium.entries.random() }
+    val race = remember(raceKey) { Race(animals, venue = stadium.venue) }
     var frame by remember(raceKey) { mutableStateOf(Frame(race.view(), START_X, START_W, 0.0)) }
     var countdown by remember(raceKey) { mutableStateOf<String?>(null) }
     var speed by remember { mutableFloatStateOf(1f) }
@@ -400,6 +400,7 @@ private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width
                     running = !r.finished && !r.stopped,
                     fx = r.fx,
                     fxTime = r.fxElapsed.toFloat(),
+                    venue = stadium.venue,
                 )
                 if (r.rank == 0 && !r.finished && r.fx == com.example.animalrace.model.Fx.NONE && view.t > 1) {
                     Crown(Modifier.align(Alignment.TopCenter).offset(x = sprite * 0.12f, y = (-14).dp), width = 30.dp)

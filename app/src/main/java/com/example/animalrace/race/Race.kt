@@ -3,6 +3,7 @@ package com.example.animalrace.race
 import com.example.animalrace.model.Animal
 import com.example.animalrace.model.Animal.*
 import com.example.animalrace.model.Fx
+import com.example.animalrace.model.Venue
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -125,7 +126,10 @@ class Racer internal constructor(val lane: Int, val animal: Animal) {
  * 그 밖의 구간은 기준 속도의 [PACE_MIN]~[PACE_MAX] 안에서만 움직인다.
  * 그래서 "방해받고 멈췄다가 아무 이유 없이 훅 따라잡는" 장면이 나오지 않는다.
  */
-class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
+/**
+ * [venue]는 "혼자 넘어짐" 해설 문구만 바꾼다(문구 수가 같아 난수 사용·결과는 경기장과 무관).
+ */
+class Race(animals: List<Animal>, private val rnd: Random = Random.Default, private val venue: Venue = Venue.MEADOW) {
     val racers = animals.mapIndexed { i, a -> Racer(i, a) }
 
     /** 레인별 결승 시각(초). 1등 16.8~18.4초, 이후 0.08~0.45초 간격. */
@@ -567,7 +571,7 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default) {
                 }
                 options += 1.0 to {
                     seg.fx = Fx.TRIP
-                    val why = listOf("발이 꼬여 꽈당!", "돌부리에 걸려 꽈당!", "웅덩이에 미끄러져 꽈당!", "한눈팔다 꽈당!")
+                    val why = TRIP_LINES.getValue(venue)
                     cues += Cue(t0, "${tag(v)} ${why[rnd.nextInt(why.size)]}", null)
                 }
                 pick(options)()
@@ -701,3 +705,11 @@ internal fun withObject(word: String): String {
     if (c !in '가'..'힣') return word + "를"
     return word + if ((c - '가') % 28 != 0) "을" else "를"
 }
+
+/** 경기장별 "혼자 넘어짐" 해설. 경기장마다 4개씩(난수 사용량을 같게). */
+private val TRIP_LINES = mapOf(
+    Venue.MEADOW to listOf("돌부리에 걸려 꽈당!", "돌부리를 못 보고 꽈당!", "발이 꼬여 돌부리에 꽈당!", "한눈팔다 돌부리에 꽈당!"),
+    Venue.BEACH to listOf("파도가 철썩! 흠뻑 젖어 멈칫", "큰 파도를 정통으로 맞았어요!", "파도에 휩쓸려 철썩!", "물보라에 눈을 못 뜨고 멈칫!"),
+    Venue.SNOW to listOf("빙판에서 미끄덩~ 눈더미까지 와르르!", "얼음판에 미끄덩! 머리 위로 눈이 와르르", "헛발질하다 꽈당, 눈 폭탄까지!", "미끄덩~ 와르르! 눈사람이 될 뻔"),
+    Venue.DESERT to listOf("모래 토네이도에 휘말려 빙글빙글~", "회오리바람에 붕 떠올랐어요!", "모래바람에 휘잉~ 빙글빙글", "토네이도 속에서 정신없이 빙글빙글!"),
+)

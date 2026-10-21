@@ -24,6 +24,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.example.animalrace.model.Animal
 import com.example.animalrace.model.Animal.*
 import com.example.animalrace.model.Fx
+import com.example.animalrace.model.Venue
 import com.example.animalrace.ui.theme.Fredoka
 import com.example.animalrace.ui.theme.Jua
 import kotlin.math.PI
@@ -58,6 +60,11 @@ internal data class FxFrame(
     val front: List<FxPart> = emptyList(),
     val dx: Float = 0f, val dy: Float = 0f, val rot: Float = 0f,
     val pose: Int = 0,
+    /** 동물 크기 배율과 회전·확대 중심 높이(0 위 ~ 1 아래) */
+    val scale: Float = 1f, val pivotY: Float = 0.9f,
+    /** 도형으로 그리기 어려운 연출(파도·토네이도 등). 200×170 그림 좌표, 동물 뒤([under])와 앞([over]) */
+    val under: (DrawScope.() -> Unit)? = null,
+    val over: (DrawScope.() -> Unit)? = null,
 )
 
 private val BubbleSelf = Color.White
@@ -84,7 +91,7 @@ private fun speedLine(x: Float, y: Float, w: Float, alpha: Float = 1f) =
 private fun loopFade(p: Float): Float = (sin(p * PI.toFloat())).coerceIn(0f, 1f)
 
 /** 좌우 떨림: 프레임마다 ±로 튀지 않고 부드럽게 흔들린다 (약 2Hz). */
-private fun wobble(t: Float, amp: Float) = sin(t * PI.toFloat() / 4f) * amp
+internal fun wobble(t: Float, amp: Float) = sin(t * PI.toFloat() / 4f) * amp
 
 private fun blob(x: Float, y: Float, w: Float, h: Float, fill: Color, alpha: Float = 1f) =
     FxPart(x, y, w, h, fill = fill, border = Ink, alpha = alpha)
@@ -99,8 +106,10 @@ private fun banana(x: Float, y: Float, rot: Float, alpha: Float = 1f) =
  * [fx] 연출의 한 순간. [tick]은 60ms 단위 시간(디자인 시안과 같은 단위).
  * 스킬 연출은 동물마다 다르고, 피격 반응(미끌·휘청·깜짝)은 공통이다.
  */
-internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false): FxFrame {
+internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false, venue: Venue = Venue.MEADOW): FxFrame {
     val t = tick
+    // 혼자 넘어짐은 경기장마다 다른 장면 (돌부리·파도·빙판·토네이도)
+    if (fx == Fx.TRIP) return venueTrip(venue, t, loop)
     val norm = 1 + (t / 3).toInt() % 2
     val fast = 1 + (t / 2).toInt() % 2
     val cycle = 40f
@@ -319,17 +328,7 @@ internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false)
             for (k in 0..1) { val m = (t * 3 + k * 10) % 20; back += blob(18 - m, 140f - k * 6, 18f + m, 12f + m * 0.4f, Color(0xFFE8D3B0), 0.85f * loopFade(m / 20)) }
             front += bubble("분발!", 112f, -18f)
         }
-        Fx.TRIP -> {
-            pose = 0
-            val q = (t / 6).coerceAtMost(1f)
-            rot = -18f * q; dy = 8f * q; dx = -4f * q
-            back += blob(120f, 146f, 44f, 14f, Color(0xFFE8D3B0), 0.85f)
-            for (k in 0..2) {
-                val ang = t / 4 + k * 2.1f
-                front += glyph("✦", 140 + cos(ang) * 24, 16 + sin(ang) * 7, 15f, Star)
-            }
-            front += bubble("꽈당!", 30f, -14f, BubbleHurt)
-        }
+        Fx.TRIP -> Unit // 위에서 venueTrip으로 처리
         Fx.STINK -> {
             pose = 0; rot = sin(t / 3) * 6; dx = wobble(t, 2f)
             for (k in 0..2) {
@@ -413,10 +412,11 @@ fun AnimalSprite(
     frame: Int = 0,
     fx: Fx = Fx.NONE,
     fxTime: Float? = null,
+    venue: Venue = Venue.MEADOW,
 ) {
     val animated = running || (fx != Fx.NONE && fxTime == null)
     val clock = if (animated) rememberClock() else 0f
-    val effect = if (fx != Fx.NONE) fxFrame(animal, fx, (fxTime ?: clock) / 0.06f, loop = fxTime == null)
+    val effect = if (fx != Fx.NONE) fxFrame(animal, fx, (fxTime ?: clock) / 0.06f, loop = fxTime == null, venue = venue)
     else FxFrame(pose = if (running) 1 + (clock / 0.18f).toInt() % 2 else frame)
     // 연출 중이어도 달리는 중이면 다리는 계속 굴린다 (연출이 멈춤 자세를 고른 경우 제외)
     val pose = when {
@@ -427,6 +427,7 @@ fun AnimalSprite(
     val s = size.value / 200f
 
     Box(modifier.size(size, size * 0.85f)) {
+        effect.under?.let { draw -> Canvas(Modifier.fillMaxSize()) { scale(this.size.width / 200f, pivot = Offset.Zero) { draw() } } }
         effect.back.forEach { FxPartView(it, s) }
         Canvas(
             Modifier
@@ -435,12 +436,15 @@ fun AnimalSprite(
                     translationX = effect.dx * s * density
                     translationY = effect.dy * s * density
                     rotationZ = effect.rot
-                    transformOrigin = TransformOrigin(0.5f, 0.9f)
+                    scaleX = effect.scale
+                    scaleY = effect.scale
+                    transformOrigin = TransformOrigin(0.5f, effect.pivotY)
                 },
         ) {
             scale(this.size.width / 200f, pivot = Offset.Zero) { drawAnimal(animal, pose) }
         }
         effect.front.forEach { FxPartView(it, s) }
+        effect.over?.let { draw -> Canvas(Modifier.fillMaxSize()) { scale(this.size.width / 200f, pivot = Offset.Zero) { draw() } } }
     }
 }
 

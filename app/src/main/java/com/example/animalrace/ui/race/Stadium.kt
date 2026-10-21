@@ -66,7 +66,7 @@ enum class Stadium(
         Venue.SNOW, Color(0xFFA9D8F5), Color(0xFFE4F4FF), Color.White, Color(0xFF5B7FB8), Color.White,
         Color(0xFFF2F7FC), Color(0xFFE6EFF8), Color(0xFFC6D6EA), Color.White,
         hills = Color(0xFF9FB8D6) to Color(0xFF8AA8CC),
-        props = listOf(Deco.PINE to 50f, Deco.PINE to 84f, Deco.PINE to 290f),
+        props = listOf(Deco.PINE to 50f, Deco.PINE to 84f, Deco.SNOWMAN to 190f, Deco.PINE to 290f),
         specks = Color(0xFFD5E3F2) to Color.White, pebbles = Color.White to Color(0xFFF4F9FF),
         extras = listOf(Deco.TWIG to 0.5f), snowy = true,
     ),
@@ -103,7 +103,14 @@ enum class Deco(
     STAR(16f, 16f, "M8 0 L10 6 L16 6 L11 10 L13 16 L8 12 L3 16 L5 10 L0 6 L6 6 Z", Color(0xFFFF9A5C)),
     TWIG(22f, 10f, "M1 7 L21 4", null, "M9 6 L13 1 M15 5 L18 9", detail = Color(0xFF6B4A2E)),
     CRACK(24f, 10f, "", null, "M0 5 L6 3 L10 7 L16 3 L24 6 M10 7 L12 10", detail = Color(0xFFB76A3E)),
-    WEED(18f, 18f, "M9 1 A8 8 0 1 1 8.9 1 Z", Color(0xFFD9A35F), "M3 9 Q9 3 15 9 Q9 15 3 9 M9 2 Q12 9 9 16", detail = Color(0xFF8A5A2B));
+    WEED(18f, 18f, "M9 1 A8 8 0 1 1 8.9 1 Z", Color(0xFFD9A35F), "M3 9 Q9 3 15 9 Q9 15 3 9 M9 2 Q12 9 9 16", detail = Color(0xFF8A5A2B)),
+
+    // 배경 손님
+    BUTTERFLY(22f, 16f, "M11 8 Q4 -2 1 4 Q0 10 11 9 Q22 10 21 4 Q18 -2 11 8 Z", Color(0xFFFFD84D), "M11 4 L11 14"),
+    GULL(34f, 14f, "M1 10 Q9 0 17 9 Q25 0 33 10 Q25 5 17 12 Q9 5 1 10 Z", Color.White),
+    SNOWMAN(30f, 44f, "M15 44 A13 13 0 1 1 15.1 44 Z M15 20 A9 9 0 1 1 15.1 20 Z", Color.White, "M15 10 L22 12 L15 13 Z", Color(0xFFFF9A5C)),
+    DEVIL(40f, 56f, "M4 4 Q20 0 36 4 Q30 14 32 18 Q14 22 10 18 Q14 30 26 32 Q18 40 22 46 Q18 54 20 56 Q14 48 16 42 Q8 36 12 30 Q2 22 8 16 Q2 10 4 4 Z",
+        Color(0xFFF3C79A), "M10 8 Q20 12 30 8 M12 26 Q20 30 26 26", detail = Color(0xFFC98A4E));
 
     val main: Path? = d1.takeIf { it.isNotEmpty() }?.let { PathParser().parsePathString(it).toPath() }
     val sub: Path? = d2.takeIf { it.isNotEmpty() }?.let { PathParser().parsePathString(it).toPath() }
@@ -184,6 +191,8 @@ internal fun DrawScope.stadiumBackdrop(st: Stadium, top: Float, camPx: Float, ti
         drawRect(Color.White, Offset(0f, seaTop), Size(size.width, 5.dp.toPx()))
     }
 
+    guests(st, top, camPx, time)
+
     // 울타리 뒤 소품 (언덕보다 빠르고 트랙보다 느리게)
     val period = 470.dp.toPx()
     val shift = (camPx * 0.33f) % period
@@ -196,6 +205,33 @@ internal fun DrawScope.stadiumBackdrop(st: Stadium, top: Float, camPx: Float, ti
             deco(d, x, top - 16.dp.toPx() - d.h * unit, unit, stroke = 2.5f)
         }
         base += period
+    }
+}
+
+/** 배경 손님: 순위와 상관없이 하늘·먼 곳을 지나간다 (나비·갈매기·모래 회오리). 설원 눈사람은 울타리 뒤 소품. */
+private fun DrawScope.guests(st: Stadium, top: Float, camPx: Float, time: Double) {
+    val span = size.width + 80.dp.toPx()
+    fun loop(speedDp: Float, off: Float) = ((time * speedDp.dp.toPx() + off * span) % span).toFloat() - 40.dp.toPx()
+    val tt = time.toFloat()
+    when (st) {
+        Stadium.MEADOW -> for (k in 0..1) {
+            val x = loop(36f + k * 8, k * 0.47f)
+            val y = top - (70 + k * 18).dp.toPx() + sin(tt * 3 + k) * 8.dp.toPx()
+            deco(Deco.BUTTERFLY, x, y, density * 1.1f)
+        }
+        Stadium.BEACH -> for (k in 0..1) {
+            val x = size.width - loop(48f, k * 0.12f)
+            val y = top - (80 + k * 14).dp.toPx() + sin(tt * 1.6f + k * 2) * 4.dp.toPx()
+            deco(Deco.GULL, x, y, density)
+        }
+        Stadium.DESERT -> {
+            // 멀리서 느리게 흘러가는 모래 회오리 (언덕과 같은 원근)
+            val far = size.width + 100.dp.toPx()
+            val x = size.width + 20.dp.toPx() - ((camPx * 0.2f + tt * 14.dp.toPx() + size.width * 0.3f) % far)
+            val wob = sin(tt * 2) * 3.dp.toPx()
+            deco(Deco.DEVIL, x + wob, top - 14.dp.toPx() - 56 * density * 1.2f, density * 1.2f)
+        }
+        Stadium.SNOW -> Unit
     }
 }
 
