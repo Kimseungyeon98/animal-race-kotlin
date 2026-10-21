@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.animalrace.model.Animal
+import com.example.animalrace.model.Venue
 import com.example.animalrace.race.EventKind
 import com.example.animalrace.race.Race
 import com.example.animalrace.race.RaceEvent
@@ -126,7 +127,7 @@ private fun interpolate(prev: RaceView, cur: RaceView, a: Double): RaceView {
 }
 
 @Composable
-fun RaceScreen(animals: List<Animal>, bet: String, raceKey: Int, onFinished: (Race) -> Unit) {
+fun RaceScreen(animals: List<Animal>, bet: String, raceKey: Int, onFinished: (Race, Venue) -> Unit) {
     val race = remember(raceKey) { Race(animals) }
     val stadium = remember(raceKey) { Stadium.entries.random() }
     var frame by remember(raceKey) { mutableStateOf(Frame(race.view(), START_X, START_W, 0.0)) }
@@ -180,7 +181,7 @@ fun RaceScreen(animals: List<Animal>, bet: String, raceKey: Int, onFinished: (Ra
             }
             frame = Frame(v, camX, camW, v.t + post)
         }
-        finish(race)
+        finish(race, stadium.venue)
     }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(stadium.skyTop)) {
@@ -327,7 +328,7 @@ private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width
         fun px(m: Double) = ((m - frame.camX) * pxPerM).toFloat()
         for (i in 0 until n) {
             drawRect(if (i % 2 == 0) stadium.dirt else stadium.dirtAlt, Offset(0f, top + i * lh), Size(size.width, lh))
-            dashes(stadium.line, top + (i + 1) * lh - 4.dp.toPx(), (frame.camX * pxPerM).toFloat())
+            dashes(stadium.line, top + (i + 1) * lh - 4.dp.toPx(), frame.camX, frame.camW, pxPerM)
             ground(stadium, i, top + i * lh, lh, frame.camX, frame.camW, pxPerM)
         }
         drawLine(Pal.Ink, Offset(0f, top), Offset(size.width, top), 3.dp.toPx())
@@ -418,14 +419,19 @@ private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width
     }
 }
 
-private fun DrawScope.dashes(color: Color, y: Float, scrollPx: Float) {
-    val period = 30.dp.toPx()
-    var x = -(scrollPx % period)
-    while (x < size.width) {
-        drawRect(color, Offset(x, y), Size(18.dp.toPx(), 4.dp.toPx()))
-        x += period
+/** 레인 경계 점선. 바닥 무늬처럼 트랙(월드 좌표)에 붙어 있어 줌이 바뀌어도 바닥과 같은 속도로 흘러간다. */
+private fun DrawScope.dashes(color: Color, y: Float, camX: Double, camW: Double, pxPerM: Float) {
+    var m = floor(camX / DASH_PERIOD) * DASH_PERIOD
+    while (m < camX + camW) {
+        val x = ((m - camX) * pxPerM).toFloat()
+        drawRect(color, Offset(x, y), Size((DASH_LEN * pxPerM).toFloat(), 4.dp.toPx()))
+        m += DASH_PERIOD
     }
 }
+
+/** 점선 간격·길이(m). 기본 화면 폭(130m)에서 예전 30dp·18dp 정도 */
+private const val DASH_PERIOD = 10.0
+private const val DASH_LEN = 6.0
 
 /** 달리는 동물 꼬리 쪽에서 피어올라 뒤로 흩어지는 흙먼지. 크기는 90×77 스프라이트 기준. */
 @Composable
@@ -552,7 +558,7 @@ private fun Overlays(frame: Frame, stadium: Stadium, countdown: String?) {
             )
             // 이번 경기장 이름표 (카운트다운 때만)
             Text(
-                stadium.label, fontSize = 20.sp, color = Pal.Ink,
+                stadium.venue.label, fontSize = 20.sp, color = Pal.Ink,
                 modifier = Modifier
                     .offset(y = (-150).dp)
                     .clip(RoundedCornerShape(16.dp))

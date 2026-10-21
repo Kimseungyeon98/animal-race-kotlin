@@ -6,6 +6,8 @@ data class RaceRecord(
     val bet: String,
     val leadChanges: Int,
     val results: List<RaceResult>,
+    /** 경기장 (3.5.1 이전 기록은 null) */
+    val venue: Venue? = null,
 )
 
 data class RaceResult(

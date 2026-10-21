@@ -6,6 +6,7 @@ import com.example.animalrace.model.AppRepository
 import com.example.animalrace.model.RaceRecord
 import com.example.animalrace.model.RaceResult
 import com.example.animalrace.model.SavedSetup
+import com.example.animalrace.model.Venue
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -38,7 +39,8 @@ class PrefsRepository(context: Context) : AppRepository {
                 animalOf(r.getString("a"))?.let { RaceResult(it, r.getDouble("t"), r.optInt("u"), r.optInt("l", j)) }
             }
             if (results.isEmpty()) null
-            else RaceRecord(o.getLong("at"), o.optString("bet"), o.optInt("lead"), results)
+            else RaceRecord(o.getLong("at"), o.optString("bet"), o.optInt("lead"), results,
+                Venue.entries.firstOrNull { it.name == o.optString("venue") })
         }
     }.getOrDefault(emptyList())
 
@@ -50,7 +52,8 @@ class PrefsRepository(context: Context) : AppRepository {
                 results.put(JSONObject().put("a", r.animal.name).put("t", r.time).put("u", r.skillUses).put("l", r.lane))
             }
             arr.put(
-                JSONObject().put("at", rec.at).put("bet", rec.bet).put("lead", rec.leadChanges).put("results", results),
+                JSONObject().put("at", rec.at).put("bet", rec.bet).put("lead", rec.leadChanges).put("results", results)
+                    .put("venue", rec.venue?.name),
             )
         }
         prefs.edit().putString(KEY_HISTORY, arr.toString()).apply()

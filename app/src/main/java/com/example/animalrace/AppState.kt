@@ -10,6 +10,7 @@ import com.example.animalrace.model.AppRepository
 import com.example.animalrace.model.RaceRecord
 import com.example.animalrace.model.RaceResult
 import com.example.animalrace.model.SavedSetup
+import com.example.animalrace.model.Venue
 import com.example.animalrace.race.Race
 
 enum class Screen { Setup, Race, Result }
@@ -64,12 +65,13 @@ class AppState(private val repo: AppRepository) {
         screen = Screen.Race
     }
 
-    fun finishRace(race: Race) {
+    fun finishRace(race: Race, venue: Venue) {
         val record = RaceRecord(
             at = System.currentTimeMillis(),
             bet = bet.trim(),
             leadChanges = race.leadChanges,
             results = race.ranking().map { RaceResult(it.animal, it.finish ?: 0.0, it.uses, it.lane) },
+            venue = venue,
         )
         lastRecord = record
         history.add(0, record)

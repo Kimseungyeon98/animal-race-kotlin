@@ -95,7 +95,10 @@ fun ResultScreen(record: RaceRecord, onAgain: () -> Unit, onHome: () -> Unit) {
         ) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedText("경기 결과", 30.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedText("경기 결과", 30.sp)
+                        record.venue?.let { Tag(it.label, Pal.Paper, Pal.Ink, fontSize = 13.sp) }
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         StatChip("역전 ", "${record.leadChanges}", "회")
                         StatChip("1등 ", "%.2f".format(winner.time), "초")

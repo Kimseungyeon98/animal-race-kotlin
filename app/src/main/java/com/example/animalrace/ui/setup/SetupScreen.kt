@@ -642,7 +642,8 @@ private fun HistoryCard(number: Int, record: RaceRecord) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Tag("#$number", Pal.Cream, Pal.Ink, number = true)
-            Text("${formatTime(record.at)} · ${record.results.size}마리 · 역전 ${record.leadChanges}회", fontSize = 13.sp, color = Pal.InkSoft)
+            val venue = record.venue?.let { "${it.emoji} ${it.title} · " }.orEmpty()
+            Text("${formatTime(record.at)} · $venue${record.results.size}마리 · 역전 ${record.leadChanges}회", fontSize = 13.sp, color = Pal.InkSoft)
         }
         Text(
             buildAnnotatedString {

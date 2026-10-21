@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
+import com.example.animalrace.model.Venue
 import com.example.animalrace.ui.theme.Pal
 import kotlin.math.floor
 import kotlin.math.sin
@@ -23,7 +24,7 @@ import kotlin.math.sin
  * 시안: 캔버스 "경기장 테마 (무작위)" 보드 (Stadiums.dc.html)
  */
 enum class Stadium(
-    val label: String,
+    val venue: Venue,
     val skyTop: Color,
     val skyBottom: Color,
     val rail: Color,
@@ -46,7 +47,7 @@ enum class Stadium(
     val prints: Boolean = false,
 ) {
     MEADOW(
-        "🌿 초원 경기장", Color(0xFF8ED6FF), Color(0xFF8ED6FF), Color.White, Color.White, Color(0xFF7ED37A),
+        Venue.MEADOW, Color(0xFF8ED6FF), Color(0xFF8ED6FF), Color.White, Color.White, Color(0xFF7ED37A),
         Color(0xFFF2C98A), Color(0xFFEDC283), Color(0xFFE0AE6C), Color(0xFFE8D3B0),
         hills = Color(0xFF6CC46B) to Color(0xFF5DB65E),
         props = listOf(Deco.BUSH to 40f, Deco.BUSH to 260f),
@@ -54,7 +55,7 @@ enum class Stadium(
         extras = listOf(Deco.TUFT to 0.6f), prints = true,
     ),
     BEACH(
-        "🏖️ 해변 경기장", Color(0xFF7FD3F7), Color(0xFFBDEBFF), Color(0xFFF4E2C4), Color(0xFFB07A45), Color(0xFFE9C88E),
+        Venue.BEACH, Color(0xFF7FD3F7), Color(0xFFBDEBFF), Color(0xFFF4E2C4), Color(0xFFB07A45), Color(0xFFE9C88E),
         Color(0xFFF8E3AC), Color(0xFFF2D99A), Color(0xFFE4C27E), Color(0xFFFFF2CF),
         hills = null, sun = Color(0xFFFFD84D),
         props = listOf(Deco.PALM to 30f, Deco.PALM to 250f),
@@ -62,7 +63,7 @@ enum class Stadium(
         extras = listOf(Deco.SHELL to 0.9f, Deco.STAR to 0.5f),
     ),
     SNOW(
-        "❄️ 설원 경기장", Color(0xFFA9D8F5), Color(0xFFE4F4FF), Color.White, Color(0xFF5B7FB8), Color.White,
+        Venue.SNOW, Color(0xFFA9D8F5), Color(0xFFE4F4FF), Color.White, Color(0xFF5B7FB8), Color.White,
         Color(0xFFF2F7FC), Color(0xFFE6EFF8), Color(0xFFC6D6EA), Color.White,
         hills = Color(0xFF9FB8D6) to Color(0xFF8AA8CC),
         props = listOf(Deco.PINE to 50f, Deco.PINE to 84f, Deco.PINE to 290f),
@@ -70,7 +71,7 @@ enum class Stadium(
         extras = listOf(Deco.TWIG to 0.5f), snowy = true,
     ),
     DESERT(
-        "🌵 사막 경기장", Color(0xFFFFB46B), Color(0xFFFFD9A0), Color(0xFFD99A5B), Color(0xFF8A5A2B), Color(0xFFE2A563),
+        Venue.DESERT, Color(0xFFFFB46B), Color(0xFFFFD9A0), Color(0xFFD99A5B), Color(0xFF8A5A2B), Color(0xFFE2A563),
         Color(0xFFEBAA72), Color(0xFFE29E66), Color(0xFFCB8150), Color(0xFFF6CFA2),
         hills = Color(0xFFE8955A) to Color(0xFFD98450), sun = Color(0xFFFFE38A),
         props = listOf(Deco.CACTUS to 120f, Deco.CACTUS to 320f),
