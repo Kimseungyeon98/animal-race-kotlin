@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.7.4-4C9A2A" alt="version 3.7.4">
+  <img src="https://img.shields.io/badge/version-3.7.5-4C9A2A" alt="version 3.7.5">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -60,6 +60,9 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.7.5 — README 경기장 움짤 크기 맞춤
+- 경기장 4종 움짤을 다른 움짤과 같은 전체 화면 비율(360×715)로 다시 잘라 표 칸 높이를 맞춤
 
 ### 3.7.4 — README 나가기 확인창 움짤
 - 3.7 항목에 경주 중 뒤로 가기 → 확인창(일시정지) → 계속 보기 → 그만두기 흐름 움짤 추가
