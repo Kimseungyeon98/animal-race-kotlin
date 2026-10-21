@@ -173,6 +173,31 @@ private fun DrawScope.nearLeg(
     hind: Boolean, body: List<Path>, foot: Foot, footColor: Color = fill, claws: Boolean = false,
 ) = nearLegOf(legShape(x, y, w, h, hind), fill, rot, px, py, body) { foot(foot, x, w, y, h, footColor, claws) }
 
+/** 위쪽을 둥글게 마무리한 가늘어지는 다리. 몸 위에 통째로 그려도 몸에 붙은 다리처럼 보인다(몸과 색이 다른 동물용). */
+private fun roundLegShape(x: Float, y: Float, w: Float, h: Float, hind: Boolean): Path = legCache.getOrPut("r$x,$y,$w,$h,$hind") {
+    val cx = x + w / 2
+    val a = w / 2 + 2.5f
+    val b = maxOf(4.5f, w / 2 - 1.5f)
+    val left = if (hind) cx - a - 2 else cx - a
+    Path().apply {
+        moveTo(left, y)
+        if (hind) {
+            cubicTo(cx - a - 3, y + h * 0.35f, cx - b - 1, y + h * 0.55f, cx - b, y + h * 0.75f)
+            lineTo(cx - b, y + h); lineTo(cx + b, y + h); lineTo(cx + b, y + h * 0.75f)
+            cubicTo(cx + b + 1, y + h * 0.5f, cx + a, y + h * 0.3f, cx + a, y)
+        } else {
+            cubicTo(cx - a, y + h * 0.4f, cx - b - 1.5f, y + h * 0.6f, cx - b, y + h)
+            lineTo(cx + b, y + h)
+            cubicTo(cx + b + 1.5f, y + h * 0.6f, cx + a, y + h * 0.4f, cx + a, y)
+        }
+        cubicTo(cx + a, y - a * 1.1f, left, y - a * 1.1f, left, y)
+        close()
+    }
+}
+
+private fun DrawScope.roundLeg(x: Float, y: Float, w: Float, h: Float, fill: Color, rot: Float, px: Float, py: Float, hind: Boolean) =
+    farLegOf(roundLegShape(x, y, w, h, hind), fill, rot, px, py) { foot(Foot.PAW, x, w, y, h, fill, false) }
+
 private fun oval(cx: Float, cy: Float, rx: Float, ry: Float) = Path().apply { addOval(Rect(cx - rx, cy - ry, cx + rx, cy + ry)) }
 
 private fun roundBox(x: Float, y: Float, w: Float, h: Float, r: Float) =
@@ -311,10 +336,14 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
             shadow(100f, 160f, 62f, 7f)
             translate(0f, bob) {
                 val body = listOf(oval(92f, 98f, 56f, 40f))
-                svg("M40 92 q-16 -4 -10 -16 q6 -10 14 -2", null)
+                val curl = "M40 92 q-14 -2 -16 -12 q-1 -9 7 -9 q7 1 5 8 q-2 6 -9 4"
+                svg(curl, null, sw = 10f)
+                svg(curl, null, sw = 4.5f, stroke = c(0xFFFF9DB5))
+                farLeg(56f, 118f, 18f, 30f, c(0xFFF28AA5), b, 65f, 122f, hind = true, Foot.HOOF, c(0xFFC9637F))
+                farLeg(110f, 118f, 18f, 30f, c(0xFFF28AA5), a, 119f, 122f, hind = false, Foot.HOOF, c(0xFFC9637F))
                 ellipse(92f, 98f, 56f, 40f, c(0xFFFFB8C9))
-                nearLeg(56f, 118f, 18f, 30f, c(0xFFFFB8C9), a, 65f, 122f, hind = true, body, Foot.HOOF, c(0xFFC9637F))
-                nearLeg(110f, 118f, 18f, 30f, c(0xFFFFB8C9), b, 119f, 122f, hind = false, body, Foot.HOOF, c(0xFFC9637F))
+                nearLeg(70f, 118f, 18f, 30f, c(0xFFFFB8C9), a, 79f, 122f, hind = true, body, Foot.HOOF, c(0xFFC9637F))
+                nearLeg(124f, 118f, 18f, 30f, c(0xFFFFB8C9), b, 133f, 122f, hind = false, body, Foot.HOOF, c(0xFFC9637F))
                 svg("M128 60 l4 -26 l18 20 z", c(0xFFFF9DB5))
                 circle(146f, 86f, 32f, c(0xFFFFB8C9))
                 ellipse(176f, 94f, 14f, 11f, c(0xFFFF9DB5))
@@ -470,13 +499,13 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
         HEDGEHOG -> {
             shadow(100f, 160f, 56f, 7f)
             translate(0f, bob) {
-                val body = listOf(svgPath("M34 132 L24 114 L40 110 L28 92 L48 94 L42 74 L60 82 L62 60 L78 74 L88 54 L98 74 L112 58 L116 78 L132 68 L130 88 L146 86 L150 104 L154 132 Z"), oval(150f, 112f, 28f, 24f))
+                // 몸과 색이 달라서 다리를 모두 가시 치마 아래에 숨겨 아래쪽만 보이게 한다
                 farLeg(66f, 124f, 14f, 26f, c(0xFFC9A27A), b, 73f, 128f, hind = true, Foot.PAW)
                 farLeg(104f, 124f, 14f, 26f, c(0xFFC9A27A), a, 111f, 128f, hind = false, Foot.PAW)
+                farLeg(80f, 124f, 14f, 26f, c(0xFFE6C49A), a, 87f, 128f, hind = true, Foot.PAW)
+                farLeg(124f, 124f, 14f, 26f, c(0xFFE6C49A), b, 131f, 128f, hind = false, Foot.PAW)
                 svg("M34 132 L24 114 L40 110 L28 92 L48 94 L42 74 L60 82 L62 60 L78 74 L88 54 L98 74 L112 58 L116 78 L132 68 L130 88 L146 86 L150 104 L154 132 Z", c(0xFF7A5236))
                 svg("M54 128 q4 -40 46 -46 q34 2 42 46 z", c(0xFF9C6B46), sw = 0f)
-                nearLeg(80f, 124f, 14f, 26f, c(0xFFE6C49A), a, 87f, 128f, hind = true, body, Foot.PAW)
-                nearLeg(124f, 124f, 14f, 26f, c(0xFFE6C49A), b, 131f, 128f, hind = false, body, Foot.PAW)
                 circle(140f, 90f, 8f, c(0xFFF0D2A8))
                 ellipse(150f, 112f, 28f, 24f, c(0xFFF0D2A8))
                 svg("M168 104 q22 4 18 16 q-8 6 -22 0 z", c(0xFFF0D2A8))
@@ -549,13 +578,14 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
             val black = c(0xFF2E2838)
             shadow(100f, 160f, 60f, 7f)
             translate(0f, bob) {
-                val body = listOf(oval(88f, 106f, 50f, 34f), svgPath("M100 78 q22 -6 32 8 l-6 46 q-14 4 -26 -4 z"))
-                farLeg(60f, 116f, 18f, 34f, black, b, 69f, 120f, hind = true, Foot.PAW)
-                farLeg(106f, 116f, 18f, 34f, black, a, 115f, 120f, hind = false, Foot.PAW)
+                val far = c(0xFF1E1A28)
+                roundLeg(60f, 116f, 18f, 34f, far, b, 69f, 120f, hind = true)
+                roundLeg(106f, 116f, 18f, 34f, far, a, 115f, 120f, hind = false)
                 ellipse(88f, 106f, 50f, 34f, White)
                 svg("M100 78 q22 -6 32 8 l-6 46 q-14 4 -26 -4 z", black)
-                nearLeg(74f, 116f, 18f, 34f, black, a, 83f, 120f, hind = true, body, Foot.PAW)
-                nearLeg(120f, 116f, 18f, 34f, black, b, 129f, 120f, hind = false, body, Foot.PAW)
+                // 몸과 색이 달라서, 가까운 다리는 몸 위에 테두리까지 통째로 그리고 위쪽을 둥글게 마무리
+                roundLeg(74f, 116f, 18f, 34f, black, a, 83f, 120f, hind = true)
+                roundLeg(120f, 116f, 18f, 34f, black, b, 129f, 120f, hind = false)
                 circle(125f, 56f, 13f, black); circle(177f, 56f, 13f, black)
                 ellipse(151f, 84f, 36f, 31f, White)
                 ellipse(138f, 84f, 11.5f, 9f, black, rot = -25f, sw = 0f)
