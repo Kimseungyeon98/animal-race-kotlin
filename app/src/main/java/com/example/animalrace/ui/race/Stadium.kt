@@ -108,9 +108,8 @@ enum class Deco(
     // 배경 손님
     BUTTERFLY(22f, 16f, "M11 8 Q4 -2 1 4 Q0 10 11 9 Q22 10 21 4 Q18 -2 11 8 Z", Color(0xFFFFD84D), "M11 4 L11 14"),
     GULL(34f, 14f, "M1 10 Q9 0 17 9 Q25 0 33 10 Q25 5 17 12 Q9 5 1 10 Z", Color.White),
-    SNOWMAN(30f, 44f, "M15 44 A13 13 0 1 1 15.1 44 Z M15 20 A9 9 0 1 1 15.1 20 Z", Color.White, "M15 10 L22 12 L15 13 Z", Color(0xFFFF9A5C)),
-    DEVIL(40f, 56f, "M4 4 Q20 0 36 4 Q30 14 32 18 Q14 22 10 18 Q14 30 26 32 Q18 40 22 46 Q18 54 20 56 Q14 48 16 42 Q8 36 12 30 Q2 22 8 16 Q2 10 4 4 Z",
-        Color(0xFFF3C79A), "M10 8 Q20 12 30 8 M12 26 Q20 30 26 26", detail = Color(0xFFC98A4E));
+    /** 자리·크기만 쓰고 그림은 [snowmanGuest] (팔을 흔들어서 따로 그린다) */
+    SNOWMAN(40f, 56f, "", null);
 
     val main: Path? = d1.takeIf { it.isNotEmpty() }?.let { PathParser().parsePathString(it).toPath() }
     val sub: Path? = d2.takeIf { it.isNotEmpty() }?.let { PathParser().parsePathString(it).toPath() }
@@ -202,7 +201,8 @@ internal fun DrawScope.stadiumBackdrop(st: Stadium, top: Float, camPx: Float, ti
         for ((d, at) in st.props) {
             val x = base + at.dp.toPx()
             if (x + d.w * unit < 0 || x > size.width) continue
-            deco(d, x, top - 16.dp.toPx() - d.h * unit, unit, stroke = 2.5f)
+            val y = top - 16.dp.toPx() - d.h * unit
+            if (d == Deco.SNOWMAN) snowmanGuest(x, y, unit, time) else deco(d, x, y, unit, stroke = 2.5f)
         }
         base += period
     }
@@ -229,7 +229,7 @@ private fun DrawScope.guests(st: Stadium, top: Float, camPx: Float, time: Double
             val far = size.width + 100.dp.toPx()
             val x = size.width + 20.dp.toPx() - ((camPx * 0.2f + tt * 14.dp.toPx() + size.width * 0.3f) % far)
             val wob = sin(tt * 2) * 3.dp.toPx()
-            deco(Deco.DEVIL, x + wob, top - 14.dp.toPx() - 56 * density * 1.2f, density * 1.2f)
+            devilGuest(x + wob, top - 14.dp.toPx() - 80 * density, density, time)
         }
         Stadium.SNOW -> Unit
     }
