@@ -1,48 +1,68 @@
-# 복불복 동물 레이스 (Kotlin + Jetpack Compose)
+<p align="center">
+  <img src="docs/media/hero.gif" width="320" alt="해변 경기장에서 파도가 덮치는 경주 장면">
+</p>
 
-**현재 버전: 3.7**
+<h1 align="center">🏁 복불복 동물 레이스</h1>
 
-벌칙을 정하고 각자 응원할 동물을 2~10마리 골라 경주시키는 사내용 게임 앱입니다.
+<p align="center">
+  <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
+  <img src="https://img.shields.io/badge/version-3.7.1-4C9A2A" alt="version 3.7.1">
+  <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
+  <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
+  <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
+</p>
 
-## 빌드
-1. 프로젝트 루트에 `local.properties` 를 두거나(`sdk.dir=...`), IntelliJ/Android Studio가 자동으로 만들게 합니다.
-2. Gradle JDK는 17 또는 21을 사용합니다. (25는 Gradle 8.14가 지원하지 않음)
-3. 실행: IDE에서 `app` 실행 구성으로 ▶, 또는 `gradlew installDebug`
+"꼴찌가 커피 쏘기" 같은 벌칙을 정하고, 각자 응원할 동물을 골라 경주시키는 복불복 게임이에요. 2~10마리가 달리고, 꼴찌로 들어온 동물을 응원한 사람이 벌칙 당첨!
 
-## 코드 구조
-```
-app/src/main/java/com/example/animalrace/
-├── MainActivity.kt          진입점. 화면 켜짐 유지, 뒤로가기 처리
-├── AppState.kt              앱 전체 상태 + 화면 전환(Setup → Race → Result)
-├── model/
-│   ├── Animal.kt            동물 20종 (이모지·스킬·설명·대표색)
-│   └── RaceRecord.kt        경기 기록 모델 + 저장소 인터페이스
-├── race/Race.kt             경주 엔진: 결과 추첨 + 스토리보드(전개 연출), 순수 Kotlin
-├── data/PrefsRepository.kt  SharedPreferences(JSON)에 설정·최근 10판 저장
-└── ui/
-    ├── App.kt               화면 전환 애니메이션
-    ├── theme/               B안 카툰 팔레트(밝은 테마 고정), 주아체·Fredoka, 출전 번호 색
-    ├── art/
-    │   ├── AnimalArt.kt     동물 20종 일러스트 (디자인 시안 SVG를 Canvas로 옮김)
-    │   └── AnimalSprite.kt  캐릭터 컴포넌트: 달리기 동작 + 스킬/피격 연출
-    ├── components/          입체 버튼, 외곽선 글자, 출전 번호 스티커, 선 아이콘
-    ├── setup/SetupScreen.kt 메인: 동물 고르기, 도감, 최근 경기, 벌칙 수정
-    ├── race/RaceScreen.kt   경주: 따라가는 카메라, 하늘·언덕·울타리·흙길, 순위 띠, 중계 말풍선
-    └── result/ResultScreen.kt 결과: 벌칙 당첨, 시상대, 전체 기록, 꽃가루
-```
+## ✨ 이런 게임이에요
 
-## 고쳐 보기 좋은 곳
-- 전개(역할·스킬 시점): `race/Race.kt` 의 `Director.arc()` — 결과 확률에는 영향 없음
-- 스킬 세기·길이: `boostPhases()` (가속), `build()` 의 방해 멈춤 1.6~2.4초
-- 스킬 아닌 구간의 속도 허용 범위: `PACE_MIN`/`PACE_MAX` (기준 속도의 0.7~1.3배)
-- 경기 길이·간격: `race/Race.kt` 의 `finishAt` (1등 16.8~18.4초, 이후 0.08~0.45초 간격)
-- 공정성·전개 테스트: `gradlew test` (`FairnessTest.kt`, `StoryTest.kt`)
-- 중반 선두가 이기는 판의 비율: `race/Race.kt` 의 `LEADER_WINS_2`(2마리, 50%) / `LEADER_WINS_N`(3마리 이상, 40%)
-- 색상: `ui/theme/Theme.kt` 의 `Pal`
-- 캐릭터 그림: `ui/art/AnimalArt.kt` / 연출: `ui/art/AnimalSprite.kt` 의 `fxFrame()`
-- 카메라: `ui/race/RaceScreen.kt` 의 `cameraTarget()` (확대 범위 130~420m, 선두 위치 70%)
+| | |
+|:-:|:-:|
+| <img src="docs/media/reversal.gif" width="240" alt="원숭이가 넘어지고 토끼가 역전해 1등"> | <img src="docs/media/venues.gif" width="240" alt="초원·해변·설원·사막 경기장"> |
+| **🎬 역전 드라마**<br>방해·실수·분발로 순위가 뒤집혀요.<br>끝날 때까지 아무도 몰라요. | **🏟️ 경기장 4종**<br>초원·해변·설원·사막 중 매 판 무작위.<br>경기장마다 하늘·소품·바닥이 달라요. |
 
-## 패치노트
+- **🎲 완전 공정** — 최종 순위는 출발하는 순간 균등 무작위로 정해져요. 스킬과 역전은 보는 재미를 위한 연출이라, 어떤 동물이든 모든 순위에 같은 확률로 와요. ([검증 결과](docs/fairness.md))
+- **🐾 동물 20종** — 말·치타·토끼부터 카피바라·판다까지, 동물마다 다른 스킬 장면과 대사가 있어요.
+
+## 🎮 이렇게 놀아요
+
+| ① 동물 고르기 | ② 응원하기 | ③ 벌칙 확인 |
+|:-:|:-:|:-:|
+| <img src="docs/media/select.gif" width="200" alt="메인 화면에서 동물 고르기"> | <img src="docs/media/countdown.gif" width="200" alt="경기장 이름표와 카운트다운"> | <img src="docs/media/result.gif" width="200" alt="결과 화면 시상대와 꼴찌 발표"> |
+| 2~10마리를 고르고<br>꼴찌 벌칙을 정해요 | 카운트다운 후 출발!<br>해설과 함께 지켜봐요 | 시상대와 꼴찌 발표<br>기록은 10판까지 저장 |
+
+## 🗓️ 이렇게 자라 왔어요
+
+| 버전 | 큰 변화 |
+|:-:|---|
+| **1.0** | **첫 완성** — 동물 14종과 고유 스킬, 메인·경주·결과 화면 |
+| **2.0** | **카메라가 따라가는 경주** — 한 화면에서 동물 고르기, 선두 무리를 따라가며 확대·축소하는 카메라 |
+| **2.1** | **완전 공정 엔진** — 순위는 출발 때 균등 무작위, 스킬은 연출만. 30만 판 카이제곱 검증 |
+| **3.0** | **카툰 리디자인** — 직접 그린 캐릭터 일러스트, 스킬·피격 연출, 동물 도감 |
+| **3.1** | **모든 역전에 보이는 이유** — 스토리보드 엔진: 큰 순위 변화는 눈에 보이는 방해·실수·분발로만 |
+| **3.2** | **신규 캐릭터 6종** — 스컹크·고슴도치·카피바라·나무늘보·햄스터·판다 (총 20종)<br><img src="docs/media/species.png" width="220" alt="닭·오리·스컹크·나무늘보가 달리는 해변"> |
+| **3.3** | **다리 다듬기** — 막대 다리 → 몸과 이어지고 아래로 가늘어지는 다리와 발<br><img src="docs/media/legs.png" width="220" alt="원숭이·강아지·토끼가 달리는 초원"> |
+| **3.4** | **트랙 바닥 디테일** — 조약돌·풀 포기·발자국, 달리는 동물 뒤로 흙먼지 |
+| **3.5** | **경기장 4종** — 초원·해변·설원·사막 무작위, 기록에 경기장 저장 |
+| **3.6** | **경기장별 연출** — 혼자 넘어지는 장면이 경기장마다 달라요 (아래) |
+| **3.7** | **나가기 확인창** — 경주 중 뒤로 가기 → 일시정지 + "아직 경기 중이에요!" |
+
+**3.6 경기장별 연출** — 순위·멈춤 시간은 그대로, 장면만 경기장에 맞게
+
+| 🌿 초원 · 꽈당! | 🏖️ 해변 · 철썩! |
+|:-:|:-:|
+| <img src="docs/media/trip-meadow.gif" width="300" alt="원숭이가 돌부리에 걸려 꽈당"> | <img src="docs/media/trip-beach.gif" width="300" alt="오리와 스컹크가 파도에 철썩"> |
+| **❄️ 설원 · 미끄덩! 와르르!** | **🌵 사막 · 휘잉~** |
+| <img src="docs/media/trip-snow.gif" width="300" alt="고슴도치가 빙판에 미끄러지고 눈더미가 떨어짐"> | <img src="docs/media/trip-desert.gif" width="300" alt="강아지가 모래 토네이도에 휘말려 빙글빙글"> |
+
+---
+
+<details>
+<summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.7.1 — README 소개 페이지
+- README를 게임 소개 페이지로: 실제 플레이 녹화에서 자른 움짤(경주·역전·경기장 4종·경기장별 넘어짐·고르기·카운트다운·결과)과 버전별 큰 변화
+- 움짤은 `docs/media/` (앱 동작 변경 없음)
 
 ### 3.7 — 경기 나가기 확인창
 - 경주(카운트다운 포함) 중 뒤로 가기 → 바로 나가지 않고 "아직 경기 중이에요!" 확인창, 떠 있는 동안 경주 일시정지
@@ -232,6 +252,60 @@ app/src/main/java/com/example/animalrace/
 - 메인(벌칙 입력, 동물 선택, 최근 10판), 경주, 결과(시상대, 벌칙 당첨, 꽃가루) 화면
 - 라이트/다크 테마, 진동 피드백, 기록 로컬 저장
 
-폰트: Jua, Fredoka (SIL Open Font License 1.1)
+</details>
 
-디자인 시안: Claude 디자인 캔버스 "동물 레이스 리디자인 시안"
+<details>
+<summary><b>🛠️ 빌드 방법</b></summary>
+
+1. 프로젝트 루트에 `local.properties` 를 두거나(`sdk.dir=...`), IntelliJ/Android Studio가 자동으로 만들게 합니다.
+2. Gradle JDK는 17 또는 21을 사용합니다. (25는 Gradle 8.14가 지원하지 않음)
+3. 실행: IDE에서 `app` 실행 구성으로 ▶, 또는 `gradlew installDebug`
+</details>
+
+<details>
+<summary><b>🗂️ 코드 구조 · 고쳐 보기 좋은 곳</b></summary>
+
+```
+app/src/main/java/com/example/animalrace/
+├── MainActivity.kt          진입점. 화면 켜짐 유지, 뒤로가기(경주 중 확인창) 처리
+├── AppState.kt              앱 전체 상태 + 화면 전환(Setup → Race → Result)
+├── model/
+│   ├── Animal.kt            동물 20종 (이모지·스킬·설명·대표색)
+│   ├── Venue.kt             경기장 4종 (기록에 저장되는 값)
+│   └── RaceRecord.kt        경기 기록 모델 + 저장소 인터페이스
+├── race/Race.kt             경주 엔진: 결과 추첨 + 스토리보드(전개 연출), 순수 Kotlin
+├── data/PrefsRepository.kt  SharedPreferences(JSON)에 설정·최근 10판 저장
+└── ui/
+    ├── App.kt               화면 전환 애니메이션
+    ├── theme/               카툰 팔레트(밝은 테마 고정), 주아체·Fredoka, 출전 번호 색
+    ├── art/
+    │   ├── AnimalArt.kt     동물 20종 일러스트 (디자인 시안 SVG를 Canvas로 옮김)
+    │   ├── AnimalSprite.kt  캐릭터 컴포넌트: 달리기 동작 + 스킬/피격 연출
+    │   └── VenueFx.kt       경기장별 넘어짐 장면 (돌부리·파도·빙판 눈더미·모래 토네이도)
+    ├── components/          입체 버튼, 외곽선 글자, 출전 번호 스티커, 선 아이콘
+    ├── setup/SetupScreen.kt 메인: 동물 고르기, 도감, 최근 경기, 벌칙 수정
+    ├── race/
+    │   ├── RaceScreen.kt    경주: 따라가는 카메라, 순위 띠, 중계 말풍선, 나가기 확인창
+    │   ├── Stadium.kt       경기장 테마: 하늘·언덕/바다·울타리·트랙 바닥 무늬
+    │   └── Guests.kt        배경 손님: 설원 눈사람, 사막 모래 회오리
+    └── result/ResultScreen.kt 결과: 벌칙 당첨, 시상대, 전체 기록, 꽃가루
+```
+
+- 전개(역할·스킬 시점): `race/Race.kt` 의 `Director.arc()` — 결과 확률에는 영향 없음
+- 스킬 세기·길이: `boostPhases()` (가속), `build()` 의 방해 멈춤 1.6~2.4초
+- 스킬 아닌 구간의 속도 허용 범위: `PACE_MIN`/`PACE_MAX` (기준 속도의 0.7~1.3배)
+- 경기 길이·간격: `race/Race.kt` 의 `finishAt` (1등 16.8~18.4초, 이후 0.08~0.45초 간격)
+- 공정성·전개 테스트: `gradlew test` (`FairnessTest.kt`, `StoryTest.kt`)
+- 중반 선두가 이기는 판의 비율: `race/Race.kt` 의 `LEADER_WINS_2`(2마리, 50%) / `LEADER_WINS_N`(3마리 이상, 40%)
+- 색상: `ui/theme/Theme.kt` 의 `Pal`
+- 캐릭터 그림: `ui/art/AnimalArt.kt` / 연출: `ui/art/AnimalSprite.kt` 의 `fxFrame()`
+- 카메라: `ui/race/RaceScreen.kt` 의 `cameraTarget()` (확대 범위 130~420m, 선두 위치 70%)
+</details>
+
+<details>
+<summary><b>⚖️ 공정성 검증</b></summary>
+
+순위는 출발 순간 균등한 무작위 순열로 먼저 정하고, 경주는 그 결과를 향해 가는 연출이에요. 동물 × 순위 분포를 카이제곱으로 검정하고(`FairnessTest`), 경기장이 결과를 바꾸지 않는지도 테스트해요(`venueNeverChangesTheRace`). 자세한 결과는 [`docs/fairness.md`](docs/fairness.md).
+</details>
+
+폰트: Jua, Fredoka (SIL Open Font License 1.1) · 디자인 시안: Claude 디자인 캔버스 "동물 레이스 리디자인 시안"
