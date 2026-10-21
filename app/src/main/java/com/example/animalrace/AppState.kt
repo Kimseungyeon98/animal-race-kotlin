@@ -34,13 +34,8 @@ class AppState(private val repo: AppRepository) {
     val canStart get() = selected.size >= MIN_RACERS
 
     init {
-        val saved = repo.loadSetup()
-        if (saved != null) {
-            selected.addAll(saved.animals.distinct().take(MAX_RACERS))
-            bet = saved.bet
-        } else {
-            selected.addAll(listOf(Animal.HORSE, Animal.TURTLE, Animal.RABBIT, Animal.MONKEY))
-        }
+        // 앱을 켤 때마다 출전 동물은 비운 채로 시작하고, 벌칙 문구만 지난번 것을 이어 쓴다
+        repo.loadSetup()?.let { bet = it.bet }
         history.addAll(repo.loadHistory().take(HISTORY_SIZE))
     }
 
