@@ -559,7 +559,7 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default, priv
                 }
                 if (v.animal == RABBIT && running.count { it.pathAt(t0) > v.pathAt(t0) } <= 1) {
                     options += 2.5 to {
-                        seg.fx = Fx.SKILL
+                        seg.fx = Fx.FLAW
                         cues += Cue(t0, "${tag(v)} 너무 앞서서 방심, 낮잠…", v)
                     }
                 }
@@ -642,7 +642,8 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default, priv
             SLOTH -> listOf(Phase(0.0, 2.2, 2.1, Fx.SKILL))
             HAMSTER -> listOf(Phase(0.0, 1.3, 2.1, Fx.SKILL))
             PANDA -> listOf(Phase(0.0, 1.2, 2.3, Fx.SKILL))
-            RABBIT, MONKEY, ELEPHANT, DUCK, SKUNK -> listOf(Phase(0.0, 1.6, 1.9, Fx.RALLY))
+            RABBIT -> listOf(Phase(0.0, 2.0, 1.9, Fx.SKILL))
+            MONKEY, ELEPHANT, DUCK, SKUNK -> listOf(Phase(0.0, 1.6, 1.9, Fx.RALLY))
         }
     }
 
@@ -657,7 +658,7 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default, priv
         SNAIL -> "로켓 점화!!!"
         CHICKEN -> "푸드덕!"
         TURTLE -> "성큼성큼 가속!"
-        RABBIT -> "깡충깡충 전력질주!"
+        RABBIT -> "토끼굴로 쏙! 지름길로~"
         HEDGEHOG -> "몸을 말아 스핀 대시!"
         CAPYBARA -> "유자 얹고 둥실둥실~"
         SLOTH -> "진심 모드 발동!!"

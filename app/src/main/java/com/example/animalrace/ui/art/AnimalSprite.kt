@@ -22,10 +22,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -66,7 +74,12 @@ internal data class FxFrame(
     /** 도형으로 그리기 어려운 연출(파도·토네이도 등). 200×170 그림 좌표, 동물 뒤([under])와 앞([over]) */
     val under: (DrawScope.() -> Unit)? = null,
     val over: (DrawScope.() -> Unit)? = null,
+    /** true면 땅([GROUND_Y]) 아래로 내려간 몸을 가린다 (토끼굴). 이때 dx·dy·rot은 가린 영역 안에서 적용 */
+    val groundClip: Boolean = false,
 )
+
+/** 200×170 그림에서 발이 닿는 땅 높이 */
+internal const val GROUND_Y = 158f
 
 private val BubbleSelf = Color.White
 private val BubbleMean = Color(0xFFFFC93C)
@@ -111,6 +124,8 @@ internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false,
     val t = tick
     // 혼자 넘어짐은 경기장마다 다른 장면 (돌부리·파도·빙판·토네이도)
     if (fx == Fx.TRIP) return venueTrip(venue, t, loop)
+    // 토끼 스킬: 토끼굴 지름길 (땅속으로 숨어서 달리기)
+    if (fx == Fx.SKILL && animal == RABBIT) return rabbitBurrow(t, loop, venue)
     val norm = 1 + (t / 3).toInt() % 2
     val fast = 1 + (t / 2).toInt() % 2
     val cycle = 40f
@@ -152,14 +167,7 @@ internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false,
                     front += blob(194f, 62 + t % 8, 6f, 9f, Sweat)
                     front += bubble("헉헉…", 112f, -16f)
                 }
-                RABBIT -> {
-                    pose = 0; rot = 4f
-                    for (k in 0..2) {
-                        val zy = 44 - (t * 1.5f + k * 14) % 42
-                        front += glyph("Z", 176f + k * 9, zy, 14f + k * 4, Ink, ((zy + 4) / 30).coerceIn(0f, 1f))
-                    }
-                    front += bubble("쿨쿨…", 70f, -16f)
-                }
+                RABBIT -> Unit // 위에서 rabbitBurrow로 처리
                 TURTLE -> {
                     val on = (sin(t / 20 * 2 * PI.toFloat()) + 1) / 2
                     front += blob(78f, 62f, 12f, 7f, Color.White, 0.3f + 0.7f * on)
@@ -357,6 +365,15 @@ internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false,
         Fx.FLAW -> {
             pose = 0
             when (animal) {
+                RABBIT -> {
+                    // 너무 앞서서 방심, 낮잠
+                    rot = 4f
+                    for (k in 0..2) {
+                        val zy = 44 - (t * 1.5f + k * 14) % 42
+                        front += glyph("Z", 176f + k * 9, zy, 14f + k * 4, Ink, ((zy + 4) / 30).coerceIn(0f, 1f))
+                    }
+                    front += bubble("쿨쿨…", 30f, -14f)
+                }
                 HAMSTER -> {
                     // 볼 빵빵하게 해바라기씨 채우기
                     val puff = 1 + 0.15f * sin(t / 2)
@@ -387,6 +404,95 @@ internal fun fxFrame(animal: Animal, fx: Fx, tick: Float, loop: Boolean = false,
         Fx.NONE, Fx.HIT_CYCLE -> Unit
     }
     return FxFrame(back, front, dx, dy, rot, pose)
+}
+
+// ---------------------------------------------------------------- 토끼굴 지름길
+
+/** 경기장별 (굴 구멍, 흙 둔덕) 색 */
+private fun burrowColors(venue: Venue): Pair<Color, Color> = when (venue) {
+    Venue.MEADOW -> Color(0xFF3A2A1E) to Color(0xFFB98A52)
+    Venue.BEACH -> Color(0xFF7A6040) to Color(0xFFE9C88E)
+    Venue.SNOW -> Color(0xFF9FB8D6) to Color.White
+    Venue.DESERT -> Color(0xFF5A3020) to Color(0xFFC97A48)
+}
+
+/** 굴 구멍 + 앞쪽 흙 테. [front]=true면 앞 테만(몸을 덮는 부분) 그린다. 좌표는 200×170. */
+private fun DrawScope.burrowHole(cx: Float, hole: Color, mound: Color, alpha: Float, front: Boolean) {
+    if (alpha <= 0f) return
+    val line = Stroke(5f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+    if (!front) {
+        drawOval(hole, Offset(cx - 58, GROUND_Y - 16), Size(116f, 32f), alpha = alpha)
+        drawOval(Ink, Offset(cx - 58, GROUND_Y - 16), Size(116f, 32f), alpha = alpha, style = line)
+    }
+    val rim = Rect(Offset(cx - 76, GROUND_Y - 14), Size(152f, 30f))
+    drawPath(Path().apply { arcTo(rim, 0f, 180f, true); close() }, mound, alpha = alpha)
+    drawPath(Path().apply { arcTo(rim, 0f, 180f, true) }, Ink, alpha = alpha, style = line)
+}
+
+/**
+ * 토끼굴 지름길 (약 2초): 굴로 쏙 → 땅속으로 두두두(흙 둔덕이 토끼 위치를 보여 줌) → 앞쪽 굴에서 퐁!
+ * 실제 위치는 다른 가속처럼 부드럽게 앞으로 가고, 몸만 땅 아래로 숨긴다.
+ */
+private fun rabbitBurrow(tick: Float, loop: Boolean, venue: Venue): FxFrame {
+    val t = if (loop) tick % 40f else tick
+    val (hole, mound) = burrowColors(venue)
+    val front = mutableListOf<FxPart>()
+    val back = mutableListOf<FxPart>()
+    val line = Stroke(5f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+    fun clamp(v: Float) = v.coerceIn(0f, 1f)
+    return when {
+        t < 6f -> { // 머리부터 굴로 쏙
+            val p = clamp(t / 6f)
+            front += bubble("쏙!", 30f, -14f)
+            FxFrame(front = front, dx = p * 14, dy = p * 175, rot = p * 55, pose = 0, groundClip = true,
+                under = { burrowHole(118f, hole, mound, 1f, front = false) },
+                over = { burrowHole(118f, hole, mound, 1f, front = true) })
+        }
+        t < 27f -> { // 땅속 질주: 둔덕이 따라간다, 들어간 굴은 뒤로 멀어지며 사라짐
+            val gone = clamp((t - 6f) / 5f)
+            front += bubble("두두두…", 30f, -14f)
+            FxFrame(front = front, dy = 400f, pose = 0, groundClip = true,
+                under = {
+                    burrowHole(118f - gone * 90, hole, mound, 1 - gone, front = false)
+                    burrowHole(118f - gone * 90, hole, mound, 1 - gone, front = true)
+                    val bump = Rect(Offset(70f, GROUND_Y - 24), Size(105f, 48f))
+                    drawPath(Path().apply { arcTo(bump, 180f, 180f, true); close() }, mound)
+                    drawPath(Path().apply { arcTo(bump, 180f, 180f, true) }, Ink, style = line)
+                    drawLine(Ink, Offset(118f, GROUND_Y - 18), Offset(124f, GROUND_Y - 8), 4f, cap = StrokeCap.Round)
+                    for (k in 0..2) {
+                        val f = ((t * 0.9f + k * 3) % 8f) / 8f
+                        val d = 16f - f * 7
+                        val c = Offset(62f - f * 48, GROUND_Y - 10 - sin(f * PI.toFloat()) * 26)
+                        drawCircle(mound, d / 2, c, alpha = 1 - f)
+                        drawCircle(Ink, d / 2, c, alpha = 1 - f, style = Stroke(3f))
+                    }
+                })
+        }
+        t < 32f -> { // 앞쪽 굴에서 퐁!
+            val p = clamp((t - 27f) / 5f)
+            front += bubble("퐁!", 30f, -14f)
+            FxFrame(front = front, dy = (1 - p) * 175 - p * 6, rot = -40 * (1 - p), pose = 0, groundClip = true,
+                under = { burrowHole(104f, hole, mound, 1f, front = false) },
+                over = {
+                    burrowHole(104f, hole, mound, 1f, front = true)
+                    for (b in 0..5) {
+                        val ang = PI.toFloat() * (0.15f + b * 0.14f)
+                        val d = 26 + p * 84
+                        val side = if (b % 2 == 1) 1 else -1
+                        val c = Offset(104f + cos(ang) * d * side, GROUND_Y - 10 - sin(ang) * d)
+                        val r = (18 - p * 7) / 2
+                        drawCircle(mound, r, c, alpha = 1 - p * 0.7f)
+                        drawCircle(Ink, r, c, alpha = 1 - p * 0.7f, style = Stroke(3f))
+                    }
+                })
+        }
+        else -> { // 지름길 성공! (반복 재생일 때만 보이는 마무리)
+            for (k in 0..2) { val m = (t * 7 + k * 9) % 26; back += speedLine(14 - m, 70f + k * 18, 34f - k * 6, loopFade(m / 26)) }
+            front += bubble("지름길 성공!", 92f, -16f)
+            FxFrame(back = back, front = front, pose = 1 + (t / 2).toInt() % 2,
+                under = { burrowHole(104f - (t - 32f) * 12, hole, mound, clamp(1 - (t - 32f) / 6f), front = false) })
+        }
+    }
 }
 
 /** 화면이 떠 있는 동안 흐르는 시간(초). */
@@ -434,6 +540,7 @@ fun AnimalSprite(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer {
+                    if (effect.groundClip) return@graphicsLayer
                     translationX = effect.dx * s * density
                     translationY = effect.dy * s * density
                     rotationZ = effect.rot
@@ -442,7 +549,18 @@ fun AnimalSprite(
                     transformOrigin = TransformOrigin(0.5f, effect.pivotY)
                 },
         ) {
-            scale(this.size.width / 200f, pivot = Offset.Zero) { drawAnimal(animal, pose) }
+            val k = this.size.width / 200f
+            if (effect.groundClip) {
+                // 굴로 들어가는 몸은 땅 아래로 잘라낸다
+                clipRect(bottom = GROUND_Y * k) {
+                    withTransform({
+                        translate(effect.dx * k, effect.dy * k)
+                        rotate(effect.rot, Offset(100f * k, this@Canvas.size.height * effect.pivotY))
+                    }) { scale(k, pivot = Offset.Zero) { drawAnimal(animal, pose) } }
+                }
+            } else {
+                scale(k, pivot = Offset.Zero) { drawAnimal(animal, pose) }
+            }
         }
         effect.front.forEach { FxPartView(it, s) }
         effect.over?.let { draw -> Canvas(Modifier.fillMaxSize()) { scale(this.size.width / 200f, pivot = Offset.Zero) { draw() } } }

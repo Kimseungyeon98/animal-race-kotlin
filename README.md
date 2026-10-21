@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.8-4C9A2A" alt="version 3.8">
+  <img src="https://img.shields.io/badge/version-3.9-4C9A2A" alt="version 3.9">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -60,6 +60,12 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.9 — 토끼 스킬: 토끼굴 지름길
+- 토끼에게 전용 가속이 생김: 굴로 쏙 들어가 땅속을 두두두(흙 둔덕이 위치를 보여 줌) → 앞쪽 굴에서 퐁! (약 2초)
+- 굴·둔덕 색은 경기장마다 (초원 흙·해변 모래·설원 눈·사막 붉은 흙)
+- 낮잠은 실수 장면으로 이동 (햄스터·판다·나무늘보처럼) · 도감 스킬 이름 "선두 낮잠" → "토끼굴 지름길"
+- 땅속에서도 실제 위치는 다른 가속처럼 부드럽게 이동 — 순간이동 아님, 순위·확률 그대로
 
 ### 3.8 — 앱 아이콘: 1등 왕관 쓴 말
 - 체커 깃발 아이콘 → 대표 캐릭터 말의 얼굴에 1등 왕관, 하늘색 배경 (적응형 아이콘 벡터)
