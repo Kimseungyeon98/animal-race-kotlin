@@ -9,12 +9,14 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.PathParser
@@ -96,6 +98,86 @@ private fun DrawScope.shadow(cx: Float, cy: Float, rx: Float, ry: Float) =
 
 private fun c(hex: Long) = Color(hex)
 
+// ---------- 다리 ----------
+// 위는 굵고 아래로 가늘어지는 다리 + 발. 먼 쪽 다리는 몸통 뒤에 통째로 그리고,
+// 가까운 다리는 몸통 위에 채운 뒤 테두리를 몸통 바깥에서만 그려서 몸 윤곽이 끊김 없이 다리로 이어지게 한다.
+
+private enum class Foot { PAW, HOOF, PAD }
+
+private val legCache = HashMap<String, Path>()
+
+/** 예전 막대 다리 자리 (x, y, w, h)에 맞춘 다리 모양. 뒷다리는 허벅지에서 살짝 꺾인다. */
+private fun legShape(x: Float, y: Float, w: Float, h: Float, hind: Boolean): Path = legCache.getOrPut("$x,$y,$w,$h,$hind") {
+    val cx = x + w / 2
+    val a = w / 2 + 2.5f
+    val b = maxOf(4.5f, w / 2 - 1.5f)
+    val y0 = y - 4
+    val l = h + 4
+    Path().apply {
+        if (hind) {
+            moveTo(cx - a - 2, y0)
+            cubicTo(cx - a - 3, y0 + l * 0.35f, cx - b - 1, y0 + l * 0.55f, cx - b, y0 + l * 0.75f)
+            lineTo(cx - b, y0 + l); lineTo(cx + b, y0 + l); lineTo(cx + b, y0 + l * 0.75f)
+            cubicTo(cx + b + 1, y0 + l * 0.5f, cx + a, y0 + l * 0.3f, cx + a, y0)
+        } else {
+            moveTo(cx - a, y0)
+            cubicTo(cx - a, y0 + l * 0.4f, cx - b - 1.5f, y0 + l * 0.6f, cx - b, y0 + l)
+            lineTo(cx + b, y0 + l)
+            cubicTo(cx + b + 1.5f, y0 + l * 0.6f, cx + a, y0 + l * 0.4f, cx + a, y0)
+        }
+        close()
+    }
+}
+
+private fun DrawScope.foot(foot: Foot, x: Float, w: Float, y: Float, h: Float, color: Color, claws: Boolean) {
+    val cx = x + w / 2
+    val b = maxOf(4.5f, w / 2 - 1.5f)
+    val yb = y + h
+    when (foot) {
+        Foot.PAW -> ellipse(cx + 2.5f, yb + 1, b + 4, 5.5f, color, sw = 4f)
+        Foot.HOOF -> {
+            val r = CornerRadius(3f, 3f)
+            val hoof = Path().apply { addRoundRect(RoundRect(cx - b - 1, yb - 3, cx + b + 1, yb + 5, CornerRadius.Zero, CornerRadius.Zero, r, r)) }
+            paint(hoof, color, 4f, Ink)
+        }
+        Foot.PAD -> {
+            ellipse(cx + 1, yb + 1, b + 5, 5.5f, color, sw = 4f)
+            for (i in 0..2) svg("M${cx - b + 2 + i * (b - 1)} ${yb + 3} q2 -3 4 0", null, sw = 2f, stroke = White)
+        }
+    }
+    if (claws) svg("M${cx - 3} ${yb + 5} l-3 6 M${cx + 2} ${yb + 6} l0 6 M${cx + 7} ${yb + 5} l3 6", null, sw = 3f, stroke = c(0xFFE9E1DD))
+}
+
+/** [shapes] 바깥에서만 그린다 (몸통 안쪽은 잘라 냄). */
+private fun DrawScope.outside(shapes: List<Path>, block: DrawScope.() -> Unit) {
+    if (shapes.isEmpty()) block() else clipPath(shapes[0], ClipOp.Difference) { outside(shapes.drop(1), block) }
+}
+
+private fun DrawScope.farLegOf(shape: Path, fill: Color, rot: Float, px: Float, py: Float, feet: DrawScope.() -> Unit) {
+    rotate(rot, Offset(px, py)) { paint(shape, fill, 5f, Ink); feet() }
+}
+
+private fun DrawScope.nearLegOf(shape: Path, fill: Color, rot: Float, px: Float, py: Float, body: List<Path>, feet: DrawScope.() -> Unit) {
+    rotate(rot, Offset(px, py)) { drawPath(shape, fill) }
+    outside(body) { rotate(rot, Offset(px, py)) { drawPath(shape, Ink, style = Stroke(width = 5f, cap = StrokeCap.Round, join = StrokeJoin.Round)) } }
+    rotate(rot, Offset(px, py)) { feet() }
+}
+
+private fun DrawScope.farLeg(
+    x: Float, y: Float, w: Float, h: Float, fill: Color, rot: Float, px: Float, py: Float,
+    hind: Boolean, foot: Foot, footColor: Color = fill, claws: Boolean = false,
+) = farLegOf(legShape(x, y, w, h, hind), fill, rot, px, py) { foot(foot, x, w, y, h, footColor, claws) }
+
+private fun DrawScope.nearLeg(
+    x: Float, y: Float, w: Float, h: Float, fill: Color, rot: Float, px: Float, py: Float,
+    hind: Boolean, body: List<Path>, foot: Foot, footColor: Color = fill, claws: Boolean = false,
+) = nearLegOf(legShape(x, y, w, h, hind), fill, rot, px, py, body) { foot(foot, x, w, y, h, footColor, claws) }
+
+private fun oval(cx: Float, cy: Float, rx: Float, ry: Float) = Path().apply { addOval(Rect(cx - rx, cy - ry, cx + rx, cy + ry)) }
+
+private fun roundBox(x: Float, y: Float, w: Float, h: Float, r: Float) =
+    Path().apply { addRoundRect(RoundRect(x, y, x + w, y + h, CornerRadius(r, r))) }
+
 /** 200×170 좌표계 기준으로 동물 한 마리를 그린다. 호출하는 쪽에서 크기에 맞게 scale한다. */
 internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
     val a = p.legA; val b = p.legB; val bob = p.bob
@@ -104,12 +186,20 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
             shadow(100f, 160f, 64f, 7f)
             translate(0f, bob) {
                 svg("M40 84 q-28 6 -24 44 q14 -10 22 -26 z", c(0xFF6B3E22))
-                rrect(58f, 104f, 16f, 48f, 7f, c(0xFFA86B3C), b, 66f, 108f)
-                rrect(118f, 104f, 16f, 48f, 7f, c(0xFFA86B3C), a, 126f, 108f)
+                val hindLeg = svgPath("M58 96 C56 108 62 116 66 122 C68 130 66 140 66 146 L78 146 C78 138 80 128 78 120 C77 110 82 102 80 96 Z")
+                val frontLeg = svgPath("M128 98 C128 110 134 120 134 130 C134 136 133 142 132 146 L144 146 C145 140 146 134 145 126 C146 116 150 108 150 98 Z")
+                val hoof = c(0xFF4A2E1A)
+                val hindHoof: DrawScope.() -> Unit = { svg("M64 144 h16 v7 q0 3 -3 3 h-10 q-3 0 -3 -3 z", hoof, sw = 4f) }
+                val frontHoof: DrawScope.() -> Unit = { svg("M130 144 h16 v7 q0 3 -3 3 h-10 q-3 0 -3 -3 z", hoof, sw = 4f) }
+                translate(-12f, 0f) {
+                    farLegOf(hindLeg, c(0xFFA86B3C), b, 70f, 104f, hindHoof)
+                    farLegOf(frontLeg, c(0xFFA86B3C), a, 138f, 104f, frontHoof)
+                }
                 // 몸통과 목을 하나의 곡선 윤곽으로 그려 어깨에 이음새 선이 생기지 않게 한다
-                svg("M36 98 C36 76 56 66 86 66 C104 66 116 64 124 56 C130 50 134 44 140 38 L164 50 C160 62 156 74 154 86 C152 104 140 124 104 126 C72 128 36 122 36 98 Z", c(0xFFC98A52))
-                rrect(70f, 104f, 16f, 48f, 7f, c(0xFFC98A52), a, 78f, 108f)
-                rrect(130f, 104f, 16f, 48f, 7f, c(0xFFC98A52), b, 138f, 108f)
+                val torso = svgPath("M36 98 C36 76 56 66 86 66 C104 66 116 64 124 56 C130 50 134 44 140 38 L164 50 C160 62 156 74 154 86 C152 104 140 124 104 126 C72 128 36 122 36 98 Z")
+                paint(torso, c(0xFFC98A52), 5f, Ink)
+                nearLegOf(hindLeg, c(0xFFC98A52), a, 70f, 104f, listOf(torso), hindHoof)
+                nearLegOf(frontLeg, c(0xFFC98A52), b, 138f, 104f, listOf(torso), frontHoof)
                 svg("M144 30 C134 42 124 56 104 66 L112 72 C128 64 140 52 152 38 Z", c(0xFF6B3E22))
                 svg("M140 36 l4 -18 l12 16 z", c(0xFFC98A52))
                 ellipse(160f, 52f, 28f, 17f, c(0xFFC98A52), rot = 24f)
@@ -122,16 +212,17 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
         CHEETAH -> {
             shadow(100f, 160f, 66f, 7f)
             translate(0f, bob) {
+                val body = listOf(oval(92f, 98f, 60f, 26f))
                 svg("M38 90 q-30 -8 -24 -42", null, sw = 12f)
                 svg("M38 90 q-30 -8 -24 -42", null, sw = 5f, stroke = c(0xFFF5C04A))
-                rrect(56f, 104f, 14f, 46f, 7f, c(0xFFDDA437), b, 63f, 108f)
-                rrect(118f, 104f, 14f, 46f, 7f, c(0xFFDDA437), a, 125f, 108f)
+                farLeg(56f, 104f, 14f, 46f, c(0xFFDDA437), b, 63f, 108f, hind = true, Foot.PAW)
+                farLeg(118f, 104f, 14f, 46f, c(0xFFDDA437), a, 125f, 108f, hind = false, Foot.PAW)
                 ellipse(92f, 98f, 60f, 26f, c(0xFFF5C04A))
                 val spot = c(0xFF6B4A1E)
                 dot(66f, 92f, 5f, spot); dot(88f, 102f, 4f, spot); dot(106f, 88f, 5f, spot)
                 dot(58f, 106f, 4f, spot); dot(124f, 102f, 4f, spot); dot(84f, 84f, 3.5f, spot)
-                rrect(68f, 104f, 14f, 46f, 7f, c(0xFFF5C04A), a, 75f, 108f)
-                rrect(130f, 104f, 14f, 46f, 7f, c(0xFFF5C04A), b, 137f, 108f)
+                nearLeg(68f, 104f, 14f, 46f, c(0xFFF5C04A), a, 75f, 108f, hind = true, body, Foot.PAW)
+                nearLeg(130f, 104f, 14f, 46f, c(0xFFF5C04A), b, 137f, 108f, hind = false, body, Foot.PAW)
                 circle(146f, 62f, 8f, c(0xFFF5C04A)); circle(168f, 60f, 8f, c(0xFFF5C04A))
                 circle(158f, 84f, 24f, c(0xFFF5C04A))
                 ellipse(176f, 92f, 11f, 8f, c(0xFFFFF1D0))
@@ -175,13 +266,14 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
         DOG -> {
             shadow(100f, 160f, 62f, 7f)
             translate(0f, bob) {
+                val body = listOf(oval(92f, 100f, 54f, 32f))
                 svg("M42 86 q-20 -18 -8 -36", null, sw = 12f)
                 svg("M42 86 q-20 -18 -8 -36", null, sw = 5f, stroke = c(0xFFE2A86A))
-                rrect(58f, 108f, 16f, 42f, 7f, c(0xFFC98E52), b, 66f, 112f)
-                rrect(116f, 108f, 16f, 42f, 7f, c(0xFFC98E52), a, 124f, 112f)
+                farLeg(58f, 108f, 16f, 42f, c(0xFFC98E52), b, 66f, 112f, hind = true, Foot.PAW)
+                farLeg(116f, 108f, 16f, 42f, c(0xFFC98E52), a, 124f, 112f, hind = false, Foot.PAW)
                 ellipse(92f, 100f, 54f, 32f, c(0xFFE2A86A))
-                rrect(72f, 108f, 16f, 42f, 7f, c(0xFFE2A86A), a, 80f, 112f)
-                rrect(130f, 108f, 16f, 42f, 7f, c(0xFFE2A86A), b, 138f, 112f)
+                nearLeg(72f, 108f, 16f, 42f, c(0xFFE2A86A), a, 80f, 112f, hind = true, body, Foot.PAW)
+                nearLeg(130f, 108f, 16f, 42f, c(0xFFE2A86A), b, 138f, 112f, hind = false, body, Foot.PAW)
                 circle(150f, 74f, 30f, c(0xFFE2A86A))
                 ellipse(176f, 84f, 16f, 12f, c(0xFFF6D2A6))
                 svg("M174 94 q2 16 10 12 q1 -8 -2 -14", c(0xFFFF8FA3), sw = 3f)
@@ -193,17 +285,18 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
         CAT -> {
             shadow(100f, 160f, 62f, 7f)
             translate(0f, bob) {
+                val body = listOf(oval(92f, 102f, 54f, 28f))
                 svg("M40 94 q-28 -14 -14 -48", null, sw = 12f)
                 svg("M40 94 q-28 -14 -14 -48", null, sw = 5f, stroke = c(0xFFF4A340))
-                rrect(58f, 108f, 14f, 42f, 7f, c(0xFFD98A2E), b, 65f, 112f)
-                rrect(116f, 108f, 14f, 42f, 7f, c(0xFFD98A2E), a, 123f, 112f)
+                farLeg(58f, 108f, 14f, 42f, c(0xFFD98A2E), b, 65f, 112f, hind = true, Foot.PAW)
+                farLeg(116f, 108f, 14f, 42f, c(0xFFD98A2E), a, 123f, 112f, hind = false, Foot.PAW)
                 ellipse(92f, 102f, 54f, 28f, c(0xFFF4A340))
                 val stripe = c(0xFFC76A12)
                 svg("M80 76 q4 10 0 20", null, sw = 4f, stroke = stripe)
                 svg("M96 74 q4 10 0 20", null, sw = 4f, stroke = stripe)
                 svg("M112 78 q4 10 0 18", null, sw = 4f, stroke = stripe)
-                rrect(72f, 108f, 14f, 42f, 7f, c(0xFFF4A340), a, 79f, 112f)
-                rrect(128f, 108f, 14f, 42f, 7f, c(0xFFF4A340), b, 135f, 112f)
+                nearLeg(72f, 108f, 14f, 42f, c(0xFFF4A340), a, 79f, 112f, hind = true, body, Foot.PAW)
+                nearLeg(128f, 108f, 14f, 42f, c(0xFFF4A340), b, 135f, 112f, hind = false, body, Foot.PAW)
                 svg("M134 60 l4 -26 l18 18 z", c(0xFFF4A340))
                 svg("M158 52 l14 -20 l6 26 z", c(0xFFF4A340))
                 circle(154f, 78f, 28f, c(0xFFF4A340))
@@ -217,10 +310,11 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
         PIG -> {
             shadow(100f, 160f, 62f, 7f)
             translate(0f, bob) {
+                val body = listOf(oval(92f, 98f, 56f, 40f))
                 svg("M40 92 q-16 -4 -10 -16 q6 -10 14 -2", null)
-                rrect(56f, 118f, 18f, 30f, 7f, c(0xFFFF9DB5), a, 65f, 122f)
-                rrect(110f, 118f, 18f, 30f, 7f, c(0xFFFF9DB5), b, 119f, 122f)
                 ellipse(92f, 98f, 56f, 40f, c(0xFFFFB8C9))
+                nearLeg(56f, 118f, 18f, 30f, c(0xFFFFB8C9), a, 65f, 122f, hind = true, body, Foot.HOOF, c(0xFFC9637F))
+                nearLeg(110f, 118f, 18f, 30f, c(0xFFFFB8C9), b, 119f, 122f, hind = false, body, Foot.HOOF, c(0xFFC9637F))
                 svg("M128 60 l4 -26 l18 20 z", c(0xFFFF9DB5))
                 circle(146f, 86f, 32f, c(0xFFFFB8C9))
                 ellipse(176f, 94f, 14f, 11f, c(0xFFFF9DB5))
@@ -233,13 +327,14 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
         MONKEY -> {
             shadow(100f, 160f, 58f, 7f)
             translate(0f, bob) {
+                val body = listOf(oval(92f, 104f, 46f, 32f))
                 svg("M48 104 q-32 2 -28 -30 q4 -16 18 -8", null, sw = 12f)
                 svg("M48 104 q-32 2 -28 -30 q4 -16 18 -8", null, sw = 5f, stroke = c(0xFF9A6A3E))
-                rrect(64f, 112f, 15f, 38f, 7f, c(0xFF7E522C), b, 71f, 116f)
-                rrect(110f, 112f, 15f, 38f, 7f, c(0xFF7E522C), a, 117f, 116f)
+                farLeg(64f, 112f, 15f, 38f, c(0xFF7E522C), b, 71f, 116f, hind = true, Foot.PAW, c(0xFFE3BE91))
+                farLeg(110f, 112f, 15f, 38f, c(0xFF7E522C), a, 117f, 116f, hind = false, Foot.PAW, c(0xFFE3BE91))
                 ellipse(92f, 104f, 46f, 32f, c(0xFF9A6A3E))
-                rrect(78f, 112f, 15f, 38f, 7f, c(0xFF9A6A3E), a, 85f, 116f)
-                rrect(124f, 112f, 15f, 38f, 7f, c(0xFF9A6A3E), b, 131f, 116f)
+                nearLeg(78f, 112f, 15f, 38f, c(0xFF9A6A3E), a, 85f, 116f, hind = true, body, Foot.PAW, c(0xFFF2D2A9))
+                nearLeg(124f, 112f, 15f, 38f, c(0xFF9A6A3E), b, 131f, 116f, hind = false, body, Foot.PAW, c(0xFFF2D2A9))
                 circle(132f, 72f, 13f, c(0xFF9A6A3E))
                 circle(132f, 72f, 6f, c(0xFFF2D2A9), sw = 0f)
                 circle(154f, 76f, 28f, c(0xFF9A6A3E))
@@ -283,12 +378,13 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
         ELEPHANT -> {
             shadow(100f, 160f, 66f, 7f)
             translate(0f, bob) {
+                val body = listOf(oval(92f, 96f, 56f, 40f))
                 svg("M38 92 q-12 10 -8 24", null, sw = 4f)
-                rrect(56f, 108f, 22f, 42f, 9f, c(0xFF93A0B1), b, 67f, 112f)
-                rrect(114f, 108f, 22f, 42f, 9f, c(0xFF93A0B1), a, 125f, 112f)
+                farLeg(56f, 108f, 22f, 42f, c(0xFF93A0B1), b, 67f, 112f, hind = true, Foot.PAD, c(0xFFB4BFCC))
+                farLeg(114f, 108f, 22f, 42f, c(0xFF93A0B1), a, 125f, 112f, hind = false, Foot.PAD, c(0xFFB4BFCC))
                 ellipse(92f, 96f, 56f, 40f, c(0xFFA9B4C2))
-                rrect(72f, 110f, 22f, 42f, 9f, c(0xFFA9B4C2), a, 83f, 114f)
-                rrect(130f, 110f, 22f, 42f, 9f, c(0xFFA9B4C2), b, 141f, 114f)
+                nearLeg(72f, 110f, 22f, 42f, c(0xFFA9B4C2), a, 83f, 114f, hind = true, body, Foot.PAD, c(0xFFC9D1DB))
+                nearLeg(130f, 110f, 22f, 42f, c(0xFFA9B4C2), b, 141f, 114f, hind = false, body, Foot.PAD, c(0xFFC9D1DB))
                 svg("M170 88 q20 20 10 46 q-3 7 -12 4 q8 -24 -10 -42 z", c(0xFFA9B4C2))
                 circle(152f, 76f, 32f, c(0xFFA9B4C2))
                 svg("M164 98 q6 10 18 8", White, sw = 3f)
@@ -354,14 +450,15 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
         SKUNK -> {
             shadow(100f, 160f, 58f, 7f)
             translate(0f, bob) {
+                val body = listOf(oval(96f, 108f, 44f, 30f))
                 svg("M62 108 q-50 -6 -46 -56 q6 -36 44 -30 q26 6 18 34 q-8 -6 -16 -2 q-10 6 -4 22 q6 14 16 18 z", c(0xFF3A3348))
                 svg("M52 98 q-30 -10 -24 -44 q6 -22 28 -18 q12 4 10 16 q-14 -2 -20 8 q-6 14 6 28 z", White, sw = 0f)
-                rrect(66f, 116f, 14f, 34f, 7f, c(0xFF2E2838), b, 73f, 120f)
-                rrect(112f, 116f, 14f, 34f, 7f, c(0xFF2E2838), a, 119f, 120f)
+                farLeg(66f, 116f, 14f, 34f, c(0xFF2E2838), b, 73f, 120f, hind = true, Foot.PAW)
+                farLeg(112f, 116f, 14f, 34f, c(0xFF2E2838), a, 119f, 120f, hind = false, Foot.PAW)
                 ellipse(96f, 108f, 44f, 30f, c(0xFF4A4458))
                 svg("M62 96 q36 -28 84 -12", null, sw = 11f, stroke = White)
-                rrect(80f, 116f, 14f, 34f, 7f, c(0xFF4A4458), a, 87f, 120f)
-                rrect(126f, 116f, 14f, 34f, 7f, c(0xFF4A4458), b, 133f, 120f)
+                nearLeg(80f, 116f, 14f, 34f, c(0xFF4A4458), a, 87f, 120f, hind = true, body, Foot.PAW)
+                nearLeg(126f, 116f, 14f, 34f, c(0xFF4A4458), b, 133f, 120f, hind = false, body, Foot.PAW)
                 circle(139f, 66f, 9f, c(0xFF2E2838))
                 circle(153f, 88f, 25f, c(0xFF4A4458))
                 svg("M147 64 q6 12 6 24", null, sw = 7f, stroke = White)
@@ -373,12 +470,13 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
         HEDGEHOG -> {
             shadow(100f, 160f, 56f, 7f)
             translate(0f, bob) {
-                rrect(66f, 124f, 14f, 26f, 7f, c(0xFFC9A27A), b, 73f, 128f)
-                rrect(104f, 124f, 14f, 26f, 7f, c(0xFFC9A27A), a, 111f, 128f)
+                val body = listOf(svgPath("M34 132 L24 114 L40 110 L28 92 L48 94 L42 74 L60 82 L62 60 L78 74 L88 54 L98 74 L112 58 L116 78 L132 68 L130 88 L146 86 L150 104 L154 132 Z"), oval(150f, 112f, 28f, 24f))
+                farLeg(66f, 124f, 14f, 26f, c(0xFFC9A27A), b, 73f, 128f, hind = true, Foot.PAW)
+                farLeg(104f, 124f, 14f, 26f, c(0xFFC9A27A), a, 111f, 128f, hind = false, Foot.PAW)
                 svg("M34 132 L24 114 L40 110 L28 92 L48 94 L42 74 L60 82 L62 60 L78 74 L88 54 L98 74 L112 58 L116 78 L132 68 L130 88 L146 86 L150 104 L154 132 Z", c(0xFF7A5236))
                 svg("M54 128 q4 -40 46 -46 q34 2 42 46 z", c(0xFF9C6B46), sw = 0f)
-                rrect(80f, 124f, 14f, 26f, 7f, c(0xFFE6C49A), a, 87f, 128f)
-                rrect(124f, 124f, 14f, 26f, 7f, c(0xFFE6C49A), b, 131f, 128f)
+                nearLeg(80f, 124f, 14f, 26f, c(0xFFE6C49A), a, 87f, 128f, hind = true, body, Foot.PAW)
+                nearLeg(124f, 124f, 14f, 26f, c(0xFFE6C49A), b, 131f, 128f, hind = false, body, Foot.PAW)
                 circle(140f, 90f, 8f, c(0xFFF0D2A8))
                 ellipse(150f, 112f, 28f, 24f, c(0xFFF0D2A8))
                 svg("M168 104 q22 4 18 16 q-8 6 -22 0 z", c(0xFFF0D2A8))
@@ -390,11 +488,12 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
         CAPYBARA -> {
             shadow(100f, 160f, 66f, 7f)
             translate(0f, bob) {
-                rrect(58f, 118f, 16f, 32f, 7f, c(0xFF8E6440), b, 66f, 122f)
-                rrect(104f, 118f, 16f, 32f, 7f, c(0xFF8E6440), a, 112f, 122f)
+                val body = listOf(roundBox(36f, 76f, 116f, 60f, 30f))
+                farLeg(58f, 118f, 16f, 32f, c(0xFF8E6440), b, 66f, 122f, hind = true, Foot.PAW)
+                farLeg(104f, 118f, 16f, 32f, c(0xFF8E6440), a, 112f, 122f, hind = false, Foot.PAW)
                 rrect(36f, 76f, 116f, 60f, 30f, c(0xFFB07D52))
-                rrect(72f, 118f, 16f, 32f, 7f, c(0xFFB07D52), a, 80f, 122f)
-                rrect(120f, 118f, 16f, 32f, 7f, c(0xFFB07D52), b, 128f, 122f)
+                nearLeg(72f, 118f, 16f, 32f, c(0xFFB07D52), a, 80f, 122f, hind = true, body, Foot.PAW)
+                nearLeg(120f, 118f, 16f, 32f, c(0xFFB07D52), b, 128f, 122f, hind = false, body, Foot.PAW)
                 ellipse(130f, 58f, 8f, 6f, c(0xFF8E6440))
                 rrect(118f, 56f, 66f, 50f, 20f, c(0xFFB07D52))
                 rrect(164f, 68f, 24f, 34f, 11f, c(0xFF8E6440))
@@ -404,22 +503,16 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
             }
         }
         SLOTH -> {
-            val claw = c(0xFFE9E1DD)
             shadow(100f, 160f, 60f, 7f)
             translate(0f, bob) {
-                rrect(60f, 114f, 14f, 38f, 7f, c(0xFF8A7468), b, 67f, 118f)
+                val body = listOf(oval(92f, 104f, 52f, 32f))
+                farLeg(60f, 114f, 14f, 38f, c(0xFF8A7468), b, 67f, 118f, hind = true, Foot.PAW)
                 // 머리 쪽 앞발 두 개에만 발톱
-                rotate(a, Offset(115f, 118f)) {
-                    rrect(108f, 114f, 14f, 38f, 7f, c(0xFF8A7468))
-                    svg("M110 152 l-3 7 M115 153 l0 7 M120 152 l3 7", null, sw = 3f, stroke = claw)
-                }
+                farLeg(108f, 114f, 14f, 38f, c(0xFF8A7468), a, 115f, 118f, hind = false, Foot.PAW, claws = true)
                 ellipse(92f, 104f, 52f, 32f, c(0xFFA89088))
                 svg("M52 112 l-6 10 l10 -2 l-2 10 l8 -6", null, sw = 3f)
-                rrect(76f, 110f, 14f, 44f, 7f, c(0xFFA89088), a, 83f, 114f)
-                rotate(b, Offset(129f, 114f)) {
-                    rrect(122f, 110f, 14f, 44f, 7f, c(0xFFA89088))
-                    svg("M124 154 l-3 7 M129 155 l0 7 M134 154 l3 7", null, sw = 3f, stroke = claw)
-                }
+                nearLeg(76f, 110f, 14f, 44f, c(0xFFA89088), a, 83f, 114f, hind = true, body, Foot.PAW)
+                nearLeg(122f, 110f, 14f, 44f, c(0xFFA89088), b, 129f, 114f, hind = false, body, Foot.PAW, claws = true)
                 circle(152f, 80f, 30f, c(0xFFA89088))
                 svg("M129 80 q2 -21 25 -21 q25 0 25 21 q0 19 -25 23 q-23 -4 -25 -23 z", c(0xFFF1EBE8))
                 ellipse(141f, 85f, 10f, 5.5f, c(0xFF6D4C41), rot = -28f, sw = 0f)
@@ -456,12 +549,13 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
             val black = c(0xFF2E2838)
             shadow(100f, 160f, 60f, 7f)
             translate(0f, bob) {
-                rrect(60f, 116f, 18f, 34f, 8f, black, b, 69f, 120f)
-                rrect(106f, 116f, 18f, 34f, 8f, black, a, 115f, 120f)
+                val body = listOf(oval(88f, 106f, 50f, 34f), svgPath("M100 78 q22 -6 32 8 l-6 46 q-14 4 -26 -4 z"))
+                farLeg(60f, 116f, 18f, 34f, black, b, 69f, 120f, hind = true, Foot.PAW)
+                farLeg(106f, 116f, 18f, 34f, black, a, 115f, 120f, hind = false, Foot.PAW)
                 ellipse(88f, 106f, 50f, 34f, White)
                 svg("M100 78 q22 -6 32 8 l-6 46 q-14 4 -26 -4 z", black)
-                rrect(74f, 116f, 18f, 34f, 8f, black, a, 83f, 120f)
-                rrect(120f, 116f, 18f, 34f, 8f, black, b, 129f, 120f)
+                nearLeg(74f, 116f, 18f, 34f, black, a, 83f, 120f, hind = true, body, Foot.PAW)
+                nearLeg(120f, 116f, 18f, 34f, black, b, 129f, 120f, hind = false, body, Foot.PAW)
                 circle(125f, 56f, 13f, black); circle(177f, 56f, 13f, black)
                 ellipse(151f, 84f, 36f, 31f, White)
                 ellipse(138f, 84f, 11.5f, 9f, black, rot = -25f, sw = 0f)
