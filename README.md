@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.7.3-4C9A2A" alt="version 3.7.3">
+  <img src="https://img.shields.io/badge/version-3.7.4-4C9A2A" alt="version 3.7.4">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -46,7 +46,7 @@
 | **3.4** | **트랙 바닥 디테일** — 조약돌·풀 포기·발자국, 달리는 동물 뒤로 흙먼지 |
 | **3.5** | **경기장 4종** — 초원·해변·설원·사막 무작위, 기록에 경기장 저장 |
 | **3.6** | **경기장별 연출** — 혼자 넘어지는 장면이 경기장마다 달라요 (아래) |
-| **3.7** | **나가기 확인창** — 경주 중 뒤로 가기 → 일시정지 + "아직 경기 중이에요!" |
+| **3.7** | **나가기 확인창** — 경주 중 뒤로 가기 → 일시정지 + "아직 경기 중이에요!"<br><img src="docs/media/exit.gif" width="200" alt="경주 중 뒤로 가기를 누르면 확인창이 뜨고 경주가 멈춤"><br><sub>창이 떠 있는 동안 시간이 멈추고, [계속 볼래요!]로 이어 보거나 [그만두기]로 메인으로</sub> |
 
 **3.6 경기장별 연출** — 순위·멈춤 시간은 그대로, 장면만 경기장에 맞게
 
@@ -60,6 +60,9 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.7.4 — README 나가기 확인창 움짤
+- 3.7 항목에 경주 중 뒤로 가기 → 확인창(일시정지) → 계속 보기 → 그만두기 흐름 움짤 추가
 
 ### 3.7.3 — README 도감·기록 움짤
 - "이런 게임이에요"에 동물 도감 넘기기와 최근 경기 기록(경기장 표시) 움짤 추가
