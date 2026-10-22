@@ -1,11 +1,17 @@
 package com.example.animalrace.ui.minigame
 
 import androidx.compose.animation.AnimatedVisibility
+import com.example.animalrace.model.RaceResult
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.runtime.key
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -91,32 +97,33 @@ import kotlin.math.hypot
 private val TrailColors = listOf(Color(0xFF3FD0A6), Color(0xFF5AA9FF), Color(0xFFB983FF))
 
 /**
- * 몰아주기 미니게임 (시안: "몰아주기 미니게임").
- * 몰빵할 사람은 [session]에 이미 정해져 있고, 게임은 그걸 한 명씩 드러내는 연출이다.
+ * 몰아주기 미니게임 (시안: "몰아주기 미니게임", "복권 긁기 v2").
+ * 결과는 [session]에 이미 숨겨져 있고(사다리: 몰빵할 사람, 복권: 몰빵 복권 자리), 게임은 그걸 한 명씩 드러내는 연출이다.
  * 몰빵이 공개되면 [onDecided]로 기록하고, 잠시 뒤 최종 발표 카드를 띄운다.
  */
 @Composable
-fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: () -> Unit, onClose: () -> Unit) {
+fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: (Int) -> Unit, onClose: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     val revealed = remember(session) { mutableStateListOf<Int>() }
+    var loser by remember(session) { mutableStateOf<Int?>(null) }
     var done by remember(session) { mutableStateOf(false) }
     val decided by rememberUpdatedState(onDecided)
 
-    fun reveal(i: Int) {
+    /** [i]번 사람의 결과 공개. 몰빵이면 남은 사람은 모두 탈출. */
+    fun reveal(i: Int, lose: Boolean) {
         if (i in revealed) return
         revealed += i
-        if (i == session.loser) {
+        if (lose) {
+            loser = i
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            // 몰빵이 나오면 남은 사람은 모두 탈출
             session.players.indices.filter { it !in revealed }.forEach { revealed += it }
         } else {
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         }
     }
-    val loserOut = session.loser in revealed
-    LaunchedEffect(loserOut) {
-        if (!loserOut) return@LaunchedEffect
-        decided()
+    LaunchedEffect(loser) {
+        val l = loser ?: return@LaunchedEffect
+        decided(l)
         delay(1400)
         done = true
     }
@@ -138,7 +145,7 @@ fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: () -> Unit,
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
                 session.players.forEachIndexed { i, p ->
                     val out = i in revealed
-                    val lose = out && i == session.loser
+                    val lose = out && i == loser
                     Row(
                         Modifier
                             .graphicsLayer { alpha = if (out && !lose) 0.6f else 1f }
@@ -156,14 +163,14 @@ fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: () -> Unit,
             }
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (session.game) {
-                    MiniGame.LADDER -> LadderGame(session, revealed, ::reveal)
-                    MiniGame.LOTTO -> LottoGame(session, revealed, ::reveal)
+                    MiniGame.LADDER -> LadderGame(session, revealed) { reveal(it, it == session.loser) }
+                    MiniGame.LOTTO -> LottoGame(session, revealed, loser, ::reveal)
                 }
             }
         }
 
         AnimatedVisibility(done, enter = fadeIn() + scaleIn(spring(dampingRatio = 0.55f), initialScale = 0.85f)) {
-            FinalCard(session, bet, onClose)
+            loser?.let { FinalCard(session, it, bet, onClose) }
         }
     }
 }
@@ -329,55 +336,216 @@ private fun withSubjectUi(word: String) = com.example.animalrace.race.withSubjec
 // ---------------------------------------------------------------- 복권
 
 /**
- * 당첨자마다 복권 한 장 (최대 3장이라 남는 높이를 나눠 크게).
- * 자기 카드를 90% 넘게 긁거나, 가운데 글자 자리를 빠짐없이 긁으면 결과가 드러난다.
- * 긁는 동안에는 바탕·글자 색이 당첨이든 꽝이든 같아서, 글자를 읽어야만 알 수 있다.
+ * 복권 긁기 v2 (시안: "복권 긁기 v2").
+ * 똑같이 생긴 복권을 인원수만큼 나란히 놓고, 출전 번호 순으로 한 장씩 고른다.
+ * 고른 복권은 화면 가득 펼쳐서 긁고(공개 조건은 [ScratchArea]), 꽝이면 다음 사람이 남은 장에서 고른다.
+ * 몰빵은 [MiniGameSession.bomb] 자리의 복권에 숨어 있다.
  */
 @Composable
-private fun LottoGame(session: MiniGameSession, revealed: List<Int>, onReveal: (Int) -> Unit) {
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        session.players.forEachIndexed { i, p ->
-            val out = i in revealed
-            val lose = i == session.loser
-            Box(Modifier.fillMaxWidth().weight(1f)) {
-                Box(Modifier.matchParentSize().offset(y = 5.dp).clip(RoundedCornerShape(20.dp)).background(Pal.Ink))
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .graphicsLayer { alpha = if (out && !lose) 0.7f else 1f; rotationZ = if (out && lose) -1.5f else 0f }
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(if (out && lose) Pal.Pink else Pal.Paper)
-                        .border(3.dp, Pal.Ink, RoundedCornerShape(20.dp))
-                        .padding(start = 8.dp, end = 10.dp, top = 4.dp, bottom = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        AnimalSprite(p.animal, 56.dp, fx = if (out && lose) Fx.SCARED else Fx.NONE)
-                        LaneSticker(p.lane, size = 22.dp)
-                        Text(p.animal.label, fontSize = 18.sp, color = Pal.Ink, maxLines = 1)
-                        Spacer(Modifier.weight(1f))
-                        Text("🎫 몰아주기 복권", fontSize = 13.sp, color = Pal.InkSoft, maxLines = 1)
-                    }
-                    ScratchArea(
-                        prize = if (lose) "몰빵! 💸" else "꽝 탈출 🎉",
-                        lose = lose,
-                        revealed = out,
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                    ) { onReveal(i) }
-                }
-                if (out) {
-                    Tag(
-                        if (lose) "몰빵!" else "탈출!", Pal.Tomato, fontSize = 15.sp,
-                        modifier = Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-10).dp).rotate(8f),
+private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?, onReveal: (Int, Boolean) -> Unit) {
+    val n = session.players.size
+    val order = remember(session) { session.players.indices.sortedBy { session.players[it].lane } }
+    // 복권 자리마다 고른 사람 (아직 안 골랐으면 null)
+    val owner = remember(session) { mutableStateListOf<Int?>().apply { repeat(n) { add(null) } } }
+    var turn by remember(session) { mutableIntStateOf(0) }
+    var open by remember(session) { mutableStateOf<Int?>(null) }
+    var shown by remember(session) { mutableStateOf(0) }
+    val current = order.getOrNull(turn)?.takeIf { loser == null }
+
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            // 지금 차례
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Pal.Ivory)
+                    .border(3.dp, Pal.Ink, RoundedCornerShape(20.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                val who = session.players[loser ?: current ?: order.last()]
+                AnimalSprite(who.animal, 60.dp, fx = if (loser != null) Fx.SCARED else Fx.NONE)
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(if (loser != null) "${withSubjectUi(who.animal.label)} 몰빵! 💸" else "${who.animal.label} 차례!", fontSize = 20.sp, color = Pal.Ink)
+                    val left = owner.count { it == null }
+                    Text(
+                        if (loser != null) "잠시 뒤 최종 발표" else if (left == n) "똑같이 생긴 복권 중 한 장을 골라 주세요" else "남은 복권 ${left}장 중 한 장을 골라 주세요",
+                        fontSize = 13.sp, color = Pal.InkSoft,
                     )
                 }
             }
+            // 똑같이 생긴 복권들 (나란히)
+            Row(Modifier.fillMaxWidth().padding(top = 24.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                for (t in 0 until n) {
+                    val who = owner[t]
+                    TicketFace(
+                        used = who?.let { session.players[it] },
+                        lose = who != null && who == loser,
+                        modifier = Modifier
+                            .weight(1f)
+                            .rotate(if (n == 1) 0f else (t - (n - 1) / 2f) * 4f),
+                        onClick = if (who == null && current != null && open == null) {
+                            { owner[t] = current; shown = t; open = t }
+                        } else null,
+                    )
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                if (loser != null) "${withSubjectUi(session.players[loser].animal.label)} 몰빵! 💸"
+                else if (owner.count { it == null } == 1) "마지막 한 장… 직접 긁어서 확인!"
+                else "어느 장에 몰빵이 숨어 있을까…",
+                fontSize = 16.sp, color = Pal.Ink, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
+            )
         }
-        Text(
-            if (session.loser in revealed) "${withSubjectUi(session.players[session.loser].animal.label)} 몰빵! 💸"
-            else "자기 동물 카드를 손가락으로 슥슥 긁어 주세요",
-            fontSize = 16.sp, color = Pal.Ink, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
+
+        // 고른 복권을 화면 가득
+        AnimatedVisibility(open != null, enter = fadeIn() + scaleIn(spring(dampingRatio = 0.7f), initialScale = 0.6f), exit = fadeOut()) {
+            val t = shown
+            val p = owner[t] ?: return@AnimatedVisibility
+            val lose = t == session.bomb
+            val out = p in revealed
+            val next = order.getOrNull(turn + 1)
+            BigTicket(
+                player = session.players[p],
+                lose = lose,
+                revealed = out,
+                onScratched = { onReveal(p, lose) },
+                nextLabel = if (out && !lose && loser == null && next != null) "${session.players[next].animal.label} 차례로 →" else null,
+                onNext = { open = null; turn++ },
+            )
+        }
+    }
+}
+
+/** 고르기 화면의 복권 한 장. 아직 안 고른 장은 모두 똑같이 생겼고, 긁은 장은 결과와 주인이 남는다. */
+@Composable
+private fun TicketFace(used: RaceResult?, lose: Boolean, modifier: Modifier, onClick: (() -> Unit)?) {
+    Box(modifier.aspectRatio(0.76f).graphicsLayer { alpha = if (used != null && !lose) 0.55f else 1f }) {
+        Box(Modifier.matchParentSize().offset(y = 4.dp).clip(RoundedCornerShape(16.dp)).background(Pal.Ink))
+        Column(
+            Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Pal.Cream)
+                .border(3.dp, Pal.Ink, RoundedCornerShape(16.dp))
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text("🎫 몰아주기 복권", fontSize = 12.sp, color = Pal.Ink, maxLines = 1)
+            Text("긁어서 확인하세요", fontSize = 10.sp, color = Pal.InkSoft, maxLines = 1)
+            Text("★ ★ ★", fontSize = 11.sp, color = Pal.TomatoText)
+            DashedLine()
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (used == null) Pal.Silver else if (lose) Pal.Pink else Pal.Mint)
+                    .border(2.dp, Pal.Ink, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (used == null) {
+                    Canvas(Modifier.fillMaxSize()) {
+                        rotate(35f) {
+                            var x = -size.height * 2
+                            while (x < size.width * 2) {
+                                drawRect(Color(0xFFDDE3EA), Offset(x, -size.height), Size(4.dp.toPx(), size.height * 3))
+                                x += 10.dp.toPx()
+                            }
+                        }
+                    }
+                    Text("? ? ?", fontSize = 14.sp, color = Color(0xFF6A7684))
+                } else {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(if (lose) "몰빵!" else "꽝 탈출", fontSize = 17.sp, color = if (lose) Pal.TomatoText else Color(0xFF1D8A3A))
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            LaneSticker(used.lane, size = 16.dp)
+                            Text(used.animal.label, fontSize = 12.sp, color = Pal.Ink, maxLines = 1)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** 복권 가운데 점선 (뜯는 선) */
+@Composable
+private fun DashedLine() {
+    Canvas(Modifier.fillMaxWidth().height(2.dp)) {
+        drawLine(
+            Pal.Ink, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), 1.5.dp.toPx(),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 5.dp.toPx())),
         )
+    }
+}
+
+/** 화면 가득 펼친 복권: 누구 복권인지 + 큰 긁기 칸. 꽝이면 아래에 [다음 차례로] 버튼. */
+@Composable
+private fun BigTicket(player: RaceResult, lose: Boolean, revealed: Boolean, onScratched: () -> Unit, nextLabel: String?, onNext: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Pal.Ink.copy(alpha = 0.5f))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
+    ) {
+        Column(Modifier.fillMaxSize().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.weight(1f).fillMaxWidth().rotate(if (revealed && lose) -1.5f else 0f)) {
+                Box(Modifier.matchParentSize().offset(y = 6.dp).clip(RoundedCornerShape(26.dp)).background(Pal.Ink))
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(26.dp))
+                        .background(if (revealed && lose) Pal.Pink else Pal.Cream)
+                        .border(4.dp, Pal.Ink, RoundedCornerShape(26.dp))
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text("🎫 몰아주기 복권", fontSize = 26.sp, color = Pal.Ink)
+                    Text("꽝이면 탈출, 몰빵이면 벌칙!", fontSize = 15.sp, color = Pal.InkSoft)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        AnimalSprite(player.animal, 60.dp, fx = if (revealed && lose) Fx.SCARED else Fx.NONE)
+                        LaneSticker(player.lane, size = 24.dp)
+                        Text("${player.animal.label}의 복권", fontSize = 20.sp, color = Pal.Ink)
+                    }
+                    Text("★ ★ ★ ★ ★", fontSize = 18.sp, color = Pal.TomatoText)
+                    DashedLine()
+                    Spacer(Modifier.height(4.dp))
+                    key(player.lane) {
+                        ScratchArea(
+                            prize = if (lose) "몰빵! 💸" else "꽝 탈출 🎉",
+                            lose = lose,
+                            revealed = revealed,
+                            fontSize = 52.sp,
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            onScratched = onScratched,
+                        )
+                    }
+                }
+                if (revealed) {
+                    Tag(
+                        if (lose) "몰빵!" else "탈출!", Pal.Tomato, fontSize = 20.sp,
+                        modifier = Modifier.align(Alignment.CenterEnd).offset(x = 6.dp, y = (-40).dp).rotate(10f),
+                    )
+                }
+            }
+            if (nextLabel != null) {
+                CartoonButton(onClick = onNext, color = Pal.Sun, modifier = Modifier.fillMaxWidth(), height = 54.dp, depth = 4.dp) {
+                    Text(nextLabel, fontSize = 19.sp, color = Pal.Ink)
+                }
+            } else {
+                Text(
+                    if (revealed) "" else "손가락으로 슥슥 긁어 주세요",
+                    fontSize = 16.sp, color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().height(54.dp).padding(top = 14.dp),
+                )
+            }
+        }
     }
 }
 
@@ -397,7 +565,14 @@ private fun clock() = System.nanoTime() / 1e9f
  * 마지막에 글자를 직접 확인할 수 있게. 결과 색(초록/빨강)은 다 드러난 뒤에만 입힌다.
  */
 @Composable
-private fun ScratchArea(prize: String, lose: Boolean, revealed: Boolean, modifier: Modifier, onScratched: () -> Unit) {
+private fun ScratchArea(
+    prize: String,
+    lose: Boolean,
+    revealed: Boolean,
+    modifier: Modifier,
+    fontSize: TextUnit = 36.sp,
+    onScratched: () -> Unit,
+) {
     val haptic = LocalHapticFeedback.current
     val strokes = remember { mutableStateListOf<List<Offset>>() }
     val cells = remember { BooleanArray(GX * GY) }
@@ -431,7 +606,7 @@ private fun ScratchArea(prize: String, lose: Boolean, revealed: Boolean, modifie
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            prize, fontSize = 36.sp, color = ink, maxLines = 1, overflow = TextOverflow.Clip,
+            prize, fontSize = fontSize, color = ink, maxLines = 1, overflow = TextOverflow.Clip,
             modifier = Modifier.onGloballyPositioned { textBox[0] = it.boundsInParent() },
         )
         Canvas(
@@ -532,9 +707,9 @@ private fun ScratchArea(prize: String, lose: Boolean, revealed: Boolean, modifie
 // ---------------------------------------------------------------- 최종 발표
 
 @Composable
-private fun FinalCard(session: MiniGameSession, bet: String, onClose: () -> Unit) {
-    val loser = session.players[session.loser]
-    val escaped = session.players.filterIndexed { i, _ -> i != session.loser }.joinToString("·") { it.animal.label }
+private fun FinalCard(session: MiniGameSession, loserIndex: Int, bet: String, onClose: () -> Unit) {
+    val loser = session.players[loserIndex]
+    val escaped = session.players.filterIndexed { i, _ -> i != loserIndex }.joinToString("·") { it.animal.label }
     Box(
         Modifier
             .fillMaxSize()

@@ -50,4 +50,26 @@ class MiniGameTest {
             assertTrue("χ² = $chi, counts = ${counts.toList()}", chi < if (players == 2) 10.8 else 13.8)
         }
     }
+
+    @Test
+    fun lottoIsFairWhateverTheOrderAndPicks() {
+        // 몰빵 복권 자리는 고르게, 사람들은 차례로 남은 장 중 하나를 고름 (항상 왼쪽부터 / 아무거나 두 가지 전략)
+        val rnd = Random(20261025)
+        for (players in 2..3) for (strategy in 0..1) {
+            val draws = 30_000
+            val counts = IntArray(players)
+            repeat(draws) {
+                val bomb = MiniGameDraw.ticket(players, rnd)
+                val left = (0 until players).toMutableList()
+                for (turn in 0 until players) {
+                    val pick = if (strategy == 0) left.first() else left.random(rnd)
+                    left.remove(pick)
+                    if (pick == bomb) { counts[turn]++; break }
+                }
+            }
+            val expected = draws.toDouble() / players
+            val chi = counts.sumOf { (it - expected) * (it - expected) / expected }
+            assertTrue("${players}명 전략${strategy} χ² = $chi, counts = ${counts.toList()}", chi < if (players == 2) 10.8 else 13.8)
+        }
+    }
 }

@@ -21,14 +21,16 @@ import com.example.animalrace.race.Race
 enum class Screen { Setup, Race, Result, MiniGame }
 
 /**
- * 진행 중인 몰아주기 한 판. [loser]는 [players] 중 몰빵할 사람의 위치로, 게임을 시작하기 전에 뽑아 둔다.
- * 사다리는 무작위로 깐 뒤 몰빵할 사람이 도착하는 칸을 몰빵 칸으로 정한다.
+ * 진행 중인 몰아주기 한 판.
+ * 사다리: [loser]는 [players] 중 몰빵할 사람의 위치로 게임 전에 뽑아 두고, 그 사람이 도착하는 칸을 몰빵 칸으로 정한다.
+ * 복권: [bomb]은 똑같은 복권 [players]장 중 몰빵이 숨은 장의 위치. 그 장을 고른 사람이 몰빵이다.
  */
 data class MiniGameSession(
     val game: MiniGame,
     val players: List<RaceResult>,
     val loser: Int,
     val ladder: Ladder,
+    val bomb: Int,
 )
 
 /**
@@ -66,8 +68,8 @@ class AppState(private val repo: AppRepository) {
     var lastGame by mutableStateOf(MiniGame.LADDER)
         private set
 
-    // 같은 판에서 게임을 바꾸거나 다시 열어도 몰빵할 사람은 그대로 (다시 뽑기 방지)
-    private var loserDraw: Pair<Long, Int>? = null
+    // 같은 판에서 게임을 바꾸거나 다시 열어도 몰빵할 사람·몰빵 복권 자리는 그대로 (다시 뽑기 방지)
+    private var draw: Triple<Long, Int, Int>? = null
 
     /** 경주 중 뒤로 가기를 눌러 "그만둘까요?" 확인창이 떠 있는지 (떠 있는 동안 경주 일시정지) */
     var confirmExit by mutableStateOf(false)
@@ -133,18 +135,19 @@ class AppState(private val repo: AppRepository) {
         if (record.picks == null || players.size < 2 || record.miniGame != null) return
         val chosen = game ?: MiniGameDraw.game()
         if (game != null) lastGame = game
-        val loser = loserDraw?.takeIf { it.first == record.at }?.second ?: MiniGameDraw.loser(players.size)
-        loserDraw = record.at to loser
-        miniGame = MiniGameSession(chosen, players, loser, Ladder.random(players.size))
+        val (_, loser, bomb) = draw?.takeIf { it.first == record.at }
+            ?: Triple(record.at, MiniGameDraw.loser(players.size), MiniGameDraw.ticket(players.size))
+        draw = Triple(record.at, loser, bomb)
+        miniGame = MiniGameSession(chosen, players, loser, Ladder.random(players.size), bomb)
         screen = Screen.MiniGame
     }
 
-    /** 미니게임에서 몰빵이 공개되면 기록에 남긴다. */
-    fun recordMiniGame() {
+    /** 미니게임에서 몰빵이 공개되면 기록에 남긴다. [loser]는 [MiniGameSession.players] 중 몰빵한 사람의 위치. */
+    fun recordMiniGame(loser: Int) {
         val session = miniGame ?: return
         val record = lastRecord ?: return
         if (record.miniGame != null) return
-        val updated = record.copy(miniGame = MiniGameResult(session.game, session.players[session.loser].animal))
+        val updated = record.copy(miniGame = MiniGameResult(session.game, session.players[loser].animal))
         lastRecord = updated
         val i = history.indexOfFirst { it.at == record.at }
         if (i >= 0) history[i] = updated

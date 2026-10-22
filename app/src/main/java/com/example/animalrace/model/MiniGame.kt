@@ -13,11 +13,15 @@ data class MiniGameResult(val game: MiniGame, val loser: Animal)
 
 /**
  * 몰아주기: 랜덤 등수로 2명 이상 걸렸을 때 그중 한 명에게 몰빵.
- * 몰빵 1명은 게임 시작 전에 고르게 뽑아 두고, 미니게임은 그 결과를 보여 주는 연출이다.
+ * 사다리는 몰빵할 사람을 게임 전에 고르게 뽑아 두고 그 결과를 보여 주는 연출이다.
+ * 복권은 똑같은 복권 중 한 장에 몰빵을 고르게 숨겨 두고, 차례로 한 장씩 고른다 — 몇 번째로 고르든 걸릴 확률은 같다.
  */
 object MiniGameDraw {
-    /** 몰빵할 사람(후보 목록의 위치) */
+    /** 몰빵할 사람(후보 목록의 위치) — 사다리 */
     fun loser(players: Int, rnd: Random = Random.Default): Int = rnd.nextInt(players)
+
+    /** 몰빵이 숨은 복권의 위치 — 복권 */
+    fun ticket(tickets: Int, rnd: Random = Random.Default): Int = rnd.nextInt(tickets)
 
     /** 게임을 고르지 않았을 때(아무거나) */
     fun game(rnd: Random = Random.Default): MiniGame = MiniGame.entries.random(rnd)
