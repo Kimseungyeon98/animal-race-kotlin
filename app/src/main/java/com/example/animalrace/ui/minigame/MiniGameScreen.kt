@@ -1,6 +1,7 @@
 package com.example.animalrace.ui.minigame
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -324,39 +325,40 @@ private fun withSubjectUi(word: String) = com.example.animalrace.race.withSubjec
 
 // ---------------------------------------------------------------- 복권
 
-/** 당첨자마다 복권 한 장. 자기 카드를 긁어 60% 넘게 벗기면 결과가 드러난다. */
+/**
+ * 당첨자마다 복권 한 장 (최대 3장이라 남는 높이를 나눠 크게). 자기 카드를 긁어 55% 넘게 벗기면 결과가 드러난다.
+ * 긁는 동안에는 바탕·글자 색이 당첨이든 꽝이든 같아서, 글자를 읽어야만 알 수 있다.
+ */
 @Composable
 private fun LottoGame(session: MiniGameSession, revealed: List<Int>, onReveal: (Int) -> Unit) {
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         session.players.forEachIndexed { i, p ->
             val out = i in revealed
             val lose = i == session.loser
-            Box(Modifier.fillMaxWidth()) {
+            Box(Modifier.fillMaxWidth().weight(1f)) {
                 Box(Modifier.matchParentSize().offset(y = 5.dp).clip(RoundedCornerShape(20.dp)).background(Pal.Ink))
-                Row(
+                Column(
                     Modifier
-                        .fillMaxWidth()
-                        .height(128.dp)
+                        .fillMaxSize()
                         .graphicsLayer { alpha = if (out && !lose) 0.7f else 1f; rotationZ = if (out && lose) -1.5f else 0f }
                         .clip(RoundedCornerShape(20.dp))
                         .background(if (out && lose) Pal.Pink else Pal.Paper)
                         .border(3.dp, Pal.Ink, RoundedCornerShape(20.dp))
-                        .padding(start = 4.dp, end = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        .padding(start = 8.dp, end = 10.dp, top = 4.dp, bottom = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Column(Modifier.width(92.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        AnimalSprite(p.animal, 84.dp, fx = if (out && lose) Fx.SCARED else Fx.NONE)
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            LaneSticker(p.lane, size = 20.dp)
-                            Text(p.animal.label, fontSize = 15.sp, color = Pal.Ink, maxLines = 1)
-                        }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        AnimalSprite(p.animal, 56.dp, fx = if (out && lose) Fx.SCARED else Fx.NONE)
+                        LaneSticker(p.lane, size = 22.dp)
+                        Text(p.animal.label, fontSize = 18.sp, color = Pal.Ink, maxLines = 1)
+                        Spacer(Modifier.weight(1f))
+                        Text("🎫 몰아주기 복권", fontSize = 13.sp, color = Pal.InkSoft, maxLines = 1)
                     }
                     ScratchArea(
                         prize = if (lose) "몰빵! 💸" else "꽝 탈출 🎉",
                         lose = lose,
                         revealed = out,
-                        modifier = Modifier.weight(1f).height(100.dp),
+                        modifier = Modifier.fillMaxWidth().weight(1f),
                     ) { onReveal(i) }
                 }
                 if (out) {
@@ -367,7 +369,6 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, onReveal: (
                 }
             }
         }
-        Spacer(Modifier.weight(1f))
         Text(
             if (session.loser in revealed) "${withSubjectUi(session.players[session.loser].animal.label)} 몰빵! 💸"
             else "자기 동물 카드를 손가락으로 슥슥 긁어 주세요",
@@ -376,47 +377,93 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, onReveal: (
     }
 }
 
-private const val GX = 12
-private const val GY = 5
+private const val GX = 14
+private const val GY = 6
 
-/** 은박 긁기 칸. 손가락이 지나간 자리만 은박이 지워지고, 충분히 긁으면 [onScratched]. */
+/** 긁을 때 튀는 은박 가루 하나 (위치 px, 속도 px/초, 생긴 시각 초). */
+private class Flake(val x: Float, val y: Float, val vx: Float, val vy: Float, val born: Float, val size: Float, val spin: Float)
+
+private fun clock() = System.nanoTime() / 1e9f
+
+/**
+ * 은박 긁기 칸. 손가락이 지나간 자리만 은박이 지워지고 은박 가루가 튀며, 긁는 동안 진동이 톡톡 온다.
+ * 충분히 긁으면 [onScratched]. 결과 색(초록/빨강)은 다 드러난 뒤에만 입힌다.
+ */
 @Composable
 private fun ScratchArea(prize: String, lose: Boolean, revealed: Boolean, modifier: Modifier, onScratched: () -> Unit) {
+    val haptic = LocalHapticFeedback.current
     val strokes = remember { mutableStateListOf<List<Offset>>() }
     val cells = remember { BooleanArray(GX * GY) }
+    val flakes = remember { mutableStateListOf<Flake>() }
+    var now by remember { mutableFloatStateOf(clock()) }
     val scratched by rememberUpdatedState(onScratched)
     val foil by animateFloatAsState(if (revealed) 0f else 1f, tween(450), label = "foil")
+    val bg by animateColorAsState(if (!revealed) Pal.Cream else if (lose) Pal.Pink else Pal.Mint, tween(350), label = "bg")
+    val ink by animateColorAsState(if (!revealed) Pal.Ink else if (lose) Pal.TomatoText else Color(0xFF1D8A3A), tween(350), label = "ink")
     val measurer = rememberTextMeasurer()
+
+    // 가루가 남아 있는 동안만 프레임마다 시간을 흘린다
+    val busy = flakes.isNotEmpty()
+    LaunchedEffect(busy) {
+        while (busy) {
+            withFrameNanos { }
+            now = clock()
+            flakes.removeAll { now - it.born > 0.7f }
+            if (flakes.isEmpty()) break
+        }
+    }
 
     Box(
         modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (lose) Pal.Pink else Pal.Mint)
-            .border(3.dp, Pal.Ink, RoundedCornerShape(14.dp)),
+            .clip(RoundedCornerShape(16.dp))
+            .background(bg)
+            .border(3.dp, Pal.Ink, RoundedCornerShape(16.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        Text(prize, fontSize = 28.sp, color = if (lose) Pal.TomatoText else Color(0xFF1D8A3A), maxLines = 1, overflow = TextOverflow.Clip)
+        Text(prize, fontSize = 36.sp, color = ink, maxLines = 1, overflow = TextOverflow.Clip)
         Canvas(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = foil; compositingStrategy = CompositingStrategy.Offscreen }
                 .pointerInput(revealed) {
                     if (revealed) return@pointerInput
-                    val radius = 17.dp.toPx()
+                    val radius = 18.dp.toPx()
+                    val tick = 44.dp.toPx()
+                    var travel = 0f
+                    var last = Offset.Zero
                     fun mark(p: Offset) {
                         val cw = size.width / GX.toFloat()
                         val ch = size.height / GY.toFloat()
                         for (gy in 0 until GY) for (gx in 0 until GX) {
                             if (hypot(p.x - (gx + 0.5f) * cw, p.y - (gy + 0.5f) * ch) < radius + cw * 0.3f) cells[gy * GX + gx] = true
                         }
-                        if (cells.count { it } >= cells.size * 0.6f) scratched()
+                        if (cells.count { it } >= cells.size * 0.55f) scratched()
+                    }
+                    fun dust(p: Offset, dir: Offset) {
+                        val t = clock()
+                        repeat(2) {
+                            flakes += Flake(
+                                p.x, p.y,
+                                vx = -dir.x * 3f + (Math.random().toFloat() - 0.5f) * 220f,
+                                vy = -120f - Math.random().toFloat() * 160f,
+                                born = t, size = 3f + Math.random().toFloat() * 4f, spin = Math.random().toFloat() * 360f,
+                            )
+                        }
+                        now = t
                     }
                     detectDragGestures(
-                        onDragStart = { strokes += listOf(it); mark(it) },
-                        onDrag = { change, _ ->
+                        onDragStart = { strokes += listOf(it); last = it; mark(it) },
+                        onDrag = { change, amount ->
                             val p = change.position
                             strokes[strokes.lastIndex] = strokes.last() + p
                             mark(p)
+                            travel += (p - last).getDistance()
+                            last = p
+                            if (travel > tick) {
+                                travel = 0f
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            }
+                            if (flakes.size < 40) dust(p, amount)
                         },
                     )
                 },
@@ -430,15 +477,28 @@ private fun ScratchArea(prize: String, lose: Boolean, revealed: Boolean, modifie
                     x += 20.dp.toPx()
                 }
             }
-            val label = measurer.measure("여기를 긁어 주세요", TextStyle(fontFamily = Jua, fontSize = 17.sp, color = Color(0xFF6A7684)))
+            val label = measurer.measure("여기를 긁어 주세요", TextStyle(fontFamily = Jua, fontSize = 20.sp, color = Color(0xFF6A7684)))
             drawText(label, topLeft = Offset((size.width - label.size.width) / 2, (size.height - label.size.height) / 2))
             // 긁은 자리 지우기
-            val w = 34.dp.toPx()
+            val w = 36.dp.toPx()
             strokes.forEach { s ->
                 if (s.size == 1) drawCircle(Color.Black, w / 2, s[0], blendMode = BlendMode.Clear)
                 else {
                     val path = Path().apply { moveTo(s[0].x, s[0].y); s.drop(1).forEach { lineTo(it.x, it.y) } }
                     drawPath(path, Color.Black, style = Stroke(w, cap = StrokeCap.Round, join = StrokeJoin.Round), blendMode = BlendMode.Clear)
+                }
+            }
+        }
+        // 은박 가루: 손가락 자리에서 튀어 올랐다 떨어지며 사라짐
+        Canvas(Modifier.fillMaxSize()) {
+            val d = density
+            flakes.forEach { f ->
+                val t = (now - f.born).coerceAtLeast(0f)
+                val x = f.x + f.vx * t
+                val y = f.y + f.vy * t + 900f * t * t
+                val a = (1f - t / 0.7f).coerceIn(0f, 1f)
+                rotate(f.spin + t * 540f, Offset(x, y)) {
+                    drawRect(Color(0xFFB9C2CC), Offset(x - f.size * d / 2, y - f.size * d / 2), Size(f.size * d, f.size * d * 0.7f), alpha = a)
                 }
             }
         }

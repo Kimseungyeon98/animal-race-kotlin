@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.11.4-4C9A2A" alt="version 3.11.4">
+  <img src="https://img.shields.io/badge/version-3.11.5-4C9A2A" alt="version 3.11.5">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -84,6 +84,11 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.11.5 — 복권 긁기 손맛·긴장감
+- 복권 카드를 크게: 최대 3장이라 화면 높이를 나눠 쓰고, 동물은 카드 위쪽 머리말로 옮겨 긁는 칸을 카드 폭 전체로
+- 긁는 동안엔 꽝이든 몰빵이든 바탕·글자 색이 같음 — 글자를 읽어야만 알 수 있고, 초록/빨강은 다 드러난 뒤에만
+- 손맛: 손가락 자리에서 은박 가루가 튀어 떨어지고, 긁는 동안 진동이 톡톡 · 결과 글자 크게(36sp), 55% 넘게 긁으면 공개
 
 ### 3.11.4 — README 토끼굴·몰빵 기록
 - 3.9 항목에 토끼굴 지름길 실제 플레이 움짤, "번외" 항목에 랜덤·몰빵 결과가 남은 최근 경기 기록 화면 (`docs/media/`, 앱 동작 변경 없음)
