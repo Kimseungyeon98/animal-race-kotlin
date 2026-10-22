@@ -6,13 +6,15 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.9-4C9A2A" alt="version 3.9">
+  <img src="https://img.shields.io/badge/version-3.11.2-4C9A2A" alt="version 3.11.2">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
 </p>
 
 "꼴찌가 커피 쏘기" 같은 벌칙을 정하고, 각자 응원할 동물을 골라 경주시키는 복불복 게임이에요. 2~10마리가 달리고, 꼴찌로 들어온 동물을 응원한 사람이 벌칙 당첨!
+
+번외로 **랜덤 등수 모드**를 켜면 출발 전에 룰렛으로 "오늘은 3등·6등!"처럼 당첨 등수를 뽑고, 여러 명이 걸리면 **몰아주기 미니게임**(사다리 타기·복권 긁기)으로 한 명에게 몰빵할 수도 있어요.
 
 ## ✨ 이런 게임이에요
 
@@ -23,6 +25,8 @@
 | <img src="docs/media/dex.gif" width="240" alt="동물 도감을 넘기며 스킬 장면 보기"> | <img src="docs/media/history.gif" width="240" alt="최근 경기 기록 창"> |
 | **🐾 동물 20종 도감**<br>말·치타·토끼부터 카피바라·판다까지,<br>동물마다 다른 스킬 장면과 설명. | **📒 최근 경기 기록**<br>최근 10판의 벌칙·꼴찌·순위,<br>어느 경기장이었는지까지 남아요. |
 
+- **🎯 랜덤 등수 모드 (번외)** — 메인에서 체크하면 출발 전 룰렛이 당첨 등수를 뽑아요. 당첨 인원은 참가 ÷ 3(최소 1명), 경주 중에는 "🎯 3등·6등" 칩과 결승선 "당첨!" 도장으로 긴장감 유지. 끄면 지금처럼 꼴찌 벌칙.
+- **💸 몰아주기 미니게임** — 랜덤 등수로 2명 이상 걸리면 결과 화면의 [몰아주기!]로 걸린 사람끼리 한 판 더: 🪜 동물들이 직접 타고 내려가는 사다리 타기, 🎫 손가락으로 은박을 긁는 복권 긁기.
 - **🎲 완전 공정** — 최종 순위는 출발하는 순간 균등 무작위로 정해져요. 스킬과 역전은 보는 재미를 위한 연출이라, 어떤 동물이든 모든 순위에 같은 확률로 와요. ([검증 결과](docs/fairness.md))
 
 ## 🎮 이렇게 놀아요
@@ -47,6 +51,10 @@
 | **3.5** | **경기장 4종** — 초원·해변·설원·사막 무작위, 기록에 경기장 저장 |
 | **3.6** | **경기장별 연출** — 혼자 넘어지는 장면이 경기장마다 달라요 (아래) |
 | **3.7** | **나가기 확인창** — 경주 중 뒤로 가기 → 일시정지 + "아직 경기 중이에요!"<br><img src="docs/media/exit.gif" width="200" alt="경주 중 뒤로 가기를 누르면 확인창이 뜨고 경주가 멈춤"><br><sub>창이 떠 있는 동안 시간이 멈추고, [계속 볼래요!]로 이어 보거나 [그만두기]로 메인으로</sub> |
+| **3.8** | **새 앱 아이콘** — 체커 깃발 → 1등 왕관을 쓴 말<br><img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" width="72" alt="1등 왕관을 쓴 말 얼굴 앱 아이콘"> |
+| **3.9** | **토끼굴 지름길** — 토끼 전용 가속: 굴로 쏙 → 땅속 두두두 → 앞쪽 굴에서 퐁! (낮잠은 실수 장면으로) |
+| **3.10** | **랜덤 등수 모드 (번외)** — 출발 전 룰렛으로 당첨 등수 뽑기 → 경주 중 당첨 등수 표시 → 결과·기록에 당첨 |
+| **3.11** | **몰아주기 미니게임** — 랜덤 등수로 2명 이상 걸리면 사다리 타기·복권 긁기로 한 명에게 몰빵 |
 
 **3.6 경기장별 연출** — 순위·멈춤 시간은 그대로, 장면만 경기장에 맞게
 
@@ -60,6 +68,29 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.11.2 — 구형 기기 앱 아이콘 잘림 수정, README 정리
+- Android 7.x(API 24~25)용 앱 아이콘 PNG 5종이 아래쪽 약 43%가 투명하게 잘려 있던 문제 수정 (3.8에서 그림을 만들 때 화면 캡처가 잘림). 벡터 아이콘에서 다시 그려 전체가 보이게 · Android 8.0 이상(적응형 아이콘)은 원래 정상
+- README에 3.8~3.11 큰 변화·패치노트, 랜덤 등수 모드·몰아주기 소개, 코드 구조 반영
+
+### 3.11.1 — 미니게임 소스 이름 정리
+- `Mollbang` → `MiniGame` 계열로 이름 변경: `model/MiniGame.kt`, `MiniGameResult`, `MiniGameDraw`, `MiniGameSession`, `MiniGameTest`
+- 기록 저장 키 `mollbang` → `miniGame` (3.11에서 저장된 기록도 그대로 읽힘) · 화면 문구("몰빵", "몰아주기")는 그대로
+
+### 3.11 — 몰아주기 미니게임
+- 랜덤 등수로 2명 이상 걸린 판은 결과 화면 당첨 카드 아래에 **[💸 몰아주기!]** → 게임 고르기 (🪜 사다리 타기 / 🎫 복권 긁기 / 🎲 아무거나)
+- 🪜 사다리 타기: 무작위로 깔린 사다리를 동물이 한 마리씩 직접 타고 내려감, 지나간 길은 색으로 남고 도착한 칸만 열림 (탭하면 빨리, 마지막 한 마리 전엔 잠깐 멈칫)
+- 🎫 복권 긁기: 당첨자마다 카드 한 장, 손가락 지나간 자리만 은박이 벗겨지고 60% 넘게 긁으면 결과 ("탈출!" / "몰빵!" 도장)
+- 몰빵이 나오면 최종 발표 카드 → [결과로] / [한 판 더] · 결과 화면·기록 카드에 "💸 몰빵 🪜 사다리 타기 → 돼지", 메인에 "지난 판 몰빵"
+- 공정성: 몰빵 1명은 게임 시작 전에 고르게 뽑아 두고 게임은 그걸 보여 주는 연출, 같은 판에서 나갔다 다시 열거나 게임을 바꿔도 그대로 (`MiniGameTest`)
+
+### 3.10 — 랜덤 등수 모드 (번외)
+- 메인 벌칙 줄 아래 **랜덤 등수 모드** 체크박스 (상태 저장) · 끄면 지금처럼 꼴찌 벌칙
+- 당첨 인원 = 참가 ÷ 3 (나머지 버림), 최소 1명 — 2~5마리 1명, 6~8마리 2명, 9~10마리 3명
+- 출발 전 🎰 룰렛: 칸이 하나씩 "딱!" 멈추고 → "3등·6등으로 들어오면 커피 쏘기!" 발표 → 카운트다운 (탭하면 건너뛰기, 나가기 확인창 동안 일시정지)
+- 경주 중: 상단 칩 "🎯 3등·6등", 순위 띠에서 지금 당첨 등수에 있는 동물 빨간 태그, 결승 때 "N등 당첨!" 태그·깜짝 놀람·해설 한 줄
+- 결과: "🎯 랜덤 등수 당첨!" 카드 + 전체 기록 당첨 줄 강조 · 기록 카드에 🎯 랜덤 표시, 메인 "지난 판 당첨"
+- 공정성: 등수는 경주와 따로 고르게 뽑아 경주 결과에 영향 없음 (`RandomRankTest`)
 
 ### 3.9 — 토끼 스킬: 토끼굴 지름길
 - 토끼에게 전용 가속이 생김: 굴로 쏙 들어가 땅속을 두두두(흙 둔덕이 위치를 보여 줌) → 앞쪽 굴에서 퐁! (약 2초)
@@ -291,10 +322,12 @@
 ```
 app/src/main/java/com/example/animalrace/
 ├── MainActivity.kt          진입점. 화면 켜짐 유지, 뒤로가기(경주 중 확인창) 처리
-├── AppState.kt              앱 전체 상태 + 화면 전환(Setup → Race → Result)
+├── AppState.kt              앱 전체 상태 + 화면 전환(Setup → Race → Result → MiniGame)
 ├── model/
 │   ├── Animal.kt            동물 20종 (이모지·스킬·설명·대표색)
 │   ├── Venue.kt             경기장 4종 (기록에 저장되는 값)
+│   ├── RandomRank.kt        랜덤 등수 모드: 당첨 인원 계산·등수 뽑기
+│   ├── MiniGame.kt          몰아주기 미니게임 종류·결과, 몰빵 뽑기, 사다리 모델
 │   └── RaceRecord.kt        경기 기록 모델 + 저장소 인터페이스
 ├── race/Race.kt             경주 엔진: 결과 추첨 + 스토리보드(전개 연출), 순수 Kotlin
 ├── data/PrefsRepository.kt  SharedPreferences(JSON)에 설정·최근 10판 저장
@@ -308,17 +341,20 @@ app/src/main/java/com/example/animalrace/
     ├── components/          입체 버튼, 외곽선 글자, 출전 번호 스티커, 선 아이콘
     ├── setup/SetupScreen.kt 메인: 동물 고르기, 도감, 최근 경기, 벌칙 수정
     ├── race/
-    │   ├── RaceScreen.kt    경주: 따라가는 카메라, 순위 띠, 중계 말풍선, 나가기 확인창
+    │   ├── RaceScreen.kt    경주: 따라가는 카메라, 순위 띠, 중계 말풍선, 나가기 확인창, 랜덤 등수 룰렛
     │   ├── Stadium.kt       경기장 테마: 하늘·언덕/바다·울타리·트랙 바닥 무늬
     │   └── Guests.kt        배경 손님: 설원 눈사람, 사막 모래 회오리
-    └── result/ResultScreen.kt 결과: 벌칙 당첨, 시상대, 전체 기록, 꽃가루
+    ├── result/ResultScreen.kt 결과: 벌칙 당첨, 시상대, 전체 기록, 꽃가루, 몰아주기 게임 고르기
+    └── minigame/MiniGameScreen.kt 몰아주기: 사다리 타기, 복권 긁기, 최종 발표
 ```
 
 - 전개(역할·스킬 시점): `race/Race.kt` 의 `Director.arc()` — 결과 확률에는 영향 없음
 - 스킬 세기·길이: `boostPhases()` (가속), `build()` 의 방해 멈춤 1.6~2.4초
 - 스킬 아닌 구간의 속도 허용 범위: `PACE_MIN`/`PACE_MAX` (기준 속도의 0.7~1.3배)
 - 경기 길이·간격: `race/Race.kt` 의 `finishAt` (1등 16.8~18.4초, 이후 0.08~0.45초 간격)
-- 공정성·전개 테스트: `gradlew test` (`FairnessTest.kt`, `StoryTest.kt`)
+- 공정성·전개 테스트: `gradlew test` (`FairnessTest.kt`, `StoryTest.kt`, `RandomRankTest.kt`, `MiniGameTest.kt`)
+- 랜덤 등수 당첨 인원: `model/RandomRank.kt` 의 `count()` / 룰렛 속도: `RaceScreen.kt` 의 `hold()` 시간
+- 사다리 모양: `model/MiniGame.kt` 의 `Ladder.random()` / 내려가는 속도·긁기 비율: `ui/minigame/MiniGameScreen.kt`
 - 중반 선두가 이기는 판의 비율: `race/Race.kt` 의 `LEADER_WINS_2`(2마리, 50%) / `LEADER_WINS_N`(3마리 이상, 40%)
 - 색상: `ui/theme/Theme.kt` 의 `Pal`
 - 캐릭터 그림: `ui/art/AnimalArt.kt` / 연출: `ui/art/AnimalSprite.kt` 의 `fxFrame()`
@@ -328,7 +364,7 @@ app/src/main/java/com/example/animalrace/
 <details>
 <summary><b>⚖️ 공정성 검증</b></summary>
 
-순위는 출발 순간 균등한 무작위 순열로 먼저 정하고, 경주는 그 결과를 향해 가는 연출이에요. 동물 × 순위 분포를 카이제곱으로 검정하고(`FairnessTest`), 경기장이 결과를 바꾸지 않는지도 테스트해요(`venueNeverChangesTheRace`). 자세한 결과는 [`docs/fairness.md`](docs/fairness.md).
+순위는 출발 순간 균등한 무작위 순열로 먼저 정하고, 경주는 그 결과를 향해 가는 연출이에요. 동물 × 순위 분포를 카이제곱으로 검정하고(`FairnessTest`), 경기장이 결과를 바꾸지 않는지도 테스트해요(`venueNeverChangesTheRace`). 랜덤 등수와 몰아주기도 경주와 따로 고르게 뽑아서 누구나 걸릴 확률이 같아요(`RandomRankTest`, `MiniGameTest`). 자세한 결과는 [`docs/fairness.md`](docs/fairness.md).
 </details>
 
 폰트: Jua, Fredoka (SIL Open Font License 1.1) · 디자인 시안: Claude 디자인 캔버스 "동물 레이스 리디자인 시안"
