@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
@@ -60,6 +61,8 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -93,7 +96,7 @@ private val TrailColors = listOf(Color(0xFF3FD0A6), Color(0xFF5AA9FF), Color(0xF
  * 몰빵이 공개되면 [onDecided]로 기록하고, 잠시 뒤 최종 발표 카드를 띄운다.
  */
 @Composable
-fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: () -> Unit, onClose: () -> Unit, onAgain: () -> Unit) {
+fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: () -> Unit, onClose: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     val revealed = remember(session) { mutableStateListOf<Int>() }
     var done by remember(session) { mutableStateOf(false) }
@@ -160,7 +163,7 @@ fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: () -> Unit,
         }
 
         AnimatedVisibility(done, enter = fadeIn() + scaleIn(spring(dampingRatio = 0.55f), initialScale = 0.85f)) {
-            FinalCard(session, bet, onClose, onAgain)
+            FinalCard(session, bet, onClose)
         }
     }
 }
@@ -326,7 +329,8 @@ private fun withSubjectUi(word: String) = com.example.animalrace.race.withSubjec
 // ---------------------------------------------------------------- 복권
 
 /**
- * 당첨자마다 복권 한 장 (최대 3장이라 남는 높이를 나눠 크게). 자기 카드를 긁어 70% 넘게 벗기면 결과가 드러난다.
+ * 당첨자마다 복권 한 장 (최대 3장이라 남는 높이를 나눠 크게).
+ * 자기 카드를 90% 넘게 긁거나, 가운데 글자 자리를 빠짐없이 긁으면 결과가 드러난다.
  * 긁는 동안에는 바탕·글자 색이 당첨이든 꽝이든 같아서, 글자를 읽어야만 알 수 있다.
  */
 @Composable
@@ -379,6 +383,8 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, onReveal: (
 
 private const val GX = 14
 private const val GY = 6
+private const val TX = 12
+private const val TY = 3
 
 /** 긁을 때 튀는 은박 가루 하나 (위치 px, 속도 px/초, 생긴 시각 초). */
 private class Flake(val x: Float, val y: Float, val vx: Float, val vy: Float, val born: Float, val size: Float, val spin: Float)
@@ -387,13 +393,17 @@ private fun clock() = System.nanoTime() / 1e9f
 
 /**
  * 은박 긁기 칸. 손가락이 지나간 자리만 은박이 지워지고 은박 가루가 튀며, 긁는 동안 진동이 톡톡 온다.
- * 충분히 긁으면 [onScratched]. 결과 색(초록/빨강)은 다 드러난 뒤에만 입힌다.
+ * 전체를 90% 넘게 긁거나 글자 자리를 빠짐없이 긁으면 [onScratched] — 글자 주변만 긁어 두고 애태우다가
+ * 마지막에 글자를 직접 확인할 수 있게. 결과 색(초록/빨강)은 다 드러난 뒤에만 입힌다.
  */
 @Composable
 private fun ScratchArea(prize: String, lose: Boolean, revealed: Boolean, modifier: Modifier, onScratched: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     val strokes = remember { mutableStateListOf<List<Offset>>() }
     val cells = remember { BooleanArray(GX * GY) }
+    // 결과 글자가 놓인 자리 (긁는 칸 기준 좌표)와 그 안의 확인 점들
+    val textBox = remember { arrayOf(Rect.Zero) }
+    val textHits = remember { BooleanArray(TX * TY) }
     val flakes = remember { mutableStateListOf<Flake>() }
     var now by remember { mutableFloatStateOf(clock()) }
     val scratched by rememberUpdatedState(onScratched)
@@ -420,7 +430,10 @@ private fun ScratchArea(prize: String, lose: Boolean, revealed: Boolean, modifie
             .border(3.dp, Pal.Ink, RoundedCornerShape(16.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        Text(prize, fontSize = 36.sp, color = ink, maxLines = 1, overflow = TextOverflow.Clip)
+        Text(
+            prize, fontSize = 36.sp, color = ink, maxLines = 1, overflow = TextOverflow.Clip,
+            modifier = Modifier.onGloballyPositioned { textBox[0] = it.boundsInParent() },
+        )
         Canvas(
             Modifier
                 .fillMaxSize()
@@ -435,9 +448,20 @@ private fun ScratchArea(prize: String, lose: Boolean, revealed: Boolean, modifie
                         val cw = size.width / GX.toFloat()
                         val ch = size.height / GY.toFloat()
                         for (gy in 0 until GY) for (gx in 0 until GX) {
-                            if (hypot(p.x - (gx + 0.5f) * cw, p.y - (gy + 0.5f) * ch) < radius + cw * 0.3f) cells[gy * GX + gx] = true
+                            if (hypot(p.x - (gx + 0.5f) * cw, p.y - (gy + 0.5f) * ch) < radius) cells[gy * GX + gx] = true
                         }
-                        if (cells.count { it } >= cells.size * 0.7f) scratched()
+                        // 글자 칸은 위아래 여백을 빼고 실제 글자 높이 근처만
+                        val r = textBox[0]
+                        if (r.width > 0f) {
+                            val top = r.top + r.height * 0.22f
+                            val h = r.height * 0.56f
+                            for (ty in 0 until TY) for (tx in 0 until TX) {
+                                val sx = r.left + r.width * (tx + 0.5f) / TX
+                                val sy = top + h * (ty + 0.5f) / TY
+                                if (hypot(p.x - sx, p.y - sy) < radius) textHits[ty * TX + tx] = true
+                            }
+                        }
+                        if (cells.count { it } >= cells.size * 0.9f || (r.width > 0f && textHits.all { it })) scratched()
                     }
                     fun dust(p: Offset, dir: Offset) {
                         val t = clock()
@@ -508,7 +532,7 @@ private fun ScratchArea(prize: String, lose: Boolean, revealed: Boolean, modifie
 // ---------------------------------------------------------------- 최종 발표
 
 @Composable
-private fun FinalCard(session: MiniGameSession, bet: String, onClose: () -> Unit, onAgain: () -> Unit) {
+private fun FinalCard(session: MiniGameSession, bet: String, onClose: () -> Unit) {
     val loser = session.players[session.loser]
     val escaped = session.players.filterIndexed { i, _ -> i != session.loser }.joinToString("·") { it.animal.label }
     Box(
@@ -539,13 +563,8 @@ private fun FinalCard(session: MiniGameSession, bet: String, onClose: () -> Unit
                 Text("${shortBet(bet).ifEmpty { "벌칙" }} 몰빵!", fontSize = 26.sp, color = Pal.TomatoText, textAlign = TextAlign.Center)
                 Text("${session.game.emoji} ${session.game.title} · $escaped 탈출", fontSize = 14.sp, color = Pal.InkSoft)
                 Spacer(Modifier.height(6.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    CartoonButton(onClick = onClose, color = Pal.Paper, modifier = Modifier.weight(1f), height = 52.dp, depth = 4.dp) {
-                        Text("결과로", fontSize = 18.sp, color = Pal.Ink)
-                    }
-                    CartoonButton(onClick = onAgain, color = Pal.Sun, modifier = Modifier.weight(1.3f), height = 52.dp, depth = 4.dp) {
-                        Text("한 판 더", fontSize = 18.sp, color = Pal.Ink)
-                    }
+                CartoonButton(onClick = onClose, color = Pal.Sun, modifier = Modifier.fillMaxWidth(), height = 52.dp, depth = 4.dp) {
+                    Text("결과로", fontSize = 18.sp, color = Pal.Ink)
                 }
             }
         }

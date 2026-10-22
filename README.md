@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.11.6-4C9A2A" alt="version 3.11.6">
+  <img src="https://img.shields.io/badge/version-3.11.7-4C9A2A" alt="version 3.11.7">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -84,6 +84,11 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.11.7 — 복권 공개 조건 두 가지, 몰빵 카드 버튼 정리
+- 복권 결과 공개: 카드 전체를 **90% 넘게** 긁거나, 가운데 **글자 자리를 빠짐없이** 긁었을 때 — 글자 주변만 긁어 두고 애태우다가 마지막에 글자를 직접 확인할 수 있게
+- 긁힌 양은 손가락이 실제로 지나간 자리만 셈 (전에는 주변 칸까지 넉넉하게 세서 덜 긁혀도 공개됨)
+- 몰아주기 최종 발표 카드에서 [한 판 더]를 빼고 [결과로]만
 
 ### 3.11.6 — 복권 공개 기준 70%
 - 너무 금방 끝나서 복권 결과가 공개되는 기준을 55% → 70% 긁었을 때로

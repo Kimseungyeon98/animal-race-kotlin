@@ -41,7 +41,6 @@ fun App(state: AppState) {
                     session, bet = state.lastRecord?.bet.orEmpty(),
                     onDecided = state::recordMiniGame,
                     onClose = state::closeMiniGame,
-                    onAgain = { state.closeMiniGame(); state.startRace() },
                 )
             }
         }
