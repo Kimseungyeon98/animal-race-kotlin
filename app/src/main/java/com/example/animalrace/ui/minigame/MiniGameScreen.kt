@@ -326,7 +326,7 @@ private fun withSubjectUi(word: String) = com.example.animalrace.race.withSubjec
 // ---------------------------------------------------------------- 복권
 
 /**
- * 당첨자마다 복권 한 장 (최대 3장이라 남는 높이를 나눠 크게). 자기 카드를 긁어 55% 넘게 벗기면 결과가 드러난다.
+ * 당첨자마다 복권 한 장 (최대 3장이라 남는 높이를 나눠 크게). 자기 카드를 긁어 70% 넘게 벗기면 결과가 드러난다.
  * 긁는 동안에는 바탕·글자 색이 당첨이든 꽝이든 같아서, 글자를 읽어야만 알 수 있다.
  */
 @Composable
@@ -437,7 +437,7 @@ private fun ScratchArea(prize: String, lose: Boolean, revealed: Boolean, modifie
                         for (gy in 0 until GY) for (gx in 0 until GX) {
                             if (hypot(p.x - (gx + 0.5f) * cw, p.y - (gy + 0.5f) * ch) < radius + cw * 0.3f) cells[gy * GX + gx] = true
                         }
-                        if (cells.count { it } >= cells.size * 0.55f) scratched()
+                        if (cells.count { it } >= cells.size * 0.7f) scratched()
                     }
                     fun dust(p: Offset, dir: Offset) {
                         val t = clock()

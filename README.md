@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.11.5-4C9A2A" alt="version 3.11.5">
+  <img src="https://img.shields.io/badge/version-3.11.6-4C9A2A" alt="version 3.11.6">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -84,6 +84,9 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.11.6 — 복권 공개 기준 70%
+- 너무 금방 끝나서 복권 결과가 공개되는 기준을 55% → 70% 긁었을 때로
 
 ### 3.11.5 — 복권 긁기 손맛·긴장감
 - 복권 카드를 크게: 최대 3장이라 화면 높이를 나눠 쓰고, 동물은 카드 위쪽 머리말로 옮겨 긁는 칸을 카드 폭 전체로
