@@ -48,6 +48,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -106,7 +107,11 @@ fun ResultScreen(record: RaceRecord, onAgain: () -> Unit, onHome: () -> Unit) {
                     }
                 }
             }
-            item { PenaltyCard(record.bet, loser, lane(loser)) }
+            item {
+                val picks = record.picks
+                if (picks == null) PenaltyCard(record.bet, loser, lane(loser))
+                else PickCard(record.bet, picks, record.losers)
+            }
             item { Podium(results, ::lane) }
             item {
                 Column(
@@ -119,7 +124,10 @@ fun ResultScreen(record: RaceRecord, onAgain: () -> Unit, onHome: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text("전체 기록", fontSize = 18.sp, color = Pal.Ink, modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 4.dp))
-                    results.forEachIndexed { i, r -> RecordRow(i, r, lane(r), winner.time, i == results.lastIndex) }
+                    results.forEachIndexed { i, r ->
+                        val hit = record.picks?.contains(i + 1) == true
+                        RecordRow(i, r, lane(r), winner.time, last = record.picks == null && i == results.lastIndex, hit = hit)
+                    }
                 }
             }
         }
@@ -197,6 +205,51 @@ private fun PenaltyCard(bet: String, loser: RaceResult, lane: Int) {
     }
 }
 
+/** 랜덤 등수 모드의 당첨 카드: 뽑힌 등수마다 그 등수로 들어온 동물을 한 줄씩. */
+@Composable
+private fun PickCard(bet: String, picks: List<Int>, losers: List<RaceResult>) {
+    val shake = remember { Animatable(0f) }
+    LaunchedEffect(losers) {
+        delay(600)
+        repeat(4) { shake.animateTo(7f, tween(55)); shake.animateTo(-7f, tween(55)) }
+        shake.animateTo(0f, spring())
+    }
+    Box(Modifier.padding(bottom = 6.dp)) {
+        Box(Modifier.matchParentSize().offset(y = 6.dp).clip(RoundedCornerShape(24.dp)).background(Pal.Ink))
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .background(Pal.Pink)
+                .border(3.dp, Pal.Ink, RoundedCornerShape(24.dp))
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Tag("🎯 랜덤 등수 당첨!", Pal.Tomato, fontSize = 14.sp)
+                Text(shortBet(bet).ifEmpty { "오늘의 당첨" }, fontSize = 24.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            picks.zip(losers).forEach { (place, r) ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Pal.Paper)
+                        .border(2.dp, Pal.Ink, RoundedCornerShape(16.dp))
+                        .padding(start = 4.dp, end = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    AnimalSprite(r.animal, 70.dp, modifier = Modifier.graphicsLayer { translationX = shake.value * density; rotationZ = shake.value })
+                    Tag("${place}등", Pal.Sun, Pal.Ink, fontSize = 15.sp)
+                    LaneSticker(r.lane, size = 22.dp)
+                    Text("${withRo(r.animal.label)} 출전한 사람!", fontSize = 15.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun Podium(results: List<RaceResult>, lane: (RaceResult) -> Int) {
     val slots = listOfNotNull(results.getOrNull(1)?.let { 1 to it }, 0 to results[0], results.getOrNull(2)?.let { 2 to it })
@@ -247,22 +300,22 @@ private fun PodiumColumn(place: Int, r: RaceResult, lane: Int, modifier: Modifie
 }
 
 @Composable
-private fun RecordRow(i: Int, r: RaceResult, lane: Int, winnerTime: Double, last: Boolean) {
+private fun RecordRow(i: Int, r: RaceResult, lane: Int, winnerTime: Double, last: Boolean, hit: Boolean = false) {
     val first = i == 0
     Row(
         Modifier
             .fillMaxWidth()
             .height(54.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(if (first) Pal.SunPale else if (last) Pal.Pink else Pal.Paper)
-            .border(2.dp, if (first || last) Pal.Ink else Pal.Line, RoundedCornerShape(14.dp))
+            .background(if (last || hit) Pal.Pink else if (first) Pal.SunPale else Pal.Paper)
+            .border(2.dp, if (first || last || hit) Pal.Ink else Pal.Line, RoundedCornerShape(14.dp))
             .padding(start = 6.dp, end = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
             "${i + 1}", style = NumberStyle, fontSize = 20.sp, modifier = Modifier.width(30.dp),
-            color = if (first) Color(0xFFC98A00) else if (last) Color(0xFFD23A26) else Pal.Ink,
+            color = if (last || hit) Color(0xFFD23A26) else if (first) Color(0xFFC98A00) else Pal.Ink,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
         Box {
@@ -270,7 +323,10 @@ private fun RecordRow(i: Int, r: RaceResult, lane: Int, winnerTime: Double, last
             LaneSticker(lane, Modifier.offset(x = (-4).dp, y = (-4).dp), size = 18.dp)
         }
         Column(Modifier.weight(1f)) {
-            Text(r.animal.label, fontSize = 17.sp, color = Pal.Ink)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(r.animal.label, fontSize = 17.sp, color = Pal.Ink)
+                if (hit) Tag("당첨", Pal.Tomato, fontSize = 11.sp)
+            }
             Text("${r.animal.skill} ${r.skillUses}회", fontSize = 12.sp, color = Pal.InkSoft)
         }
         Column(horizontalAlignment = Alignment.End) {

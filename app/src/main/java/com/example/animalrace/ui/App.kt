@@ -26,6 +26,7 @@ fun App(state: AppState) {
                 animals = state.selected.toList(),
                 bet = state.bet.trim(),
                 raceKey = state.raceSeq,
+                picks = state.picks,
                 onFinished = state::finishRace,
                 confirmExit = state.confirmExit,
                 onKeepRacing = state::keepRacing,

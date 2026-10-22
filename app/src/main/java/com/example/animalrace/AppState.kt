@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.animalrace.model.Animal
 import com.example.animalrace.model.AppRepository
+import com.example.animalrace.model.RandomRank
 import com.example.animalrace.model.RaceRecord
 import com.example.animalrace.model.RaceResult
 import com.example.animalrace.model.SavedSetup
@@ -24,6 +25,14 @@ class AppState(private val repo: AppRepository) {
         private set
     val selected = mutableStateListOf<Animal>()
     var bet by mutableStateOf("꼴찌가 커피 쏘기")
+
+    /** 랜덤 등수 모드: 켜면 출발 전에 룰렛으로 당첨 등수를 뽑는다 (끄면 꼴찌 벌칙) */
+    var randomRank by mutableStateOf(false)
+        private set
+
+    /** 이번 판의 당첨 등수. 랜덤 등수 모드가 아니면 null */
+    var picks by mutableStateOf<List<Int>?>(null)
+        private set
     val history = mutableStateListOf<RaceRecord>()
     var lastRecord by mutableStateOf<RaceRecord?>(null)
         private set
@@ -39,8 +48,8 @@ class AppState(private val repo: AppRepository) {
         private set
 
     init {
-        // 앱을 켤 때마다 출전 동물은 비운 채로 시작하고, 벌칙 문구만 지난번 것을 이어 쓴다
-        repo.loadSetup()?.let { bet = it.bet }
+        // 앱을 켤 때마다 출전 동물은 비운 채로 시작하고, 벌칙 문구와 랜덤 등수 모드만 지난번 것을 이어 쓴다
+        repo.loadSetup()?.let { bet = it.bet; randomRank = it.randomRank }
         history.addAll(repo.loadHistory().take(HISTORY_SIZE))
     }
 
@@ -63,8 +72,12 @@ class AppState(private val repo: AppRepository) {
 
     fun updateBet(value: String) { bet = value.take(30); persistSetup() }
 
+    fun updateRandomRank(on: Boolean) { randomRank = on; persistSetup() }
+
     fun startRace() {
         if (!canStart) return
+        // 경주와 따로 뽑으므로 경주 결과에는 영향이 없다
+        picks = if (randomRank) RandomRank.draw(selected.size) else null
         raceSeq++
         confirmExit = false
         screen = Screen.Race
@@ -77,6 +90,7 @@ class AppState(private val repo: AppRepository) {
             leadChanges = race.leadChanges,
             results = race.ranking().map { RaceResult(it.animal, it.finish ?: 0.0, it.uses, it.lane) },
             venue = venue,
+            picks = picks,
         )
         lastRecord = record
         history.add(0, record)
@@ -96,7 +110,7 @@ class AppState(private val repo: AppRepository) {
 
     fun keepRacing() { confirmExit = false }
 
-    private fun persistSetup() = repo.saveSetup(SavedSetup(selected.toList(), bet))
+    private fun persistSetup() = repo.saveSetup(SavedSetup(selected.toList(), bet, randomRank))
 
     companion object {
         const val MIN_RACERS = 2

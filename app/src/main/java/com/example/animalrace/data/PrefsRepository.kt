@@ -19,13 +19,14 @@ class PrefsRepository(context: Context) : AppRepository {
         val animals = json.getJSONArray("animals").let { arr ->
             (0 until arr.length()).mapNotNull { animalOf(arr.getString(it)) }
         }
-        SavedSetup(animals, json.optString("bet"))
+        SavedSetup(animals, json.optString("bet"), json.optBoolean("randomRank"))
     }.getOrNull()
 
     override fun saveSetup(setup: SavedSetup) {
         val json = JSONObject()
             .put("animals", JSONArray(setup.animals.map { it.name }))
             .put("bet", setup.bet)
+            .put("randomRank", setup.randomRank)
         prefs.edit().putString(KEY_SETUP, json.toString()).apply()
     }
 
@@ -38,9 +39,10 @@ class PrefsRepository(context: Context) : AppRepository {
                 val r = res.getJSONObject(j)
                 animalOf(r.getString("a"))?.let { RaceResult(it, r.getDouble("t"), r.optInt("u"), r.optInt("l", j)) }
             }
+            val picks = o.optJSONArray("picks")?.let { p -> (0 until p.length()).map { p.getInt(it) } }
             if (results.isEmpty()) null
             else RaceRecord(o.getLong("at"), o.optString("bet"), o.optInt("lead"), results,
-                Venue.entries.firstOrNull { it.name == o.optString("venue") })
+                Venue.entries.firstOrNull { it.name == o.optString("venue") }, picks)
         }
     }.getOrDefault(emptyList())
 
@@ -53,7 +55,8 @@ class PrefsRepository(context: Context) : AppRepository {
             }
             arr.put(
                 JSONObject().put("at", rec.at).put("bet", rec.bet).put("lead", rec.leadChanges).put("results", results)
-                    .put("venue", rec.venue?.name),
+                    .put("venue", rec.venue?.name)
+                    .put("picks", rec.picks?.let { JSONArray(it) }),
             )
         }
         prefs.edit().putString(KEY_HISTORY, arr.toString()).apply()

@@ -8,7 +8,12 @@ data class RaceRecord(
     val results: List<RaceResult>,
     /** 경기장 (3.5.1 이전 기록은 null) */
     val venue: Venue? = null,
-)
+    /** 랜덤 등수 모드로 뽑은 당첨 등수(1등부터, 작은 순). null이면 꼴찌 벌칙 판 */
+    val picks: List<Int>? = null,
+) {
+    /** 벌칙 당첨 결과: 랜덤 판이면 뽑힌 등수의 동물들, 아니면 꼴찌 */
+    val losers: List<RaceResult> get() = picks?.mapNotNull { results.getOrNull(it - 1) } ?: listOf(results.last())
+}
 
 data class RaceResult(
     val animal: Animal,
@@ -21,6 +26,7 @@ data class RaceResult(
 data class SavedSetup(
     val animals: List<Animal>,
     val bet: String,
+    val randomRank: Boolean = false,
 )
 
 /** 기록·설정 저장소. 실제 구현은 Android의 SharedPreferences([com.example.animalrace.data.PrefsRepository]). */

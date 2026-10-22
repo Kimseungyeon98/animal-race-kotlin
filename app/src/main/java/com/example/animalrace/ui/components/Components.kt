@@ -160,6 +160,7 @@ object Icons2 {
     val Home = listOf("M3 11l9-7 9 7", "M5 10v10h14V10")
     val Again = listOf("M21 12a9 9 0 1 1-3-6.7", "M21 4v5h-5")
     val Scale = listOf("M12 3v18", "M5 7h14", "M5 7l-3 7a3 3 0 0 0 6 0z", "M19 7l-3 7a3 3 0 0 0 6 0z")
+    val Check = listOf("M5 12.5l4.5 4.5L19 7")
     val Crown = listOf("M3 19 L5 5 L11 12 L15 3 L19 12 L25 5 L27 19 Z")
 }
 

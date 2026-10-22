@@ -47,6 +47,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -72,6 +73,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -81,6 +83,7 @@ import androidx.compose.ui.unit.sp
 import com.example.animalrace.AppState
 import com.example.animalrace.model.Animal
 import com.example.animalrace.model.Fx
+import com.example.animalrace.model.RandomRank
 import com.example.animalrace.model.RaceRecord
 import com.example.animalrace.ui.art.AnimalSprite
 import com.example.animalrace.ui.components.CartoonButton
@@ -136,11 +139,11 @@ fun SetupScreen(state: AppState) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         OutlinedText("동물 대소동 레이스!", 26.sp)
-                        state.history.firstOrNull()?.results?.lastOrNull()?.let { last ->
+                        state.history.firstOrNull()?.let { last ->
                             Text(
                                 buildAnnotatedString {
-                                    append("지난 판 꼴찌 ")
-                                    withStyle(SpanStyle(color = Pal.TomatoText)) { append(last.animal.label) }
+                                    append(if (last.picks == null) "지난 판 꼴찌 " else "지난 판 당첨 ")
+                                    withStyle(SpanStyle(color = Pal.TomatoText)) { append(last.losers.joinToString("·") { it.animal.label }) }
                                 },
                                 fontSize = 14.sp, color = Pal.Ink,
                                 modifier = Modifier
@@ -160,7 +163,6 @@ fun SetupScreen(state: AppState) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 4.dp)
                         .clip(RoundedCornerShape(14.dp))
                         .background(Pal.Cream)
                         .border(3.dp, Pal.Ink, RoundedCornerShape(14.dp))
@@ -169,11 +171,14 @@ fun SetupScreen(state: AppState) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Tag("꼴찌 벌칙", Pal.Tomato, fontSize = 14.sp)
+                    if (state.randomRank) Tag("🎯 랜덤 벌칙", Pal.Sun, Pal.Ink, fontSize = 14.sp)
+                    else Tag("꼴찌 벌칙", Pal.Tomato, fontSize = 14.sp)
                     Text(shortBet(state.bet).ifEmpty { "없음" }, fontSize = 17.sp, color = Pal.Ink, modifier = Modifier.weight(1f),
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                     InkIcon(Icons2.Pencil, size = 18.dp)
                 }
+
+                RandomRankRow(state, Modifier.padding(bottom = 4.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -341,6 +346,43 @@ private fun AnimalTile(animal: Animal, lane: Int, tileW: Dp, tileH: Dp, modifier
     }
 }
 
+/** 랜덤 등수 모드 체크박스. 오른쪽에 지금 인원으로 몇 명이 당첨되는지 보여 준다. */
+@Composable
+private fun RandomRankRow(state: AppState, modifier: Modifier) {
+    val on = state.randomRank
+    val n = state.selected.size
+    Row(
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Pal.Paper)
+            .border(3.dp, Pal.Ink, RoundedCornerShape(14.dp))
+            .toggleable(value = on, role = Role.Checkbox, onValueChange = state::updateRandomRank)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            Modifier
+                .size(24.dp)
+                .clip(RoundedCornerShape(7.dp))
+                .background(if (on) Pal.Sun else Pal.Paper)
+                .border(3.dp, Pal.Ink, RoundedCornerShape(7.dp)),
+            contentAlignment = Alignment.Center,
+        ) { if (on) InkIcon(Icons2.Check, size = 18.dp, stroke = 3.5f) }
+        Text("랜덤 등수 모드", fontSize = 17.sp, color = Pal.Ink, modifier = Modifier.weight(1f))
+        Text(
+            if (n >= AppState.MIN_RACERS) buildAnnotatedString {
+                withStyle(SpanStyle(fontFamily = NumberStyle.fontFamily)) { append("$n") }
+                append("마리 → ")
+                withStyle(SpanStyle(fontFamily = NumberStyle.fontFamily, color = Pal.TomatoText)) { append("${RandomRank.count(n)}") }
+                append("명 당첨")
+            } else buildAnnotatedString { append("출발 전 룰렛으로 등수 뽑기") },
+            fontSize = 14.sp, color = Pal.InkSoft,
+        )
+    }
+}
+
 @Composable
 private fun BottomPanel(state: AppState, focused: Animal, onStart: () -> Unit) {
     Column(
@@ -373,7 +415,7 @@ private fun BottomPanel(state: AppState, focused: Animal, onStart: () -> Unit) {
                 if (state.canStart) {
                     InkIcon(Icons2.Play, size = 22.dp, fill = Color.White, stroke = 2f)
                     Spacer(Modifier.width(10.dp))
-                    OutlinedText("${state.selected.size}마리 출발!", 26.sp, outlineWidth = 5f)
+                    OutlinedText(if (state.randomRank) "룰렛 돌리고 출발!" else "${state.selected.size}마리 출발!", 26.sp, outlineWidth = 5f)
                 } else {
                     Text("2마리 이상 골라 주세요", fontSize = 21.sp, color = Color.White)
                 }
@@ -630,7 +672,7 @@ private fun HistorySheet(state: AppState, onClose: () -> Unit) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HistoryCard(number: Int, record: RaceRecord) {
-    val loser = record.results.last().animal
+    val picks = record.picks
     Column(
         Modifier
             .fillMaxWidth()
@@ -645,17 +687,25 @@ private fun HistoryCard(number: Int, record: RaceRecord) {
             val venue = record.venue?.let { "${it.emoji} ${it.title} · " }.orEmpty()
             Text("${formatTime(record.at)} · $venue${record.results.size}마리 · 역전 ${record.leadChanges}회", fontSize = 13.sp, color = Pal.InkSoft)
         }
-        Text(
-            buildAnnotatedString {
-                append(shortBet(record.bet).ifEmpty { "꼴찌" })
-                append("  →  ")
-                withStyle(SpanStyle(color = Pal.TomatoText)) { append(loser.label) }
-            },
-            fontSize = 16.sp, color = Pal.Ink,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (picks != null) Tag("🎯 랜덤", Pal.Sun, Pal.Ink, fontSize = 12.sp)
+            Text(
+                buildAnnotatedString {
+                    append(shortBet(record.bet).ifEmpty { if (picks == null) "꼴찌" else "당첨" })
+                    append("  →  ")
+                    withStyle(SpanStyle(color = Pal.TomatoText)) {
+                        append(
+                            if (picks == null) record.results.last().animal.label
+                            else picks.zip(record.losers).joinToString(" · ") { (p, r) -> "${p}등 ${r.animal.label}" },
+                        )
+                    }
+                },
+                fontSize = 16.sp, color = Pal.Ink,
+            )
+        }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             record.results.forEachIndexed { i, r ->
-                val last = i == record.results.lastIndex
+                val last = if (picks == null) i == record.results.lastIndex else (i + 1) in picks
                 Row(
                     Modifier
                         .clip(RoundedCornerShape(12.dp))

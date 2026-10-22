@@ -45,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +60,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,6 +71,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.animalrace.model.Animal
+import com.example.animalrace.model.Fx
+import com.example.animalrace.model.RandomRank
 import com.example.animalrace.model.Venue
 import com.example.animalrace.race.EventKind
 import com.example.animalrace.race.Race
@@ -73,6 +80,7 @@ import com.example.animalrace.race.RaceEvent
 import com.example.animalrace.race.RaceView
 import com.example.animalrace.race.RacerView
 import com.example.animalrace.race.TRACK
+import com.example.animalrace.race.withSubject
 import com.example.animalrace.ui.art.AnimalSprite
 import com.example.animalrace.ui.components.Crown
 import com.example.animalrace.ui.components.Icons2
@@ -135,6 +143,8 @@ fun RaceScreen(
     bet: String,
     raceKey: Int,
     onFinished: (Race, Venue) -> Unit,
+    /** 랜덤 등수 모드의 당첨 등수. 있으면 카운트다운 전에 룰렛으로 보여 준다 */
+    picks: List<Int>? = null,
     confirmExit: Boolean = false,
     onKeepRacing: () -> Unit = {},
     onQuit: () -> Unit = {},
@@ -143,6 +153,9 @@ fun RaceScreen(
     val race = remember(raceKey) { Race(animals, venue = stadium.venue) }
     var frame by remember(raceKey) { mutableStateOf(Frame(race.view(), START_X, START_W, 0.0)) }
     var countdown by remember(raceKey) { mutableStateOf<String?>(null) }
+    var roulette by remember(raceKey) { mutableStateOf<Roulette?>(null) }
+    // 룰렛을 탭하면 남은 칸을 바로 멈추고(발표 중이면 바로 출발로) 넘어간다
+    var skip by remember(raceKey) { mutableStateOf(false) }
     var speed by remember { mutableFloatStateOf(1f) }
     val haptic = LocalHapticFeedback.current
     val finish by rememberUpdatedState(onFinished)
@@ -150,6 +163,27 @@ fun RaceScreen(
     val paused by rememberUpdatedState(confirmExit)
 
     LaunchedEffect(race) {
+        if (picks != null) {
+            // 확인창이 떠 있는 동안은 멈추고, 탭하면 바로 끝나는 기다림
+            suspend fun hold(ms: Long) {
+                var left = ms
+                while (left > 0 && !skip) { delay(30); if (!paused) left -= 30 }
+                while (paused) delay(50)
+            }
+            roulette = Roulette(stopped = 0, revealed = false)
+            picks.indices.forEach { i ->
+                hold(if (i == 0) 1300 else 850)
+                roulette = Roulette(stopped = i + 1, revealed = false)
+                if (!skip) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            }
+            skip = false
+            hold(450)
+            roulette = Roulette(stopped = picks.size, revealed = true)
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            skip = false
+            hold(1800)
+            roulette = null
+        }
         for (c in listOf("3", "2", "1", "출발!")) {
             while (paused) delay(50)
             countdown = c
@@ -209,8 +243,11 @@ fun RaceScreen(
         val laneH = (trackSpace / n).coerceAtMost(110.dp)
         val trackTop = maxHeight - bottomH - laneH * n
 
+        // 발표 전까지는 등수를 숨긴다 (빈 목록 = 랜덤 판이지만 아직 모름)
+        val shown = picks?.let { if (roulette == null || roulette?.revealed == true) it else emptyList() }
+
         Scenery(frame, stadium, trackTop, Modifier.fillMaxSize())
-        Track(frame, stadium, trackTop, laneH, maxWidth)
+        Track(frame, stadium, trackTop, laneH, maxWidth, picks)
 
         Column(
             Modifier
@@ -219,12 +256,12 @@ fun RaceScreen(
                 .padding(top = 14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            TopBar(bet, frame.view.t, fast = speed > 1f) { speed = if (speed > 1f) 1f else 2f }
-            Standings(frame.view)
+            TopBar(bet, shown, frame.view.t, fast = speed > 1f) { speed = if (speed > 1f) 1f else 2f }
+            Standings(frame.view, shown)
         }
 
         Commentary(
-            frame.view.recentEvents,
+            withPickLines(frame.view, picks),
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -233,6 +270,8 @@ fun RaceScreen(
 
         Overlays(frame, stadium, countdown)
 
+        roulette?.let { RouletteOverlay(it, picks.orEmpty(), n, bet) { skip = true } }
+
         if (confirmExit) ExitDialog(frame.view, onKeepRacing, onQuit, topInset)
     }
 }
@@ -240,7 +279,7 @@ fun RaceScreen(
 // ---------------------------------------------------------------- 상단
 
 @Composable
-private fun TopBar(bet: String, t: Double, fast: Boolean, onToggleSpeed: () -> Unit) {
+private fun TopBar(bet: String, picks: List<Int>?, t: Double, fast: Boolean, onToggleSpeed: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             Modifier
@@ -266,7 +305,11 @@ private fun TopBar(bet: String, t: Double, fast: Boolean, onToggleSpeed: () -> U
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Tag("꼴찌", Pal.Tomato, fontSize = 12.sp)
+            when {
+                picks == null -> Tag("꼴찌", Pal.Tomato, fontSize = 12.sp)
+                picks.isEmpty() -> Tag("🎯 ?등", Pal.Paper, Pal.Ink, fontSize = 12.sp)
+                else -> Tag("🎯 ${RandomRank.label(picks)}", Pal.Sun, Pal.Ink, fontSize = 12.sp)
+            }
             Text(shortBet(bet).ifEmpty { "자유 경기" }, fontSize = 15.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Box(
@@ -282,9 +325,12 @@ private fun TopBar(bet: String, t: Double, fast: Boolean, onToggleSpeed: () -> U
     }
 }
 
-/** 실시간 순위 띠. 역전되면 얼굴이 미끄러지듯 자리를 바꾼다. 1등과 꼴찌는 태그로 표시. */
+/**
+ * 실시간 순위 띠. 역전되면 얼굴이 미끄러지듯 자리를 바꾼다. 1등과 꼴찌는 태그로 표시.
+ * 랜덤 등수 판([picks]가 null이 아님)은 꼴찌 대신 지금 당첨 등수에 있는 동물을 빨간 태그로.
+ */
 @Composable
-private fun Standings(view: RaceView) {
+private fun Standings(view: RaceView, picks: List<Int>?) {
     BoxWithConstraints(Modifier.fillMaxWidth().height(52.dp)) {
         val n = view.racers.size
         val gap = 8.dp
@@ -293,20 +339,21 @@ private fun Standings(view: RaceView) {
             key(r.lane) {
                 val x by animateDpAsState((avatar + gap) * r.rank, spring(stiffness = Spring.StiffnessMediumLow), label = "pos")
                 val first = r.rank == 0
-                val last = r.rank == n - 1
+                val hit = picks?.contains(r.rank + 1) == true
+                val last = hit || (picks == null && r.rank == n - 1)
                 Box(Modifier.offset(x = x).size(avatar, 52.dp)) {
                     Box(
                         Modifier
                             .size(avatar)
                             .clip(CircleShape)
-                            .background(if (first) Pal.Sun else if (last) Pal.Pink else Pal.Paper)
+                            .background(if (last) Pal.Pink else if (first) Pal.Sun else Pal.Paper)
                             .border(3.dp, Pal.Ink, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) { AnimalSprite(r.animal, avatar * 0.92f) }
                     LaneSticker(r.lane, Modifier.offset(x = (-4).dp, y = (-6).dp), size = 20.dp)
                     Tag(
-                        if (first) "1등" else if (last) "꼴찌" else "${r.rank + 1}",
-                        bg = if (first) Pal.Ink else if (last) Pal.Tomato else Pal.Paper,
+                        if (hit) "${r.rank + 1}등" else if (first) "1등" else if (last) "꼴찌" else "${r.rank + 1}",
+                        bg = if (last) Pal.Tomato else if (first) Pal.Ink else Pal.Paper,
                         fg = if (first || last) Color.White else Pal.Ink,
                         fontSize = 10.sp, number = !(first || last),
                         modifier = Modifier.align(Alignment.BottomCenter).wrapContentWidth(unbounded = true),
@@ -331,7 +378,7 @@ private fun Scenery(frame: Frame, stadium: Stadium, trackTop: Dp, modifier: Modi
 }
 
 @Composable
-private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width: Dp) {
+private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width: Dp, picks: List<Int>?) {
     val view = frame.view
     val n = view.racers.size
     fun sx(worldX: Double): Dp = width * ((worldX - frame.camX) / frame.camW).toFloat()
@@ -407,6 +454,10 @@ private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width
     view.racers.forEach { r ->
         val nose = sx(visualX(r))
         val y = trackTop + laneH * (r.lane + 1) - spriteH - 2.dp
+        // 당첨 등수로 들어온 동물은 결승 직후 깜짝 놀란다 (표시만, 경주에는 영향 없음)
+        val hit = r.finished && picks?.contains(r.rank + 1) == true
+        val sinceFinish = frame.time - (r.finishTime ?: frame.time)
+        val shock = hit && sinceFinish < 1.6
         if (nose < 0.dp) {
             OffscreenTag(r, view, Modifier.offset(x = 40.dp, y = trackTop + laneH * r.lane + (laneH - 30.dp) / 2))
         } else if (nose - sprite < width) {
@@ -415,20 +466,22 @@ private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width
                 AnimalSprite(
                     r.animal, sprite,
                     running = !r.finished && !r.stopped,
-                    fx = r.fx,
-                    fxTime = r.fxElapsed.toFloat(),
+                    fx = if (shock) Fx.SCARED else r.fx,
+                    fxTime = if (shock) sinceFinish.toFloat() else r.fxElapsed.toFloat(),
                     venue = stadium.venue,
                 )
-                if (r.rank == 0 && !r.finished && r.fx == com.example.animalrace.model.Fx.NONE && view.t > 1) {
+                if (r.rank == 0 && !r.finished && r.fx == Fx.NONE && view.t > 1) {
                     Crown(Modifier.align(Alignment.TopCenter).offset(x = sprite * 0.12f, y = (-14).dp), width = 30.dp)
                 }
             }
             // 등수 태그는 코끝 앞(오른쪽)에, 레인 가운데 높이로 — 윗줄 동물을 가리지 않게
             if (r.finished) {
                 val tagH = (laneH * 0.5f).coerceIn(18.dp, 28.dp)
+                val red = hit || (picks == null && r.rank == n - 1)
                 Tag(
-                    "${r.rank + 1}등", if (r.rank == 0) Pal.Sun else if (r.rank == n - 1) Pal.Tomato else Pal.Paper,
-                    if (r.rank == n - 1) Color.White else Pal.Ink,
+                    if (hit) "${r.rank + 1}등 당첨!" else "${r.rank + 1}등",
+                    if (red) Pal.Tomato else if (r.rank == 0) Pal.Sun else Pal.Paper,
+                    if (red) Color.White else Pal.Ink,
                     fontSize = (tagH.value * 0.55f).sp,
                     modifier = Modifier.offset(x = nose + sprite * 0.1f, y = trackTop + laneH * r.lane + (laneH - tagH) / 2),
                 )
@@ -604,7 +657,7 @@ private fun ExitDialog(view: RaceView, onKeep: () -> Unit, onQuit: () -> Unit, t
                 peek.forEachIndexed { i, r ->
                     val side = i - (peek.size - 1) / 2f
                     AnimalSprite(
-                        r.animal, 100.dp, fx = com.example.animalrace.model.Fx.SCARED,
+                        r.animal, 100.dp, fx = Fx.SCARED,
                         modifier = Modifier.offset(y = if (side == 0f) 0.dp else 18.dp).rotate(side * 10f),
                     )
                 }
@@ -698,4 +751,141 @@ private fun Overlays(frame: Frame, stadium: Stadium, countdown: String?) {
             )
         }
     }
+}
+
+// ---------------------------------------------------------------- 랜덤 등수 룰렛
+
+/** 룰렛 진행: 멈춘 칸 수, 그리고 결과 발표 중인지. */
+private data class Roulette(val stopped: Int, val revealed: Boolean)
+
+/** 해설: 랜덤 등수 판이면 당첨 등수로 들어온 동물마다 한 줄을 더한다 (화면 표시만). */
+private fun withPickLines(view: RaceView, picks: List<Int>?): List<RaceEvent> {
+    if (picks == null) return view.recentEvents
+    val lines = view.racers.filter { it.finished && (it.rank + 1) in picks }.map {
+        RaceEvent(-1 - it.lane, it.finishTime ?: view.t, "😱 ${withSubject(it.animal.label)} ${it.rank + 1}등으로 들어왔어요! 당첨!", EventKind.FINISH)
+    }
+    return (lines + view.recentEvents).sortedByDescending { it.t }
+}
+
+/**
+ * 출발 전 룰렛 (시안: "랜덤 등수 모드" ②·③).
+ * 칸이 하나씩 멈춘 뒤 당첨 등수를 크게 발표한다. 아무 데나 탭하면 [onTap]으로 건너뛴다.
+ */
+@Composable
+private fun RouletteOverlay(state: Roulette, picks: List<Int>, racers: Int, bet: String, onTap: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Pal.Ink.copy(alpha = 0.55f))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onTap),
+        contentAlignment = Alignment.Center,
+    ) {
+        AnimatedContent(
+            targetState = state.revealed,
+            transitionSpec = { (scaleIn(initialScale = 0.85f) + fadeIn()) togetherWith fadeOut(tween(120)) },
+            label = "roulette",
+        ) { revealed ->
+            Column(
+                Modifier
+                    .padding(horizontal = 22.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(26.dp))
+                    .background(Pal.Ivory)
+                    .border(3.dp, Pal.Ink, RoundedCornerShape(26.dp))
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (!revealed) {
+                    Tag("🎰 오늘의 당첨 등수", Pal.Sun, Pal.Ink, fontSize = 15.sp)
+                    Text("${racers}마리 중 ${picks.size}명을 뽑아요", fontSize = 15.sp, color = Pal.InkSoft)
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        picks.forEachIndexed { i, p ->
+                            Reel(if (i < state.stopped) p else null, racers, seed = i, width = if (picks.size >= 3) 88.dp else 110.dp)
+                        }
+                    }
+                    Text(if (state.stopped < picks.size) "두근두근…" else "결정!", fontSize = 15.sp, color = Pal.InkSoft)
+                } else {
+                    Text("오늘의 당첨 등수는…", fontSize = 20.sp, color = Pal.Ink)
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        picks.forEachIndexed { i, p ->
+                            Box(Modifier.rotate(if (i % 2 == 0) -4f else 4f)) {
+                                Box(Modifier.matchParentSize().offset(y = 5.dp).clip(RoundedCornerShape(20.dp)).background(Pal.Ink))
+                                Box(
+                                    Modifier
+                                        .size(if (picks.size >= 3) 88.dp else 104.dp, 88.dp)
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(Pal.Sun)
+                                        .border(3.dp, Pal.Ink, RoundedCornerShape(20.dp)),
+                                    contentAlignment = Alignment.Center,
+                                ) { RankText(p, 48.sp) }
+                            }
+                        }
+                    }
+                    Text(
+                        "${RandomRank.label(picks)}으로 들어오면", fontSize = 17.sp, color = Pal.Ink,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                    Text("${shortBet(bet).ifEmpty { "벌칙 당첨" }}!", fontSize = 22.sp, color = Pal.TomatoText, textAlign = TextAlign.Center)
+                }
+            }
+        }
+        Text(
+            if (state.revealed) "잠시 후 출발해요" else "화면을 탭하면 바로 멈춰요",
+            fontSize = 15.sp, color = Color.White,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 170.dp),
+        )
+    }
+}
+
+/** 슬롯 한 칸. [value]가 null이면 숫자가 빠르게 돌고, 정해지면 그 등수에서 "딱!" 멈춘다. */
+@Composable
+private fun Reel(value: Int?, racers: Int, seed: Int, width: Dp) {
+    var tick by remember { mutableIntStateOf(seed * 3) }
+    LaunchedEffect(value) {
+        while (value == null) { delay(65); tick++ }
+    }
+    val pop by androidx.compose.animation.core.animateFloatAsState(
+        if (value != null) 1f else 0.82f, spring(dampingRatio = 0.35f, stiffness = 500f), label = "pop",
+    )
+    val center = value ?: (tick % racers + 1)
+    fun wrap(k: Int) = ((k - 1 + racers) % racers) + 1
+    val above = if (value != null) (center - 1).takeIf { it >= 1 } else wrap(center - 1)
+    val below = if (value != null) (center + 1).takeIf { it <= racers } else wrap(center + 1)
+    Box(
+        Modifier
+            .size(width, 130.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Pal.Paper)
+            .border(3.dp, Pal.Ink, RoundedCornerShape(18.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column {
+            Box(Modifier.fillMaxWidth().height(3.dp).background(Pal.Ink))
+            Box(Modifier.fillMaxWidth().height(48.dp).background(if (value != null) Pal.Sun else Pal.SunPale))
+            Box(Modifier.fillMaxWidth().height(3.dp).background(Pal.Ink))
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.height(36.dp), contentAlignment = Alignment.Center) { above?.let { RankText(it, 22.sp, alpha = 0.35f) } }
+            Box(Modifier.height(54.dp).graphicsLayer { scaleX = pop; scaleY = pop }, contentAlignment = Alignment.Center) {
+                RankText(center, 38.sp, alpha = if (value != null) 1f else 0.75f)
+            }
+            Box(Modifier.height(36.dp), contentAlignment = Alignment.Center) { below?.let { RankText(it, 22.sp, alpha = 0.35f) } }
+        }
+        if (value != null) {
+            Tag("딱!", Pal.Tomato, fontSize = 12.sp, modifier = Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 4.dp))
+        }
+    }
+}
+
+/** "3등": 숫자는 크게(숫자 글꼴), "등"은 작게. */
+@Composable
+private fun RankText(rank: Int, size: androidx.compose.ui.unit.TextUnit, alpha: Float = 1f) {
+    Text(
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontFamily = NumberStyle.fontFamily, fontSize = size)) { append("$rank") }
+            withStyle(SpanStyle(fontSize = size * 0.55f)) { append("등") }
+        },
+        color = Pal.Ink.copy(alpha = alpha), maxLines = 1,
+    )
 }
