@@ -4,7 +4,7 @@ import android.content.Context
 import com.example.animalrace.model.Animal
 import com.example.animalrace.model.AppRepository
 import com.example.animalrace.model.MiniGame
-import com.example.animalrace.model.Mollbang
+import com.example.animalrace.model.MiniGameResult
 import com.example.animalrace.model.RaceRecord
 import com.example.animalrace.model.RaceResult
 import com.example.animalrace.model.SavedSetup
@@ -42,14 +42,15 @@ class PrefsRepository(context: Context) : AppRepository {
                 animalOf(r.getString("a"))?.let { RaceResult(it, r.getDouble("t"), r.optInt("u"), r.optInt("l", j)) }
             }
             val picks = o.optJSONArray("picks")?.let { p -> (0 until p.length()).map { p.getInt(it) } }
-            val mollbang = o.optJSONObject("mollbang")?.let { m ->
+            // 3.11 기록은 "mollbang" 키로 저장돼 있다
+            val miniGame = (o.optJSONObject("miniGame") ?: o.optJSONObject("mollbang"))?.let { m ->
                 val game = MiniGame.entries.firstOrNull { it.name == m.optString("g") }
                 val loser = animalOf(m.optString("a"))
-                if (game != null && loser != null) Mollbang(game, loser) else null
+                if (game != null && loser != null) MiniGameResult(game, loser) else null
             }
             if (results.isEmpty()) null
             else RaceRecord(o.getLong("at"), o.optString("bet"), o.optInt("lead"), results,
-                Venue.entries.firstOrNull { it.name == o.optString("venue") }, picks, mollbang)
+                Venue.entries.firstOrNull { it.name == o.optString("venue") }, picks, miniGame)
         }
     }.getOrDefault(emptyList())
 
@@ -64,7 +65,7 @@ class PrefsRepository(context: Context) : AppRepository {
                 JSONObject().put("at", rec.at).put("bet", rec.bet).put("lead", rec.leadChanges).put("results", results)
                     .put("venue", rec.venue?.name)
                     .put("picks", rec.picks?.let { JSONArray(it) })
-                    .put("mollbang", rec.mollbang?.let { JSONObject().put("g", it.game.name).put("a", it.loser.name) }),
+                    .put("miniGame", rec.miniGame?.let { JSONObject().put("g", it.game.name).put("a", it.loser.name) }),
             )
         }
         prefs.edit().putString(KEY_HISTORY, arr.toString()).apply()

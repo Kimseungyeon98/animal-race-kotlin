@@ -60,7 +60,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.animalrace.model.MiniGame
-import com.example.animalrace.model.Mollbang
+import com.example.animalrace.model.MiniGameResult
 import com.example.animalrace.model.RaceRecord
 import com.example.animalrace.model.RaceResult
 import com.example.animalrace.ui.art.AnimalSprite
@@ -89,7 +89,7 @@ fun ResultScreen(
     onAgain: () -> Unit,
     onHome: () -> Unit,
     lastGame: MiniGame = MiniGame.LADDER,
-    onMollbang: (MiniGame?) -> Unit = {},
+    onMiniGame: (MiniGame?) -> Unit = {},
 ) {
     var picker by remember { mutableStateOf(false) }
     val results = record.results
@@ -125,7 +125,7 @@ fun ResultScreen(
             item {
                 val picks = record.picks
                 if (picks == null) PenaltyCard(record.bet, loser, lane(loser))
-                else PickCard(record.bet, picks, record.losers, record.mollbang, onMollbang = { picker = true })
+                else PickCard(record.bet, picks, record.losers, record.miniGame, onMiniGame = { picker = true })
             }
             item { Podium(results, ::lane) }
             item {
@@ -169,7 +169,7 @@ fun ResultScreen(
         }
 
         AnimatedVisibility(picker, enter = fadeIn(), exit = fadeOut()) {
-            GamePicker(record.losers, lastGame, onDismiss = { picker = false }) { picker = false; onMollbang(it) }
+            GamePicker(record.losers, lastGame, onDismiss = { picker = false }) { picker = false; onMiniGame(it) }
         }
     }
 }
@@ -226,7 +226,7 @@ private fun PenaltyCard(bet: String, loser: RaceResult, lane: Int) {
 
 /** 랜덤 등수 모드의 당첨 카드: 뽑힌 등수마다 그 등수로 들어온 동물을 한 줄씩. */
 @Composable
-private fun PickCard(bet: String, picks: List<Int>, losers: List<RaceResult>, mollbang: Mollbang?, onMollbang: () -> Unit) {
+private fun PickCard(bet: String, picks: List<Int>, losers: List<RaceResult>, miniGame: MiniGameResult?, onMiniGame: () -> Unit) {
     val shake = remember { Animatable(0f) }
     LaunchedEffect(losers) {
         delay(600)
@@ -266,7 +266,7 @@ private fun PickCard(bet: String, picks: List<Int>, losers: List<RaceResult>, mo
                 }
             }
             // 2명 이상 걸렸으면 몰아주기 (이미 했으면 결과)
-            if (mollbang != null) {
+            if (miniGame != null) {
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -278,10 +278,10 @@ private fun PickCard(bet: String, picks: List<Int>, losers: List<RaceResult>, mo
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text("💸 몰빵", fontSize = 16.sp, color = Color.White)
-                    Text("${mollbang.game.emoji} ${mollbang.game.title} → ${mollbang.loser.label}", fontSize = 16.sp, color = Color.White, maxLines = 1)
+                    Text("${miniGame.game.emoji} ${miniGame.game.title} → ${miniGame.loser.label}", fontSize = 16.sp, color = Color.White, maxLines = 1)
                 }
             } else if (losers.size >= 2) {
-                CartoonButton(onClick = onMollbang, color = Pal.Sun, modifier = Modifier.fillMaxWidth().padding(top = 2.dp), height = 52.dp, depth = 4.dp) {
+                CartoonButton(onClick = onMiniGame, color = Pal.Sun, modifier = Modifier.fillMaxWidth().padding(top = 2.dp), height = 52.dp, depth = 4.dp) {
                     Text("💸 몰아주기!", fontSize = 21.sp, color = Pal.Ink)
                     Spacer(Modifier.width(8.dp))
                     Text("한 명에게 몰빵", fontSize = 14.sp, color = Pal.InkSoft)

@@ -6,7 +6,7 @@ import org.junit.Test
 import kotlin.random.Random
 
 /** 몰아주기: 사다리 규칙과 몰빵 뽑기의 공정성. */
-class MollbangTest {
+class MiniGameTest {
 
     @Test
     fun everyStartEndsInADifferentSlot() {
@@ -43,7 +43,7 @@ class MollbangTest {
         for (players in 2..3) {
             val draws = 30_000
             val counts = IntArray(players)
-            repeat(draws) { counts[MollbangDraw.loser(players, rnd)]++ }
+            repeat(draws) { counts[MiniGameDraw.loser(players, rnd)]++ }
             val expected = draws.toDouble() / players
             val chi = counts.sumOf { (it - expected) * (it - expected) / expected }
             // 자유도 1~2, 유의수준 0.1% 임계값 10.8 / 13.8

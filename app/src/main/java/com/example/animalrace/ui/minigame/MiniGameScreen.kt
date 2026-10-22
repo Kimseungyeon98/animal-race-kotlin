@@ -68,7 +68,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.animalrace.MollbangSession
+import com.example.animalrace.MiniGameSession
 import com.example.animalrace.model.Fx
 import com.example.animalrace.model.MiniGame
 import com.example.animalrace.ui.art.AnimalSprite
@@ -92,7 +92,7 @@ private val TrailColors = listOf(Color(0xFF3FD0A6), Color(0xFF5AA9FF), Color(0xF
  * 몰빵이 공개되면 [onDecided]로 기록하고, 잠시 뒤 최종 발표 카드를 띄운다.
  */
 @Composable
-fun MiniGameScreen(session: MollbangSession, bet: String, onDecided: () -> Unit, onClose: () -> Unit, onAgain: () -> Unit) {
+fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: () -> Unit, onClose: () -> Unit, onAgain: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     val revealed = remember(session) { mutableStateListOf<Int>() }
     var done by remember(session) { mutableStateOf(false) }
@@ -168,7 +168,7 @@ fun MiniGameScreen(session: MollbangSession, bet: String, onDecided: () -> Unit,
 
 /** 동물이 한 마리씩 사다리를 타고 내려가고, 도착한 칸만 열린다. 탭하면 빨리 내려간다. */
 @Composable
-private fun LadderGame(session: MollbangSession, revealed: List<Int>, onReveal: (Int) -> Unit) {
+private fun LadderGame(session: MiniGameSession, revealed: List<Int>, onReveal: (Int) -> Unit) {
     val n = session.players.size
     val ladder = session.ladder
     val progress = remember(session) { List(n) { mutableFloatStateOf(0f) } }
@@ -326,7 +326,7 @@ private fun withSubjectUi(word: String) = com.example.animalrace.race.withSubjec
 
 /** 당첨자마다 복권 한 장. 자기 카드를 긁어 60% 넘게 벗기면 결과가 드러난다. */
 @Composable
-private fun LottoGame(session: MollbangSession, revealed: List<Int>, onReveal: (Int) -> Unit) {
+private fun LottoGame(session: MiniGameSession, revealed: List<Int>, onReveal: (Int) -> Unit) {
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         session.players.forEachIndexed { i, p ->
             val out = i in revealed
@@ -448,7 +448,7 @@ private fun ScratchArea(prize: String, lose: Boolean, revealed: Boolean, modifie
 // ---------------------------------------------------------------- 최종 발표
 
 @Composable
-private fun FinalCard(session: MollbangSession, bet: String, onClose: () -> Unit, onAgain: () -> Unit) {
+private fun FinalCard(session: MiniGameSession, bet: String, onClose: () -> Unit, onAgain: () -> Unit) {
     val loser = session.players[session.loser]
     val escaped = session.players.filterIndexed { i, _ -> i != session.loser }.joinToString("·") { it.animal.label }
     Box(

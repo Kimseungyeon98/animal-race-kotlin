@@ -9,13 +9,13 @@ enum class MiniGame(val emoji: String, val title: String, val desc: String) {
 }
 
 /** 몰아주기 결과: 어떤 게임으로 누가 몰빵했는지. */
-data class Mollbang(val game: MiniGame, val loser: Animal)
+data class MiniGameResult(val game: MiniGame, val loser: Animal)
 
 /**
  * 몰아주기: 랜덤 등수로 2명 이상 걸렸을 때 그중 한 명에게 몰빵.
  * 몰빵 1명은 게임 시작 전에 고르게 뽑아 두고, 미니게임은 그 결과를 보여 주는 연출이다.
  */
-object MollbangDraw {
+object MiniGameDraw {
     /** 몰빵할 사람(후보 목록의 위치) */
     fun loser(players: Int, rnd: Random = Random.Default): Int = rnd.nextInt(players)
 

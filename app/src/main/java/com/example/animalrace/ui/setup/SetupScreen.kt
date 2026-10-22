@@ -142,10 +142,10 @@ fun SetupScreen(state: AppState) {
                         state.history.firstOrNull()?.let { last ->
                             Text(
                                 buildAnnotatedString {
-                                    val mollbang = last.mollbang
-                                    append(if (mollbang != null) "지난 판 몰빵 " else if (last.picks == null) "지난 판 꼴찌 " else "지난 판 당첨 ")
+                                    val miniGame = last.miniGame
+                                    append(if (miniGame != null) "지난 판 몰빵 " else if (last.picks == null) "지난 판 꼴찌 " else "지난 판 당첨 ")
                                     withStyle(SpanStyle(color = Pal.TomatoText)) {
-                                        append(mollbang?.loser?.label ?: last.losers.joinToString("·") { it.animal.label })
+                                        append(miniGame?.loser?.label ?: last.losers.joinToString("·") { it.animal.label })
                                     }
                                 },
                                 fontSize = 14.sp, color = Pal.Ink,
@@ -706,7 +706,7 @@ private fun HistoryCard(number: Int, record: RaceRecord) {
                 fontSize = 16.sp, color = Pal.Ink,
             )
         }
-        record.mollbang?.let { m ->
+        record.miniGame?.let { m ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Tag("💸 몰빵", Pal.Tomato, fontSize = 12.sp)
                 Text(

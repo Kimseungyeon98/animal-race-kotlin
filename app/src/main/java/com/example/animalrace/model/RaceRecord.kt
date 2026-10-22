@@ -11,7 +11,7 @@ data class RaceRecord(
     /** 랜덤 등수 모드로 뽑은 당첨 등수(1등부터, 작은 순). null이면 꼴찌 벌칙 판 */
     val picks: List<Int>? = null,
     /** 랜덤 등수 당첨자끼리 몰아주기를 했다면 그 결과 */
-    val mollbang: Mollbang? = null,
+    val miniGame: MiniGameResult? = null,
 ) {
     /** 벌칙 당첨 결과: 랜덤 판이면 뽑힌 등수의 동물들, 아니면 꼴찌 */
     val losers: List<RaceResult> get() = picks?.mapNotNull { results.getOrNull(it - 1) } ?: listOf(results.last())

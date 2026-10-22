@@ -9,8 +9,8 @@ import com.example.animalrace.model.Animal
 import com.example.animalrace.model.AppRepository
 import com.example.animalrace.model.Ladder
 import com.example.animalrace.model.MiniGame
-import com.example.animalrace.model.Mollbang
-import com.example.animalrace.model.MollbangDraw
+import com.example.animalrace.model.MiniGameResult
+import com.example.animalrace.model.MiniGameDraw
 import com.example.animalrace.model.RandomRank
 import com.example.animalrace.model.RaceRecord
 import com.example.animalrace.model.RaceResult
@@ -24,7 +24,7 @@ enum class Screen { Setup, Race, Result, MiniGame }
  * 진행 중인 몰아주기 한 판. [loser]는 [players] 중 몰빵할 사람의 위치로, 게임을 시작하기 전에 뽑아 둔다.
  * 사다리는 무작위로 깐 뒤 몰빵할 사람이 도착하는 칸을 몰빵 칸으로 정한다.
  */
-data class MollbangSession(
+data class MiniGameSession(
     val game: MiniGame,
     val players: List<RaceResult>,
     val loser: Int,
@@ -59,7 +59,7 @@ class AppState(private val repo: AppRepository) {
     val canStart get() = selected.size >= MIN_RACERS
 
     /** 몰아주기 미니게임 (결과 화면에서 시작) */
-    var mollbang by mutableStateOf<MollbangSession?>(null)
+    var miniGame by mutableStateOf<MiniGameSession?>(null)
         private set
 
     /** 마지막으로 고른 미니게임 (게임 고르기 창에서 먼저 선택돼 있게) */
@@ -104,7 +104,7 @@ class AppState(private val repo: AppRepository) {
         if (!canStart) return
         // 경주와 따로 뽑으므로 경주 결과에는 영향이 없다
         picks = if (randomRank) RandomRank.draw(selected.size) else null
-        mollbang = null
+        miniGame = null
         raceSeq++
         confirmExit = false
         screen = Screen.Race
@@ -127,24 +127,24 @@ class AppState(private val repo: AppRepository) {
     }
 
     /** 몰아주기 시작. [game]이 null이면 아무거나. */
-    fun openMollbang(game: MiniGame?) {
+    fun openMiniGame(game: MiniGame?) {
         val record = lastRecord ?: return
         val players = record.losers
-        if (record.picks == null || players.size < 2 || record.mollbang != null) return
-        val chosen = game ?: MollbangDraw.game()
+        if (record.picks == null || players.size < 2 || record.miniGame != null) return
+        val chosen = game ?: MiniGameDraw.game()
         if (game != null) lastGame = game
-        val loser = loserDraw?.takeIf { it.first == record.at }?.second ?: MollbangDraw.loser(players.size)
+        val loser = loserDraw?.takeIf { it.first == record.at }?.second ?: MiniGameDraw.loser(players.size)
         loserDraw = record.at to loser
-        mollbang = MollbangSession(chosen, players, loser, Ladder.random(players.size))
+        miniGame = MiniGameSession(chosen, players, loser, Ladder.random(players.size))
         screen = Screen.MiniGame
     }
 
     /** 미니게임에서 몰빵이 공개되면 기록에 남긴다. */
-    fun recordMollbang() {
-        val session = mollbang ?: return
+    fun recordMiniGame() {
+        val session = miniGame ?: return
         val record = lastRecord ?: return
-        if (record.mollbang != null) return
-        val updated = record.copy(mollbang = Mollbang(session.game, session.players[session.loser].animal))
+        if (record.miniGame != null) return
+        val updated = record.copy(miniGame = MiniGameResult(session.game, session.players[session.loser].animal))
         lastRecord = updated
         val i = history.indexOfFirst { it.at == record.at }
         if (i >= 0) history[i] = updated
@@ -152,17 +152,17 @@ class AppState(private val repo: AppRepository) {
     }
 
     /** 미니게임을 닫고 결과 화면으로 */
-    fun closeMollbang() { mollbang = null; screen = Screen.Result }
+    fun closeMiniGame() { miniGame = null; screen = Screen.Result }
 
     fun clearHistory() { history.clear(); repo.saveHistory(emptyList()) }
 
-    fun goHome() { confirmExit = false; mollbang = null; screen = Screen.Setup }
+    fun goHome() { confirmExit = false; miniGame = null; screen = Screen.Setup }
 
     /** 뒤로 가기: 경주 중이면 확인창을 열고(이미 열려 있으면 닫고 계속), 미니게임이면 결과 화면으로, 결과 화면이면 바로 메인으로 */
     fun back() {
         when (screen) {
             Screen.Race -> confirmExit = !confirmExit
-            Screen.MiniGame -> closeMollbang()
+            Screen.MiniGame -> closeMiniGame()
             else -> goHome()
         }
     }

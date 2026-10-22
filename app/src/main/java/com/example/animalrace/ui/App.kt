@@ -34,14 +34,14 @@ fun App(state: AppState) {
                 onQuit = state::goHome,
             )
             Screen.Result -> state.lastRecord?.let { record ->
-                ResultScreen(record, onAgain = state::startRace, onHome = state::goHome, lastGame = state.lastGame, onMollbang = state::openMollbang)
+                ResultScreen(record, onAgain = state::startRace, onHome = state::goHome, lastGame = state.lastGame, onMiniGame = state::openMiniGame)
             }
-            Screen.MiniGame -> state.mollbang?.let { session ->
+            Screen.MiniGame -> state.miniGame?.let { session ->
                 MiniGameScreen(
                     session, bet = state.lastRecord?.bet.orEmpty(),
-                    onDecided = state::recordMollbang,
-                    onClose = state::closeMollbang,
-                    onAgain = { state.closeMollbang(); state.startRace() },
+                    onDecided = state::recordMiniGame,
+                    onClose = state::closeMiniGame,
+                    onAgain = { state.closeMiniGame(); state.startRace() },
                 )
             }
         }
