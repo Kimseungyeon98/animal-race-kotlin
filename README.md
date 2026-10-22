@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.11.3-4C9A2A" alt="version 3.11.3">
+  <img src="https://img.shields.io/badge/version-3.11.4-4C9A2A" alt="version 3.11.4">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -47,6 +47,8 @@
 | **③ 🪜 몰아주기: 사다리 타기** | **④ 🎫 몰아주기: 복권 긁기** |
 | <img src="docs/media/ladder.gif" width="240" alt="걸린 동물들이 차례로 사다리를 타고 내려가 치타가 몰빵 칸에 도착"> | <img src="docs/media/lotto.gif" width="240" alt="복권 카드를 손가락으로 긁어 코끼리가 몰빵"> |
 | 결과 화면 [💸 몰아주기!] → 동물들이<br>직접 사다리를 타고 내려가요 | 돌려 가며 자기 카드를 슥슥 긁으면<br>"꽝 탈출 🎉" 또는 "몰빵! 💸" |
+| **⑤ 기록에도 남아요** | |
+| <img src="docs/media/history-random.png" width="240" alt="최근 경기 기록: 랜덤 당첨 등수와 몰빵 결과가 판마다 남은 모습"> | 판마다 🎯 랜덤 당첨 등수,<br>💸 몰빵이면 어떤 게임으로 누가 걸렸는지까지.<br>메인 위쪽에는 "지난 판 몰빵 코끼리" |
 
 몰빵할 사람도 게임 전에 고르게 뽑아 두고 게임은 그걸 보여 주는 연출이라, 누가 먼저 하든 걸릴 확률은 같아요.
 
@@ -66,7 +68,7 @@
 | **3.6** | **경기장별 연출** — 혼자 넘어지는 장면이 경기장마다 달라요 (아래) |
 | **3.7** | **나가기 확인창** — 경주 중 뒤로 가기 → 일시정지 + "아직 경기 중이에요!"<br><img src="docs/media/exit.gif" width="200" alt="경주 중 뒤로 가기를 누르면 확인창이 뜨고 경주가 멈춤"><br><sub>창이 떠 있는 동안 시간이 멈추고, [계속 볼래요!]로 이어 보거나 [그만두기]로 메인으로</sub> |
 | **3.8** | **새 앱 아이콘** — 체커 깃발 → 1등 왕관을 쓴 말<br><img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" width="72" alt="1등 왕관을 쓴 말 얼굴 앱 아이콘"> |
-| **3.9** | **토끼굴 지름길** — 토끼 전용 가속: 굴로 쏙 → 땅속 두두두 → 앞쪽 굴에서 퐁! (낮잠은 실수 장면으로) |
+| **3.9** | **토끼굴 지름길** — 토끼 전용 가속: 굴로 쏙 → 땅속 두두두 → 앞쪽 굴에서 퐁! (낮잠은 실수 장면으로)<br><img src="docs/media/rabbit-burrow.gif" width="200" alt="사막 경기장에서 토끼가 토끼굴로 쏙 들어가 땅속으로 두두두 달린 뒤 퐁 튀어나옴"><br><sub>사막에서 토끼가 굴로 쏙 → 두두두 → 퐁! (그 사이 말은 모래 회오리에 휘말림)</sub> |
 | **3.10** | **랜덤 등수 모드 (번외)** — 출발 전 룰렛으로 당첨 등수 뽑기 → 경주 중 당첨 등수 표시 → 결과·기록에 당첨 (위 ①②) |
 | **3.11** | **몰아주기 미니게임** — 랜덤 등수로 2명 이상 걸리면 사다리 타기·복권 긁기로 한 명에게 몰빵 (위 ③④) |
 
@@ -82,6 +84,9 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.11.4 — README 토끼굴·몰빵 기록
+- 3.9 항목에 토끼굴 지름길 실제 플레이 움짤, "번외" 항목에 랜덤·몰빵 결과가 남은 최근 경기 기록 화면 (`docs/media/`, 앱 동작 변경 없음)
 
 ### 3.11.3 — README 랜덤 등수·몰아주기 움짤
 - "번외: 랜덤 등수 & 몰아주기" 항목 추가: 실제 플레이 녹화에서 자른 룰렛·당첨 골인·사다리 타기·복권 긁기 움짤 4개 (`docs/media/`, 앱 동작 변경 없음)
