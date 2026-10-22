@@ -1,6 +1,12 @@
 package com.example.animalrace.ui.result
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -53,6 +59,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.animalrace.model.MiniGame
+import com.example.animalrace.model.Mollbang
 import com.example.animalrace.model.RaceRecord
 import com.example.animalrace.model.RaceResult
 import com.example.animalrace.ui.art.AnimalSprite
@@ -76,7 +84,14 @@ import kotlin.random.Random
  * 결과: 꼴찌 벌칙 당첨 → 시상대 → 전체 기록.
  */
 @Composable
-fun ResultScreen(record: RaceRecord, onAgain: () -> Unit, onHome: () -> Unit) {
+fun ResultScreen(
+    record: RaceRecord,
+    onAgain: () -> Unit,
+    onHome: () -> Unit,
+    lastGame: MiniGame = MiniGame.LADDER,
+    onMollbang: (MiniGame?) -> Unit = {},
+) {
+    var picker by remember { mutableStateOf(false) }
     val results = record.results
     val winner = results.first()
     val loser = results.last()
@@ -110,7 +125,7 @@ fun ResultScreen(record: RaceRecord, onAgain: () -> Unit, onHome: () -> Unit) {
             item {
                 val picks = record.picks
                 if (picks == null) PenaltyCard(record.bet, loser, lane(loser))
-                else PickCard(record.bet, picks, record.losers)
+                else PickCard(record.bet, picks, record.losers, record.mollbang, onMollbang = { picker = true })
             }
             item { Podium(results, ::lane) }
             item {
@@ -151,6 +166,10 @@ fun ResultScreen(record: RaceRecord, onAgain: () -> Unit, onHome: () -> Unit) {
                     OutlinedText("같은 동물로 한 판 더", 20.sp, outlineWidth = 5f)
                 }
             }
+        }
+
+        AnimatedVisibility(picker, enter = fadeIn(), exit = fadeOut()) {
+            GamePicker(record.losers, lastGame, onDismiss = { picker = false }) { picker = false; onMollbang(it) }
         }
     }
 }
@@ -207,7 +226,7 @@ private fun PenaltyCard(bet: String, loser: RaceResult, lane: Int) {
 
 /** 랜덤 등수 모드의 당첨 카드: 뽑힌 등수마다 그 등수로 들어온 동물을 한 줄씩. */
 @Composable
-private fun PickCard(bet: String, picks: List<Int>, losers: List<RaceResult>) {
+private fun PickCard(bet: String, picks: List<Int>, losers: List<RaceResult>, mollbang: Mollbang?, onMollbang: () -> Unit) {
     val shake = remember { Animatable(0f) }
     LaunchedEffect(losers) {
         delay(600)
@@ -246,7 +265,100 @@ private fun PickCard(bet: String, picks: List<Int>, losers: List<RaceResult>) {
                     Text("${withRo(r.animal.label)} 출전한 사람!", fontSize = 15.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
+            // 2명 이상 걸렸으면 몰아주기 (이미 했으면 결과)
+            if (mollbang != null) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Pal.Tomato)
+                        .border(2.dp, Pal.Ink, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("💸 몰빵", fontSize = 16.sp, color = Color.White)
+                    Text("${mollbang.game.emoji} ${mollbang.game.title} → ${mollbang.loser.label}", fontSize = 16.sp, color = Color.White, maxLines = 1)
+                }
+            } else if (losers.size >= 2) {
+                CartoonButton(onClick = onMollbang, color = Pal.Sun, modifier = Modifier.fillMaxWidth().padding(top = 2.dp), height = 52.dp, depth = 4.dp) {
+                    Text("💸 몰아주기!", fontSize = 21.sp, color = Pal.Ink)
+                    Spacer(Modifier.width(8.dp))
+                    Text("한 명에게 몰빵", fontSize = 14.sp, color = Pal.InkSoft)
+                }
+            }
         }
+    }
+}
+
+/** 몰아주기 게임 고르기 (바텀 시트). 바깥을 누르면 닫힌다. */
+@Composable
+private fun GamePicker(players: List<RaceResult>, lastGame: MiniGame, onDismiss: () -> Unit, onPick: (MiniGame?) -> Unit) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Pal.Ink.copy(alpha = 0.45f))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
+                .background(Pal.Ivory)
+                .border(3.dp, Pal.Ink, RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("누구에게 몰아줄까?", fontSize = 24.sp, color = Pal.Ink)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                players.forEach { p ->
+                    Row(
+                        Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Pal.Pink)
+                            .border(2.dp, Pal.Ink, RoundedCornerShape(12.dp))
+                            .padding(start = 3.dp, end = 8.dp, top = 1.dp, bottom = 1.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        LaneSticker(p.lane, size = 18.dp)
+                        Text(p.animal.label, fontSize = 14.sp, color = Pal.Ink)
+                    }
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MiniGame.entries.forEach { g ->
+                    GameTile(g.emoji, g.title, g.desc, selected = g == lastGame, modifier = Modifier.weight(1f)) { onPick(g) }
+                }
+            }
+            GameTile("🎲", "아무거나", "둘 중 하나를 랜덤으로", selected = false, modifier = Modifier.fillMaxWidth(), wide = true) { onPick(null) }
+        }
+    }
+}
+
+@Composable
+private fun GameTile(icon: String, title: String, desc: String, selected: Boolean, modifier: Modifier, wide: Boolean = false, onClick: () -> Unit) {
+    Box(modifier) {
+        Box(Modifier.matchParentSize().offset(y = 4.dp).clip(RoundedCornerShape(18.dp)).background(Pal.Ink))
+        val content: @Composable () -> Unit = {
+            Text(icon, fontSize = if (wide) 26.sp else 38.sp)
+            Column(horizontalAlignment = if (wide) Alignment.Start else Alignment.CenterHorizontally) {
+                Text(title, fontSize = 19.sp, color = Pal.Ink)
+                Text(desc, fontSize = 13.sp, color = Pal.InkSoft, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            }
+        }
+        val base = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(if (selected) Pal.SunPale else Pal.Paper)
+            .border(3.dp, Pal.Ink, RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(12.dp)
+        if (wide) Row(base, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { content() }
+        else Column(base.height(128.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) { content() }
     }
 }
 

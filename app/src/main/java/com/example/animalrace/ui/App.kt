@@ -8,6 +8,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import com.example.animalrace.AppState
 import com.example.animalrace.Screen
+import com.example.animalrace.ui.minigame.MiniGameScreen
 import com.example.animalrace.ui.race.RaceScreen
 import com.example.animalrace.ui.result.ResultScreen
 import com.example.animalrace.ui.setup.SetupScreen
@@ -33,7 +34,15 @@ fun App(state: AppState) {
                 onQuit = state::goHome,
             )
             Screen.Result -> state.lastRecord?.let { record ->
-                ResultScreen(record, onAgain = state::startRace, onHome = state::goHome)
+                ResultScreen(record, onAgain = state::startRace, onHome = state::goHome, lastGame = state.lastGame, onMollbang = state::openMollbang)
+            }
+            Screen.MiniGame -> state.mollbang?.let { session ->
+                MiniGameScreen(
+                    session, bet = state.lastRecord?.bet.orEmpty(),
+                    onDecided = state::recordMollbang,
+                    onClose = state::closeMollbang,
+                    onAgain = { state.closeMollbang(); state.startRace() },
+                )
             }
         }
     }

@@ -142,8 +142,11 @@ fun SetupScreen(state: AppState) {
                         state.history.firstOrNull()?.let { last ->
                             Text(
                                 buildAnnotatedString {
-                                    append(if (last.picks == null) "지난 판 꼴찌 " else "지난 판 당첨 ")
-                                    withStyle(SpanStyle(color = Pal.TomatoText)) { append(last.losers.joinToString("·") { it.animal.label }) }
+                                    val mollbang = last.mollbang
+                                    append(if (mollbang != null) "지난 판 몰빵 " else if (last.picks == null) "지난 판 꼴찌 " else "지난 판 당첨 ")
+                                    withStyle(SpanStyle(color = Pal.TomatoText)) {
+                                        append(mollbang?.loser?.label ?: last.losers.joinToString("·") { it.animal.label })
+                                    }
                                 },
                                 fontSize = 14.sp, color = Pal.Ink,
                                 modifier = Modifier
@@ -702,6 +705,18 @@ private fun HistoryCard(number: Int, record: RaceRecord) {
                 },
                 fontSize = 16.sp, color = Pal.Ink,
             )
+        }
+        record.mollbang?.let { m ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Tag("💸 몰빵", Pal.Tomato, fontSize = 12.sp)
+                Text(
+                    buildAnnotatedString {
+                        append("${m.game.emoji} ${m.game.title}  →  ")
+                        withStyle(SpanStyle(color = Pal.TomatoText)) { append(m.loser.label) }
+                    },
+                    fontSize = 16.sp, color = Pal.Ink,
+                )
+            }
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             record.results.forEachIndexed { i, r ->

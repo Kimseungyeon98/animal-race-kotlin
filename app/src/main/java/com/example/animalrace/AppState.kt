@@ -7,6 +7,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.animalrace.model.Animal
 import com.example.animalrace.model.AppRepository
+import com.example.animalrace.model.Ladder
+import com.example.animalrace.model.MiniGame
+import com.example.animalrace.model.Mollbang
+import com.example.animalrace.model.MollbangDraw
 import com.example.animalrace.model.RandomRank
 import com.example.animalrace.model.RaceRecord
 import com.example.animalrace.model.RaceResult
@@ -14,7 +18,18 @@ import com.example.animalrace.model.SavedSetup
 import com.example.animalrace.model.Venue
 import com.example.animalrace.race.Race
 
-enum class Screen { Setup, Race, Result }
+enum class Screen { Setup, Race, Result, MiniGame }
+
+/**
+ * 진행 중인 몰아주기 한 판. [loser]는 [players] 중 몰빵할 사람의 위치로, 게임을 시작하기 전에 뽑아 둔다.
+ * 사다리는 무작위로 깐 뒤 몰빵할 사람이 도착하는 칸을 몰빵 칸으로 정한다.
+ */
+data class MollbangSession(
+    val game: MiniGame,
+    val players: List<RaceResult>,
+    val loser: Int,
+    val ladder: Ladder,
+)
 
 /**
  * 앱 전체 상태. 화면 전환도 이 상태값([screen])으로 처리한다.
@@ -42,6 +57,17 @@ class AppState(private val repo: AppRepository) {
         private set
 
     val canStart get() = selected.size >= MIN_RACERS
+
+    /** 몰아주기 미니게임 (결과 화면에서 시작) */
+    var mollbang by mutableStateOf<MollbangSession?>(null)
+        private set
+
+    /** 마지막으로 고른 미니게임 (게임 고르기 창에서 먼저 선택돼 있게) */
+    var lastGame by mutableStateOf(MiniGame.LADDER)
+        private set
+
+    // 같은 판에서 게임을 바꾸거나 다시 열어도 몰빵할 사람은 그대로 (다시 뽑기 방지)
+    private var loserDraw: Pair<Long, Int>? = null
 
     /** 경주 중 뒤로 가기를 눌러 "그만둘까요?" 확인창이 떠 있는지 (떠 있는 동안 경주 일시정지) */
     var confirmExit by mutableStateOf(false)
@@ -78,6 +104,7 @@ class AppState(private val repo: AppRepository) {
         if (!canStart) return
         // 경주와 따로 뽑으므로 경주 결과에는 영향이 없다
         picks = if (randomRank) RandomRank.draw(selected.size) else null
+        mollbang = null
         raceSeq++
         confirmExit = false
         screen = Screen.Race
@@ -99,13 +126,45 @@ class AppState(private val repo: AppRepository) {
         screen = Screen.Result
     }
 
+    /** 몰아주기 시작. [game]이 null이면 아무거나. */
+    fun openMollbang(game: MiniGame?) {
+        val record = lastRecord ?: return
+        val players = record.losers
+        if (record.picks == null || players.size < 2 || record.mollbang != null) return
+        val chosen = game ?: MollbangDraw.game()
+        if (game != null) lastGame = game
+        val loser = loserDraw?.takeIf { it.first == record.at }?.second ?: MollbangDraw.loser(players.size)
+        loserDraw = record.at to loser
+        mollbang = MollbangSession(chosen, players, loser, Ladder.random(players.size))
+        screen = Screen.MiniGame
+    }
+
+    /** 미니게임에서 몰빵이 공개되면 기록에 남긴다. */
+    fun recordMollbang() {
+        val session = mollbang ?: return
+        val record = lastRecord ?: return
+        if (record.mollbang != null) return
+        val updated = record.copy(mollbang = Mollbang(session.game, session.players[session.loser].animal))
+        lastRecord = updated
+        val i = history.indexOfFirst { it.at == record.at }
+        if (i >= 0) history[i] = updated
+        repo.saveHistory(history.toList())
+    }
+
+    /** 미니게임을 닫고 결과 화면으로 */
+    fun closeMollbang() { mollbang = null; screen = Screen.Result }
+
     fun clearHistory() { history.clear(); repo.saveHistory(emptyList()) }
 
-    fun goHome() { confirmExit = false; screen = Screen.Setup }
+    fun goHome() { confirmExit = false; mollbang = null; screen = Screen.Setup }
 
-    /** 뒤로 가기: 경주 중이면 확인창을 열고(이미 열려 있으면 닫고 계속), 결과 화면이면 바로 메인으로 */
+    /** 뒤로 가기: 경주 중이면 확인창을 열고(이미 열려 있으면 닫고 계속), 미니게임이면 결과 화면으로, 결과 화면이면 바로 메인으로 */
     fun back() {
-        if (screen == Screen.Race) confirmExit = !confirmExit else goHome()
+        when (screen) {
+            Screen.Race -> confirmExit = !confirmExit
+            Screen.MiniGame -> closeMollbang()
+            else -> goHome()
+        }
     }
 
     fun keepRacing() { confirmExit = false }
