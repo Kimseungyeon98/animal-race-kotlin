@@ -21,14 +21,13 @@ import com.example.animalrace.race.Race
 enum class Screen { Setup, Race, Result, MiniGame }
 
 /**
- * 진행 중인 몰아주기 한 판.
- * 사다리: [loser]는 [players] 중 몰빵할 사람의 위치로 게임 전에 뽑아 두고, 그 사람이 도착하는 칸을 몰빵 칸으로 정한다.
- * 복권: [bomb]은 똑같은 복권 [players]장 중 몰빵이 숨은 장의 위치. 그 장을 고른 사람이 몰빵이다.
+ * 진행 중인 몰아주기 한 판. [bomb]은 몰빵이 숨은 자리로 시작할 때 고르게 뽑아 둔다.
+ * 사다리: [ladder]는 처음 깔린 사다리, [bomb]은 몰빵 칸(아래 칸 위치). 사람들이 줄을 더 그은 뒤 그 칸에 도착한 사람이 몰빵.
+ * 복권: [bomb]은 똑같은 복권 [players]장 중 몰빵이 숨은 장의 위치. 그 장을 고른 사람이 몰빵.
  */
 data class MiniGameSession(
     val game: MiniGame,
     val players: List<RaceResult>,
-    val loser: Int,
     val ladder: Ladder,
     val bomb: Int,
 )
@@ -68,8 +67,8 @@ class AppState(private val repo: AppRepository) {
     var lastGame by mutableStateOf(MiniGame.LADDER)
         private set
 
-    // 같은 판에서 게임을 바꾸거나 다시 열어도 몰빵할 사람·몰빵 복권 자리는 그대로 (다시 뽑기 방지)
-    private var draw: Triple<Long, Int, Int>? = null
+    // 같은 판에서 게임을 바꾸거나 다시 열어도 몰빵 자리·처음 사다리는 그대로 (다시 뽑기 방지)
+    private var draw: Triple<Long, Int, Ladder>? = null
 
     /** 경주 중 뒤로 가기를 눌러 "그만둘까요?" 확인창이 떠 있는지 (떠 있는 동안 경주 일시정지) */
     var confirmExit by mutableStateOf(false)
@@ -135,10 +134,10 @@ class AppState(private val repo: AppRepository) {
         if (record.picks == null || players.size < 2 || record.miniGame != null) return
         val chosen = game ?: MiniGameDraw.game()
         if (game != null) lastGame = game
-        val (_, loser, bomb) = draw?.takeIf { it.first == record.at }
-            ?: Triple(record.at, MiniGameDraw.loser(players.size), MiniGameDraw.ticket(players.size))
-        draw = Triple(record.at, loser, bomb)
-        miniGame = MiniGameSession(chosen, players, loser, Ladder.random(players.size), bomb)
+        val (_, bomb, ladder) = draw?.takeIf { it.first == record.at }
+            ?: Triple(record.at, MiniGameDraw.bomb(players.size), Ladder.random(players.size))
+        draw = Triple(record.at, bomb, ladder)
+        miniGame = MiniGameSession(chosen, players, ladder, bomb)
         screen = Screen.MiniGame
     }
 

@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.12-4C9A2A" alt="version 3.12">
+  <img src="https://img.shields.io/badge/version-3.13-4C9A2A" alt="version 3.13">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -46,7 +46,7 @@
 | 메인에서 랜덤 등수 모드를 켜고 출발하면<br>칸이 하나씩 "딱!" 멈춰요 (참가 ÷ 3명) | 경주 내내 "🎯 2등·3등·9등" 칩,<br>그 등수로 들어오면 "N등 당첨!" |
 | **③ 🪜 몰아주기: 사다리 타기** | **④ 🎫 몰아주기: 복권 긁기** |
 | <img src="docs/media/ladder.gif" width="240" alt="걸린 동물들이 차례로 사다리를 타고 내려가 치타가 몰빵 칸에 도착"> | <img src="docs/media/lotto.gif" width="240" alt="복권 카드를 손가락으로 긁어 코끼리가 몰빵"> |
-| 결과 화면 [💸 몰아주기!] → 동물들이<br>직접 사다리를 타고 내려가요 | 똑같은 복권 중 차례로 한 장씩 골라<br>화면 가득 긁기 (움짤은 3.11 버전) |
+| 한 사람당 가로줄 1개씩 긋고 [출발!] →<br>동물들이 직접 타고 내려가요 (움짤은 3.11 버전) | 똑같은 복권 중 차례로 한 장씩 골라<br>화면 가득 긁기 (움짤은 3.11 버전) |
 | **⑤ 기록에도 남아요** | |
 | <img src="docs/media/history-random.png" width="240" alt="최근 경기 기록: 랜덤 당첨 등수와 몰빵 결과가 판마다 남은 모습"> | 판마다 🎯 랜덤 당첨 등수,<br>💸 몰빵이면 어떤 게임으로 누가 걸렸는지까지.<br>메인 위쪽에는 "지난 판 몰빵 코끼리" |
 
@@ -72,6 +72,7 @@
 | **3.10** | **랜덤 등수 모드 (번외)** — 출발 전 룰렛으로 당첨 등수 뽑기 → 경주 중 당첨 등수 표시 → 결과·기록에 당첨 (위 ①②) |
 | **3.11** | **몰아주기 미니게임** — 랜덤 등수로 2명 이상 걸리면 사다리 타기·복권 긁기로 한 명에게 몰빵 (위 ③④) |
 | **3.12** | **복권 긁기 v2** — 똑같이 생긴 복권을 출전 번호 순으로 한 장씩 골라 화면 가득 펼쳐 긁기 |
+| **3.13** | **사다리 타기 v2** — 출전 번호 순으로 한 사람당 가로줄 1개 긋기 (넘기기 가능) |
 
 **3.6 경기장별 연출** — 순위·멈춤 시간은 그대로, 장면만 경기장에 맞게
 
@@ -85,6 +86,13 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.13 — 사다리 타기 v2: 한 사람당 가로줄 1개
+- 무작위 사다리 위에 출전 번호 순으로 한 사람당 가로줄 1개 — 두 세로줄 사이(노란 칸)를 탭하면 가장 가까운 높이에, 출전 번호 색 + 번호 핀으로
+- [넘기기]로 안 그어도 됨 · 같은 높이에 맞붙는 줄이 있으면 "같은 높이에 이미 줄이 있어요" (사다리가 꼬이지 않게)
+- 모두 끝나면 [🪜 출발!] → 지금처럼 한 마리씩 타고 내려가기 (사람들이 그은 줄도 똑같이 탐)
+- 공정성: 몰빵을 사람이 아니라 아래 칸 하나에 시작할 때 고르게 숨겨 둠 → 그은 줄이 실제로 결과를 바꾸지만, 칸이 끝까지 가려져 있어서 누구나 걸릴 확률은 같음 (`MiniGameTest.ladderIsFairWhereverPeopleDrawLines`)
+- 사다리 높이 칸 9 → 13, 사람마다 그을 빈 높이가 넉넉히 남도록 · 같은 판에서 다시 열어도 처음 사다리와 몰빵 칸은 그대로
 
 ### 3.12 — 복권 긁기 v2: 골라서 화면 가득 긁기
 - 똑같이 생긴 복권을 인원수만큼 나란히 → 출전 번호 순으로 한 장씩 골라요 (앞면엔 누구 것인지 표시 없음)
@@ -397,7 +405,7 @@ app/src/main/java/com/example/animalrace/
 - 경기 길이·간격: `race/Race.kt` 의 `finishAt` (1등 16.8~18.4초, 이후 0.08~0.45초 간격)
 - 공정성·전개 테스트: `gradlew test` (`FairnessTest.kt`, `StoryTest.kt`, `RandomRankTest.kt`, `MiniGameTest.kt`)
 - 랜덤 등수 당첨 인원: `model/RandomRank.kt` 의 `count()` / 룰렛 속도: `RaceScreen.kt` 의 `hold()` 시간
-- 사다리 모양: `model/MiniGame.kt` 의 `Ladder.random()` / 내려가는 속도·긁기 비율: `ui/minigame/MiniGameScreen.kt`
+- 사다리 모양·줄 긋기 규칙: `model/MiniGame.kt` 의 `Ladder.random()` / `canAdd()` / 내려가는 속도·긁기 비율: `ui/minigame/MiniGameScreen.kt`
 - 중반 선두가 이기는 판의 비율: `race/Race.kt` 의 `LEADER_WINS_2`(2마리, 50%) / `LEADER_WINS_N`(3마리 이상, 40%)
 - 색상: `ui/theme/Theme.kt` 의 `Pal`
 - 캐릭터 그림: `ui/art/AnimalArt.kt` / 연출: `ui/art/AnimalSprite.kt` 의 `fxFrame()`

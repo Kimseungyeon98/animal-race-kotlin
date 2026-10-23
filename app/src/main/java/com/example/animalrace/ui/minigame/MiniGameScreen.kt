@@ -1,6 +1,12 @@
 package com.example.animalrace.ui.minigame
 
 import androidx.compose.animation.AnimatedVisibility
+import kotlin.math.roundToInt
+import com.example.animalrace.ui.theme.LaneCloth
+import com.example.animalrace.model.Rung
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.gestures.detectTapGestures
 import com.example.animalrace.model.RaceResult
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.graphics.PathEffect
@@ -163,7 +169,7 @@ fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: (Int) -> Un
             }
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (session.game) {
-                    MiniGame.LADDER -> LadderGame(session, revealed) { reveal(it, it == session.loser) }
+                    MiniGame.LADDER -> LadderGame(session, revealed, loser, ::reveal)
                     MiniGame.LOTTO -> LottoGame(session, revealed, loser, ::reveal)
                 }
             }
@@ -177,21 +183,37 @@ fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: (Int) -> Un
 
 // ---------------------------------------------------------------- 사다리
 
-/** 동물이 한 마리씩 사다리를 타고 내려가고, 도착한 칸만 열린다. 탭하면 빨리 내려간다. */
+/**
+ * 사다리 타기 v2 (시안: "사다리 타기 v2").
+ * 무작위 사다리 위에 출전 번호 순으로 한 사람당 가로줄 1개(넘기기 가능)를 긋고, [출발!]하면
+ * 동물이 한 마리씩 타고 내려간다. 몰빵 칸([MiniGameSession.bomb])은 끝까지 가려져 있다가 도착하면 열린다.
+ */
 @Composable
-private fun LadderGame(session: MiniGameSession, revealed: List<Int>, onReveal: (Int) -> Unit) {
+private fun LadderGame(session: MiniGameSession, revealed: List<Int>, loser: Int?, onReveal: (Int, Boolean) -> Unit) {
     val n = session.players.size
-    val ladder = session.ladder
+    val haptic = LocalHapticFeedback.current
+    val order = remember(session) { session.players.indices.sortedBy { session.players[it].lane } }
+    // 사람들이 그은 가로줄과 그은 사람
+    val added = remember(session) { mutableStateListOf<Pair<Rung, Int>>() }
+    var drawTurn by remember(session) { mutableIntStateOf(0) }
+    var walkStarted by remember(session) { mutableStateOf(false) }
+    var toast by remember(session) { mutableStateOf<String?>(null) }
+    val ladder = remember(session, added.size) { added.fold(session.ladder) { l, (r, _) -> l + r } }
+    val drawing = drawTurn < n
+    val drawer = order.getOrNull(drawTurn)
+
     val progress = remember(session) { List(n) { mutableFloatStateOf(0f) } }
     var walking by remember(session) { mutableIntStateOf(-1) }
     var fast by remember(session) { mutableStateOf(false) }
     val reveal by rememberUpdatedState(onReveal)
+    val current by rememberUpdatedState(ladder)
 
-    LaunchedEffect(session) {
-        delay(800)
+    LaunchedEffect(walkStarted) {
+        if (!walkStarted) return@LaunchedEffect
+        delay(500)
         for (i in 0 until n) {
             // 몰빵이 이미 나왔으면 남은 동물은 바로 도착
-            if (session.loser in revealed) { progress[i].floatValue = 1f; continue }
+            if (revealed.size == n) { progress[i].floatValue = 1f; continue }
             walking = i
             fast = false
             // 마지막 한 마리 전에는 잠깐 멈칫
@@ -203,10 +225,13 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, onReveal: 
                 last = now
                 progress[i].floatValue = (progress[i].floatValue + dt / (if (fast) 0.6f else 2.8f)).coerceAtMost(1f)
             }
-            reveal(i)
+            reveal(i, current.end(i) == session.bomb)
             delay(600)
         }
         walking = -1
+    }
+    LaunchedEffect(toast) {
+        if (toast != null) { delay(1300); toast = null }
     }
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -216,8 +241,7 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, onReveal: 
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(22.dp))
                 .background(Pal.Ivory)
-                .border(3.dp, Pal.Ink, RoundedCornerShape(22.dp))
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { fast = true },
+                .border(3.dp, Pal.Ink, RoundedCornerShape(22.dp)),
         ) {
             val w = maxWidth
             val h = maxHeight
@@ -230,23 +254,67 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, onReveal: 
                 l >= ladder.levels -> bottom
                 else -> top + (bottom - top) * ((l + 1f) / (ladder.levels + 1))
             }
-            val paths = remember(session, w, h) {
+            val paths = remember(ladder, w, h) {
                 List(n) { i -> ladder.path(i).map { (c, l) -> colX(c) to levelY(l) } }
             }
+            val density = LocalDensity.current
 
-            Canvas(Modifier.fillMaxSize()) {
+            Canvas(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(drawing, drawTurn) {
+                        detectTapGestures { p ->
+                            if (!drawing) { fast = true; return@detectTapGestures }
+                            val who = drawer ?: return@detectTapGestures
+                            with(density) {
+                                // 탭한 곳: 두 세로줄 사이 칸, 가장 가까운 높이 칸
+                                val left = ((p.x / w.toPx()) * n - 0.5f).toInt()
+                                if (p.x < colX(0).toPx() || p.x > colX(n - 1).toPx() || p.y < top.toPx() || p.y > bottom.toPx()) return@detectTapGestures
+                                val level = (((p.y - top.toPx()) / (bottom - top).toPx()) * (ladder.levels + 1) - 1f).roundToInt()
+                                    .coerceIn(0, ladder.levels - 1)
+                                val r = Rung(level, left.coerceIn(0, n - 2))
+                                if (ladder.canAdd(r)) {
+                                    added += r to who
+                                    drawTurn++
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                } else {
+                                    toast = "같은 높이에 이미 줄이 있어요"
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                }
+                            }
+                        }
+                    },
+            ) {
                 val stroke = 5.dp.toPx()
+                // 줄을 그을 수 있는 칸 (두 세로줄 사이)
+                if (drawing) {
+                    for (c in 0 until n - 1) {
+                        drawRoundRect(
+                            Pal.SunPale, Offset(colX(c).toPx() + 8.dp.toPx(), top.toPx()),
+                            Size((colX(c + 1) - colX(c)).toPx() - 16.dp.toPx(), (bottom - top).toPx()),
+                            androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()), alpha = 0.8f,
+                        )
+                    }
+                }
                 for (c in 0 until n) {
                     drawLine(Pal.Ink, Offset(colX(c).toPx(), top.toPx()), Offset(colX(c).toPx(), bottom.toPx()), stroke, StrokeCap.Round)
                 }
-                ladder.rungs.forEach { r ->
+                session.ladder.rungs.forEach { r ->
                     val y = levelY(r.level).toPx()
                     drawLine(Pal.Ink, Offset(colX(r.left).toPx(), y), Offset(colX(r.left + 1).toPx(), y), stroke, StrokeCap.Round)
+                }
+                // 사람들이 그은 줄: 출전 번호 색 + 테두리
+                added.forEach { (r, who) ->
+                    val y = levelY(r.level).toPx()
+                    val x1 = colX(r.left).toPx() + 3.dp.toPx()
+                    val x2 = colX(r.left + 1).toPx() - 3.dp.toPx()
+                    drawLine(Pal.Ink, Offset(x1, y), Offset(x2, y), 10.dp.toPx(), StrokeCap.Round)
+                    drawLine(LaneCloth[session.players[who].lane % LaneCloth.size].first, Offset(x1, y), Offset(x2, y), 5.dp.toPx(), StrokeCap.Round)
                 }
                 paths.forEachIndexed { i, pts ->
                     val t = progress[i].floatValue
                     if (t <= 0f) return@forEachIndexed
-                    val color = if (i == session.loser && i in revealed) Pal.Tomato else TrailColors[i % TrailColors.size]
+                    val color = if (i == loser) Pal.Tomato else TrailColors[i % TrailColors.size]
                     val px = pts.map { (x, y) -> Offset(x.toPx(), y.toPx()) }
                     val path = Path()
                     partial(px, t).forEachIndexed { k, p -> if (k == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y) }
@@ -254,12 +322,19 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, onReveal: 
                 }
             }
 
+            // 그은 줄의 번호 핀
+            added.forEach { (r, who) ->
+                LaneSticker(
+                    session.players[who].lane,
+                    Modifier.offset(x = (colX(r.left) + colX(r.left + 1)) / 2 - 10.dp, y = levelY(r.level) - 22.dp),
+                    size = 20.dp,
+                )
+            }
+
             // 아래 결과 칸: 도착한 동물이 있어야 열린다
-            val loserSlot = ladder.end(session.loser)
             for (k in 0 until n) {
-                val arrived = (0 until n).firstOrNull { ladder.end(it) == k && it in revealed }
-                val open = arrived != null
-                val lose = k == loserSlot
+                val open = (0 until n).any { ladder.end(it) == k && it in revealed && progress[it].floatValue >= 1f }
+                val lose = k == session.bomb
                 val slotW = (w / n - 14.dp).coerceAtMost(104.dp)
                 Box(
                     Modifier
@@ -283,8 +358,8 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, onReveal: 
                 val pts = paths[i]
                 val t = progress[i].floatValue
                 val pos = pointAt(pts, t)
-                val out = i in revealed
-                val lose = out && i == session.loser
+                val out = i in revealed && t >= 1f
+                val lose = out && i == loser
                 AnimalSprite(
                     p.animal, sprite,
                     running = i == walking && t < 1f,
@@ -297,16 +372,52 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, onReveal: 
                     LaneSticker(p.lane, Modifier.offset(x = pos.first - sprite / 2 - 2.dp, y = 6.dp), size = 20.dp)
                 }
             }
+
+            toast?.let {
+                Tag(it, Pal.Paper, Pal.Ink, fontSize = 13.sp, modifier = Modifier.align(Alignment.Center))
+            }
         }
-        val who = session.players.getOrNull(walking)?.animal?.label
-        Text(
-            when {
-                session.loser in revealed -> "${withSubjectUi(session.players[session.loser].animal.label)} 몰빵 칸에 도착! 💸"
-                who != null -> "${withSubjectUi(who)} 내려가는 중… 화면을 탭하면 빨리"
-                else -> "곧 출발해요!"
-            },
-            fontSize = 16.sp, color = Pal.Ink, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
-        )
+
+        // 아래: 줄 긋기 차례 → [출발!] → 진행 안내
+        when {
+            drawing && drawer != null -> {
+                val p = session.players[drawer]
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(72.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Pal.Ivory)
+                        .border(3.dp, Pal.Ink, RoundedCornerShape(20.dp))
+                        .padding(start = 6.dp, end = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    AnimalSprite(p.animal, 56.dp)
+                    Column(Modifier.weight(1f)) {
+                        Text("${p.animal.label} 차례!", fontSize = 19.sp, color = Pal.Ink)
+                        Text("두 세로줄 사이를 탭해서 가로줄 1개", fontSize = 12.sp, color = Pal.InkSoft, maxLines = 1)
+                    }
+                    CartoonButton(onClick = { drawTurn++ }, color = Pal.Paper, height = 42.dp, depth = 3.dp, contentPadding = PaddingValues(horizontal = 12.dp)) {
+                        Text("넘기기", fontSize = 15.sp, color = Pal.Ink)
+                    }
+                }
+            }
+            !walkStarted -> CartoonButton(onClick = { walkStarted = true }, color = Pal.Sun, modifier = Modifier.fillMaxWidth(), height = 62.dp, depth = 5.dp) {
+                Text("🪜 출발!", fontSize = 24.sp, color = Pal.Ink)
+            }
+            else -> {
+                val who = session.players.getOrNull(walking)?.animal?.label
+                Text(
+                    when {
+                        loser != null -> "${withSubjectUi(session.players[loser].animal.label)} 몰빵 칸에 도착! 💸"
+                        who != null -> "${withSubjectUi(who)} 내려가는 중… 화면을 탭하면 빨리"
+                        else -> "곧 출발해요!"
+                    },
+                    fontSize = 16.sp, color = Pal.Ink, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().height(62.dp).padding(top = 18.dp),
+                )
+            }
+        }
     }
 }
 

@@ -13,15 +13,12 @@ data class MiniGameResult(val game: MiniGame, val loser: Animal)
 
 /**
  * 몰아주기: 랜덤 등수로 2명 이상 걸렸을 때 그중 한 명에게 몰빵.
- * 사다리는 몰빵할 사람을 게임 전에 고르게 뽑아 두고 그 결과를 보여 주는 연출이다.
- * 복권은 똑같은 복권 중 한 장에 몰빵을 고르게 숨겨 두고, 차례로 한 장씩 고른다 — 몇 번째로 고르든 걸릴 확률은 같다.
+ * 두 게임 모두 시작할 때 몰빵을 한 자리에 고르게 숨겨 둔다 (사다리: 아래 칸 하나, 복권: 한 장).
+ * 숨긴 자리는 끝까지 가려져 있으므로, 사람들이 줄을 어디에 긋든 몇 번째로 고르든 걸릴 확률은 같다.
  */
 object MiniGameDraw {
-    /** 몰빵할 사람(후보 목록의 위치) — 사다리 */
-    fun loser(players: Int, rnd: Random = Random.Default): Int = rnd.nextInt(players)
-
-    /** 몰빵이 숨은 복권의 위치 — 복권 */
-    fun ticket(tickets: Int, rnd: Random = Random.Default): Int = rnd.nextInt(tickets)
+    /** 몰빵이 숨은 자리 (사다리 아래 칸 / 복권) */
+    fun bomb(places: Int, rnd: Random = Random.Default): Int = rnd.nextInt(places)
 
     /** 게임을 고르지 않았을 때(아무거나) */
     fun game(rnd: Random = Random.Default): MiniGame = MiniGame.entries.random(rnd)
@@ -56,20 +53,29 @@ class Ladder(val cols: Int, val levels: Int, val rungs: List<Rung>) {
 
     fun end(start: Int): Int = path(start).last().first
 
+    /** [r]을 더 그을 수 있는지: 같은 높이에 같은 자리나 맞붙는 가로줄이 있으면 사다리가 꼬여서 안 된다. */
+    fun canAdd(r: Rung): Boolean =
+        r.level in 0 until levels && r.left in 0 until cols - 1 &&
+            rungs.none { it.level == r.level && kotlin.math.abs(it.left - r.left) <= 1 }
+
+    operator fun plus(r: Rung): Ladder = Ladder(cols, levels, rungs + r)
+
     companion object {
-        const val LEVELS = 9
+        const val LEVELS = 13
 
         fun random(cols: Int, rnd: Random = Random.Default): Ladder {
             while (true) {
                 val rungs = mutableListOf<Rung>()
                 for (level in 0 until LEVELS) {
-                    if (rnd.nextDouble() < 0.25) continue
+                    if (rnd.nextDouble() < 0.45) continue
                     // 세로줄이 3개 이상이면 한 높이에 한 줄만 (맞붙지 않게)
                     rungs += Rung(level, rnd.nextInt(cols - 1))
                 }
-                // 너무 밋밋하지 않게 세로줄마다 가로줄이 두 개 이상 닿도록
+                // 너무 밋밋하지 않게 세로줄마다 가로줄이 두 개 이상 닿도록,
+                // 그리고 사람마다 한 줄씩 그을 빈 높이가 넉넉하게 남도록
                 val touches = (0 until cols).all { c -> rungs.count { it.left == c || it.left + 1 == c } >= 2 }
-                if (touches) return Ladder(cols, LEVELS, rungs)
+                val free = (0 until LEVELS).count { l -> rungs.none { it.level == l } }
+                if (touches && free >= cols + 2) return Ladder(cols, LEVELS, rungs)
             }
         }
     }

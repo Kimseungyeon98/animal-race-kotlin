@@ -38,16 +38,44 @@ class MiniGameTest {
     }
 
     @Test
-    fun everyPlayerIsEquallyLikelyToPayItAll() {
+    fun addedRungsNeverTangleTheLadder() {
+        val rnd = Random(13)
+        for (cols in 2..3) repeat(500) {
+            var ladder = Ladder.random(cols, rnd)
+            // 사람마다 아무 데나 탭: 그을 수 있는 자리면 긋기
+            repeat(cols) {
+                val r = Rung(rnd.nextInt(ladder.levels), rnd.nextInt(cols - 1))
+                if (ladder.canAdd(r)) ladder += r
+            }
+            assertEquals((0 until cols).toSet(), (0 until cols).map { ladder.end(it) }.toSet())
+            // 같은 높이에 맞붙은 줄이 없어야 함
+            ladder.rungs.groupBy { it.level }.values.forEach { same ->
+                same.sortedBy { it.left }.zipWithNext().forEach { (a, b) -> assertTrue(b.left - a.left >= 2) }
+            }
+        }
+    }
+
+    @Test
+    fun ladderIsFairWhereverPeopleDrawLines() {
+        // 몰빵 칸은 고르게 숨기고, 사람들은 (보이는 것만 보고) 아무 데나 또는 항상 왼쪽 위에 줄을 긋는다
         val rnd = Random(20261024)
-        for (players in 2..3) {
+        for (players in 2..3) for (strategy in 0..1) {
             val draws = 30_000
             val counts = IntArray(players)
-            repeat(draws) { counts[MiniGameDraw.loser(players, rnd)]++ }
+            repeat(draws) {
+                val bomb = MiniGameDraw.bomb(players, rnd)
+                var ladder = Ladder.random(players, rnd)
+                repeat(players) {
+                    val r = if (strategy == 0) Rung(rnd.nextInt(ladder.levels), rnd.nextInt(players - 1))
+                    else (0 until ladder.levels).map { Rung(it, 0) }.firstOrNull { ladder.canAdd(it) } ?: Rung(0, 0)
+                    if (ladder.canAdd(r)) ladder += r
+                }
+                counts[(0 until players).first { ladder.end(it) == bomb }]++
+            }
             val expected = draws.toDouble() / players
             val chi = counts.sumOf { (it - expected) * (it - expected) / expected }
             // 자유도 1~2, 유의수준 0.1% 임계값 10.8 / 13.8
-            assertTrue("χ² = $chi, counts = ${counts.toList()}", chi < if (players == 2) 10.8 else 13.8)
+            assertTrue("${players}명 전략${strategy} χ² = $chi, counts = ${counts.toList()}", chi < if (players == 2) 10.8 else 13.8)
         }
     }
 
@@ -59,7 +87,7 @@ class MiniGameTest {
             val draws = 30_000
             val counts = IntArray(players)
             repeat(draws) {
-                val bomb = MiniGameDraw.ticket(players, rnd)
+                val bomb = MiniGameDraw.bomb(players, rnd)
                 val left = (0 until players).toMutableList()
                 for (turn in 0 until players) {
                     val pick = if (strategy == 0) left.first() else left.random(rnd)
