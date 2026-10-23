@@ -100,4 +100,28 @@ class MiniGameTest {
             assertTrue("${players}명 전략${strategy} χ² = $chi, counts = ${counts.toList()}", chi < if (players == 2) 10.8 else 13.8)
         }
     }
+
+    @Test
+    fun crocIsFairWhicheverTeethPeoplePress() {
+        // 몰빵 이빨은 3n개 중 균등. 사람들이 어떤 순서로 누르든, 걸리는 사람은 정확히 3개씩
+        val rnd = Random(7)
+        for (n in 2..8) {
+            val t = MiniGameDraw.teeth(n)
+            repeat(50) {
+                val pressOrder = (0 until t).shuffled(rnd)
+                val hits = IntArray(n)
+                for (tooth in 0 until t) hits[MiniGameDraw.turn(pressOrder.indexOf(tooth), n)]++
+                assertTrue("n=$n ${hits.toList()}", hits.all { it == t / n })
+            }
+        }
+    }
+
+    @Test
+    fun gachaGivesEveryoneOneCapsule() {
+        // k번째 캡슐은 k번째 차례 사람의 것 → 몰빵 캡슐 위치가 균등하면 사람도 균등
+        for (n in 2..8) {
+            val owners = (0 until n).map { MiniGameDraw.turn(it, n) }
+            assertEquals((0 until n).toList(), owners)
+        }
+    }
 }

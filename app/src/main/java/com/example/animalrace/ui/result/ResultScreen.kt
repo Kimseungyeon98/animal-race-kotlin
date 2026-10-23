@@ -329,12 +329,14 @@ private fun GamePicker(players: List<RaceResult>, lastGame: MiniGame, onDismiss:
                     }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                MiniGame.entries.forEach { g ->
-                    GameTile(g.emoji, g.title, g.desc, selected = g == lastGame, modifier = Modifier.weight(1f)) { onPick(g) }
+            MiniGame.entries.chunked(2).forEach { pair ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    pair.forEach { g ->
+                        GameTile(g.emoji, g.title, g.desc, selected = g == lastGame, modifier = Modifier.weight(1f)) { onPick(g) }
+                    }
                 }
             }
-            GameTile("🎲", "아무거나", "둘 중 하나를 랜덤으로", selected = false, modifier = Modifier.fillMaxWidth(), wide = true) { onPick(null) }
+            GameTile("🎲", "아무거나", "${MiniGame.entries.size}개 중 하나를 랜덤으로", selected = false, modifier = Modifier.fillMaxWidth(), wide = true) { onPick(null) }
         }
     }
 }
