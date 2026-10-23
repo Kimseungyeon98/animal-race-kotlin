@@ -16,6 +16,12 @@ enum class Sfx {
 fun interface SoundPlayer {
     fun play(sfx: Sfx)
 
+    /**
+     * 소리 장치 깨우기. 폰은 몇 초 조용하면 오디오 출력이 잠들어서, 깨어난 뒤 첫 소리가 늦게 나온다
+     * (카운트다운 "3"이 늦게 나와 "2"와 겹침). 박자가 중요한 연출 직전에 부르고 잠깐 기다린다.
+     */
+    fun warmUp() {}
+
     companion object {
         val Silent = SoundPlayer { }
     }

@@ -167,6 +167,9 @@ fun RaceScreen(
     val paused by rememberUpdatedState(confirmExit)
 
     LaunchedEffect(race) {
+        // 잠든 오디오 출력을 먼저 깨워 둬야 첫 "3"(또는 룰렛 틱)이 제때 나온다
+        sound.warmUp()
+        delay(300)
         if (picks != null) {
             // 확인창이 떠 있는 동안은 멈추고, 탭하면 바로 끝나는 기다림
             suspend fun hold(ms: Long) {

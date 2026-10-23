@@ -14,6 +14,7 @@ import com.example.animalrace.data.AndroidSound
 import com.example.animalrace.data.PrefsRepository
 import com.example.animalrace.ui.App
 import com.example.animalrace.ui.sound.LocalSound
+import com.example.animalrace.ui.sound.Sfx
 import com.example.animalrace.ui.sound.SoundPlayer
 import com.example.animalrace.ui.theme.AnimalRaceTheme
 
@@ -33,7 +34,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             val state = remember { AppState(repository) }
             // 끄면 아무 소리도 안 냄 (state.soundOn을 재생 순간에 읽음)
-            val player = remember { SoundPlayer { if (state.soundOn) sound.play(it) } }
+            val player = remember {
+                object : SoundPlayer {
+                    override fun play(sfx: Sfx) { if (state.soundOn) sound.play(sfx) }
+                    override fun warmUp() { if (state.soundOn) sound.warmUp() }
+                }
+            }
             // 경기 중 뒤로가기 → "그만둘까요?" 확인창, 결과 화면 → 메인. 메인에서는 기본 동작(앱 종료)
             BackHandler(enabled = state.screen != Screen.Setup) { state.back() }
             CompositionLocalProvider(LocalSound provides player) {

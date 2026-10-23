@@ -24,6 +24,11 @@ class AndroidSound(context: Context) : SoundPlayer {
         pool.play(ids.getValue(sfx), 1f, 1f, 1, 0, 1f)
     }
 
+    /** 음량 0으로 한 번 틀어 오디오 출력을 깨운다 */
+    override fun warmUp() {
+        pool.play(ids.getValue(Sfx.TICK), 0f, 0f, 0, 0, 1f)
+    }
+
     private fun raw(sfx: Sfx) = when (sfx) {
         Sfx.BEEP -> R.raw.sfx_beep
         Sfx.GO -> R.raw.sfx_go

@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.15-4C9A2A" alt="version 3.15">
+  <img src="https://img.shields.io/badge/version-3.15.1-4C9A2A" alt="version 3.15.1">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -89,6 +89,10 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.15.1 — 카운트다운 소리 겹침 수정
+- 폰은 몇 초 조용하면 오디오 출력이 잠들어서, 경기 시작 첫 "3" 삐가 늦게 나와 "2"와 겹쳤어요
+- 경주 화면에 들어오면 음량 0으로 한 번 틀어 출력을 깨우고 0.3초 뒤 룰렛·카운트다운 시작
 
 ### 3.15 — 효과음
 - 효과음 19종 (캔버스 "효과음 키트" 보드 그대로): 녹음 파일 없이 합성한 소리라 저작권 걱정 없음, 전부 합쳐 약 200KB (`res/raw/sfx_*.ogg`)
