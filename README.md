@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.17-4C9A2A" alt="version 3.17">
+  <img src="https://img.shields.io/badge/version-3.17.1-4C9A2A" alt="version 3.17.1">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -90,6 +90,9 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.17.1 — 미니게임 차례 칸 "깜짝!" 말풍선 잘림
+- 몰빵이 나오면 아래 차례 칸의 동물이 놀라며 띄우는 "깜짝!" 말풍선이 칸 밖으로 나가 잘리던 것 (가챠·악어·복권) → 칸이 내용을 잘라내지 않게
 
 ### 3.17 — 고르기 소리, 가챠 다듬기
 - 메인에서 동물을 고르면 "뽁!", 빼면 "쏙" (효과음 21종)

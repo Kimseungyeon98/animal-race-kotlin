@@ -242,8 +242,7 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
             Modifier
                 .fillMaxWidth()
                 .height(72.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(Pal.Ivory)
+                .background(Pal.Ivory, RoundedCornerShape(20.dp)) // 깜짝! 말풍선이 위로 삐져나와도 잘리지 않게 clip 없이
                 .border(3.dp, Pal.Ink, RoundedCornerShape(20.dp))
                 .padding(start = 6.dp, end = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
