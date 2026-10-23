@@ -46,6 +46,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -77,7 +78,15 @@ private val Smoke = Color(0xFF5A4A80)
 
 private enum class Gacha { LEVER, DROPPED, OPENING, OPENED }
 
-private class DomeCapsule(val angle: Float, val radius: Float, val color: Color, val tilt: Float)
+private class DomeCapsule(val x: Float, val y: Float, val tilt: Float, val color: Color)
+
+/** 돔 바닥에 쌓인 캡슐 17개 자리 (시안 좌표 x, y, 기울기) */
+private val DomePile = listOf(
+    Triple(120f, 200f, 10f), Triple(158f, 214f, -20f), Triple(198f, 218f, 30f), Triple(238f, 212f, 0f), Triple(276f, 196f, -30f),
+    Triple(104f, 166f, 40f), Triple(142f, 176f, 0f), Triple(182f, 182f, -10f), Triple(222f, 180f, 20f), Triple(262f, 166f, 50f),
+    Triple(128f, 136f, -40f), Triple(170f, 146f, 15f), Triple(212f, 144f, -25f), Triple(252f, 132f, 35f),
+    Triple(158f, 108f, 0f), Triple(200f, 110f, 60f), Triple(236f, 100f, -15f),
+)
 
 /**
  * 가챠 캡슐 (시안: "가챠 캡슐").
@@ -101,10 +110,12 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
     val haptic = LocalHapticFeedback.current
     val sound = LocalSound.current
     val rnd = remember(session) { Random(session.hashCode()) }
-    // 돔 안 캡슐 (장식): 중심에서의 각도·거리, 색, 기울기
+    // 돔 안 캡슐 (장식): 인원과 상관없이 시안처럼 바닥에 수북이, 색만 판마다 랜덤
     val dome = remember(session) {
-        List(16) { DomeCapsule(rnd.nextFloat() * 6.283f, 20f + rnd.nextFloat() * 70f, CapsuleColors[rnd.nextInt(CapsuleColors.size)], rnd.nextFloat() * 180f) }
+        DomePile.map { (x, y, tilt) -> DomeCapsule(x, y, tilt, CapsuleColors[rnd.nextInt(CapsuleColors.size)]) }
     }
+    // 레버를 돌리는 동안 1로 올라가 캡슐이 떠올라 섞이고, 손을 떼면 0으로 가라앉는다
+    val shake = remember(session) { Animatable(0f) }
     val colors = remember(session) { List(n) { CapsuleColors[rnd.nextInt(CapsuleColors.size)] } }
     val current = order[MiniGameDraw.turn(k.coerceAtMost(n - 1), n)]
     val bust = k == session.bomb
@@ -112,6 +123,7 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
     fun pulled() {
         phase = Gacha.DROPPED
         sound.play(Sfx.ROLL)
+        scope.launch { shake.animateTo(0f, tween(700)) }
         scope.launch {
             drop.snapTo(0f)
             drop.animateTo(1f, tween(900, easing = FastOutSlowInEasing))
@@ -167,6 +179,8 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                         var tick = 0
                         detectDragGestures(
                             onDragStart = { p -> last = atan2(p.y - c.y, p.x - c.x) },
+                            onDragEnd = { scope.launch { shake.animateTo(0f, tween(700)) } },
+                            onDragCancel = { scope.launch { shake.animateTo(0f, tween(700)) } },
                         ) { change, _ ->
                             val p = change.position
                             val a = atan2(p.y - c.y, p.x - c.x)
@@ -174,7 +188,10 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                             if (d > 180f) d -= 360f
                             if (d < -180f) d += 360f
                             last = a
-                            if (d > 0f) { lever += d; stir += d } // 시계 방향만
+                            if (d > 0f) { // 시계 방향만
+                                lever += d; stir += d
+                                if (shake.targetValue < 1f) scope.launch { shake.animateTo(1f, tween(250)) }
+                            }
                             if ((lever / 45f).toInt() > tick) { tick = (lever / 45f).toInt(); haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); sound.play(Sfx.RATCHET) }
                             if (lever >= 360f && phase == Gacha.LEVER) pulled()
                         }
@@ -184,13 +201,18 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                     drawOval(Color(0xFFE8C7D3), Offset(55f, 456f), androidx.compose.ui.geometry.Size(280f, 24f))
                     // 돔
                     ink(Path().apply { addOval(androidx.compose.ui.geometry.Rect(Offset(195f, 150f), 118f)) }, Color(0xFFE8F7FF), 5f)
-                    val left = n - k
-                    // 레버를 돌리면 캡슐들이 돔 안을 빙글빙글 돌며 통통 튄다 (캡슐마다 빠르기·방향이 달라 섞여 보임)
-                    dome.take((left * 3).coerceIn(2, dome.size)).forEachIndexed { i, c ->
-                        val speed = (0.5f + (i % 4) * 0.25f) * (if (i % 2 == 0) 1f else -0.7f)
-                        val a = c.angle + Math.toRadians((stir * speed).toDouble()).toFloat()
-                        val hop = if (stir > 0f) abs(sin(Math.toRadians((stir * 3f + i * 40f).toDouble()).toFloat())) * 10f else 0f
-                        capsule(Offset(195f + cos(a) * c.radius, 160f + sin(a) * c.radius * 0.8f - hop), 19f, c.color, c.tilt + stir * speed * 2f, 3f)
+                    // 쌓인 자리 ↔ 돔 안을 빙글빙글 도는 자리 사이를 [shake]만큼 섞는다 (캡슐마다 빠르기·방향이 달라 뒤섞여 보임)
+                    val mix = shake.value
+                    clipPath(Path().apply { addOval(androidx.compose.ui.geometry.Rect(Offset(195f, 150f), 114f)) }) {
+                        dome.forEachIndexed { i, c ->
+                            val speed = (0.6f + (i % 4) * 0.3f) * (if (i % 2 == 0) 1f else -0.8f)
+                            val a = Math.toRadians((stir * speed + i * 21f).toDouble()).toFloat()
+                            val r = 30f + (i % 5) * 15f
+                            val fly = Offset(195f + cos(a) * r, 150f + sin(a) * r * 0.85f)
+                            val hop = abs(sin(Math.toRadians((stir * 3f + i * 40f).toDouble()).toFloat())) * 8f * mix
+                            val p = Offset(c.x + (fly.x - c.x) * mix, c.y + (fly.y - c.y) * mix - hop)
+                            capsule(p, 19f, c.color, c.tilt + stir * speed * 2f * mix, 3f)
+                        }
                     }
                     drawPath(svgPath("M120 80 A100 100 0 0 1 190 48"), Color.White.copy(alpha = 0.9f), style = androidx.compose.ui.graphics.drawscope.Stroke(10f, cap = androidx.compose.ui.graphics.StrokeCap.Round))
                     // 몸통
