@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.13-4C9A2A" alt="version 3.13">
+  <img src="https://img.shields.io/badge/version-3.13.1-4C9A2A" alt="version 3.13.1">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -86,6 +86,11 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.13.1 — 작업 규칙·검증 도구를 레포에
+- `CLAUDE.md`: 작업 순서(시안 → 반영 → 검증 → 버전·README·변경 이력 → 푸시 → 태그), 공정성 규칙, 캔버스·움짤 함정 메모, 코드 지도
+- `tools/verify`: Android SDK 없이 데스크톱 Compose로 컴파일·테스트 · `tools/design`: 캔버스 보드 → PNG, 녹화 → 움짤
+- `.claude/settings.json`: `git commit` 전에 테스트를 돌리고 실패하면 커밋 차단 (앱 동작 변경 없음)
 
 ### 3.13 — 사다리 타기 v2: 한 사람당 가로줄 1개
 - 무작위 사다리 위에 출전 번호 순으로 한 사람당 가로줄 1개 — 두 세로줄 사이(노란 칸)를 탭하면 가장 가까운 높이에, 출전 번호 색 + 번호 핀으로
