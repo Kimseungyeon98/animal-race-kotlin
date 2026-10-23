@@ -66,6 +66,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import com.example.animalrace.ui.sound.LocalSound
+import com.example.animalrace.ui.sound.Music
 import com.example.animalrace.ui.sound.Sfx
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
@@ -204,6 +205,7 @@ fun RaceScreen(
             countdown = c
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             sound.play(if (c == "출발!") Sfx.GO else Sfx.BEEP)
+            if (c == "출발!") sound.music(Music.RACE)
             delay(if (c == "출발!") 500 else 750)
         }
         while (paused) delay(50)
@@ -229,6 +231,8 @@ fun RaceScreen(
                     acc -= DT
                 }
             } else {
+                // 다 들어오면 경기 곡은 스르르
+                if (post == 0.0) sound.music(null)
                 post += step
                 if (post > 2.2) break
             }
@@ -690,7 +694,10 @@ private fun Overlays(frame: Frame, stadium: Stadium, countdown: String?) {
     val winner = view.racers.firstOrNull { it.finished && it.rank == 0 }
     val showWinner = winner != null && frame.time - (winner.finishTime ?: 0.0) < 2.2
     val sound = LocalSound.current
-    LaunchedEffect(showWinner) { if (showWinner) sound.play(Sfx.FANFARE) }
+    LaunchedEffect(showWinner) {
+        if (showWinner) sound.play(Sfx.FANFARE)
+        sound.duck(showWinner)
+    }
 
     AnimatedVisibility(countdown != null, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.fillMaxSize()) {
         // 화면 전체를 카운트다운 영역으로 쓰고, 크게 시작한 글자도 잘라내지 않는다

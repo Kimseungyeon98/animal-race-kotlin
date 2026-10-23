@@ -39,4 +39,6 @@ interface AppRepository {
     fun saveHistory(history: List<RaceRecord>)
     fun loadSoundOn(): Boolean = true
     fun saveSoundOn(on: Boolean) {}
+    fun loadMusicOn(): Boolean = true
+    fun saveMusicOn(on: Boolean) {}
 }

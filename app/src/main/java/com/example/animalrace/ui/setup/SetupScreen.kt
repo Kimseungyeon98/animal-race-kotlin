@@ -141,16 +141,13 @@ fun SetupScreen(state: AppState) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         OutlinedText("동물 대소동 레이스!", 26.sp)
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            // 효과음 켜기/끄기 (진동과 별개)
-                            Box(
-                                Modifier
-                                    .size(28.dp)
-                                    .clip(CircleShape)
-                                    .background(if (state.soundOn) Color.White else Pal.Disabled)
-                                    .border(2.dp, Pal.Ink, CircleShape)
-                                    .clickable { state.toggleSound(); haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) },
-                                contentAlignment = Alignment.Center,
-                            ) { InkIcon(if (state.soundOn) Icons2.SoundOn else Icons2.SoundOff, size = 18.dp) }
+                            // 효과음 · 배경음악 켜기/끄기 (진동과 별개)
+                            ToggleDot(state.soundOn, if (state.soundOn) Icons2.SoundOn else Icons2.SoundOff) {
+                                state.toggleSound(); haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            }
+                            ToggleDot(state.musicOn, if (state.musicOn) Icons2.MusicOn else Icons2.MusicOff) {
+                                state.toggleMusic(); haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            }
                             state.history.firstOrNull()?.let { last ->
                                 Text(
                                     buildAnnotatedString {
@@ -823,4 +820,18 @@ private fun BetEditor(current: String, onDismiss: () -> Unit, onConfirm: (String
             }
         }
     }
+}
+
+/** 메인 제목 아래 작은 동그란 켜기/끄기 버튼 (끄면 회색) */
+@Composable
+private fun ToggleDot(on: Boolean, icon: List<String>, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(28.dp)
+            .clip(CircleShape)
+            .background(if (on) Color.White else Pal.Disabled)
+            .border(2.dp, Pal.Ink, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { InkIcon(icon, size = 18.dp) }
 }

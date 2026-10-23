@@ -1,0 +1,168 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- 배경음악 (캔버스 "배경음악 시안" 보드와 같은 악보·합성). make_sfx.sh가 헤드리스 크롬으로 열어 WAV로 뽑는다.
+     끊김 없이 반복되게: 두 바퀴를 합성해 두 번째 바퀴만 잘라 쓴다 (첫 바퀴 끝에서 넘어온 여운이 앞머리에 들어감) -->
+<pre id="out"></pre>
+<script>
+class DCLogic { constructor(p) { this.props = p; } setState() {} }
+// 곡 악보: 8분음표 한 칸씩, "-"는 늘이기, "."는 쉬기, 마디는 "|"
+var SONGS = {
+  mainA: { bpm: 112, chords: ['C4 E4 G4', 'A3 C4 E4', 'F3 A3 C4', 'G3 B3 D4', 'C4 E4 G4', 'A3 C4 E4', 'F3 A3 C4', 'G3 B3 D4'],
+    lead: 'E5 - G5 - C6 - G5 - | A5 - G5 E5 C5 - D5 E5 | F5 - A5 - C6 - A5 F5 | G5 - - - D5 - G5 - | E5 - G5 - C6 - D6 - | E6 - D6 C6 A5 - C6 - | A5 - G5 F5 E5 - D5 - | G5 - - - B4 - D5 -',
+    bass: ['C3', 'A2', 'F2', 'G2', 'C3', 'A2', 'F2', 'G2'], style: 'bounce', wave: 'triangle' },
+  mainB: { bpm: 92, chords: ['F3 A3 C4', 'A3 C4 E4', 'Bb3 D4 F4', 'C4 E4 G4', 'F3 A3 C4', 'D3 F3 A3', 'Bb3 D4 F4', 'C4 E4 G4'],
+    lead: 'C5 - A4 - F4 - A4 C5 | E5 - - - C5 - A4 - | D5 - Bb4 - F4 - Bb4 D5 | C5 - - - - - . . | C5 - A4 - F4 - A4 C5 | F5 - E5 D5 A4 - D5 - | D5 - C5 Bb4 G4 - Bb4 - | C5 - E5 - G5 - - -',
+    bass: ['F2', 'A2', 'Bb2', 'C3', 'F2', 'D2', 'Bb2', 'C3'], style: 'mallet', wave: 'sine' },
+  raceA: { bpm: 160, chords: ['A3 C4 E4', 'F3 A3 C4', 'G3 B3 D4', 'A3 C4 E4', 'A3 C4 E4', 'F3 A3 C4', 'G3 B3 D4', 'E3 G#3 B3'],
+    lead: 'A5 - E5 A5 C6 - B5 A5 | F5 - C5 F5 A5 - G5 F5 | G5 - D5 G5 B5 - A5 G5 | E5 - - - E5 - G5 - | A5 - E5 A5 C6 - B5 A5 | C6 - A5 C6 F6 - E6 C6 | D6 - B5 G5 D6 - C6 B5 | G#5 - - - E5 - B5 -',
+    bass: ['A2', 'F2', 'G2', 'A2', 'A2', 'F2', 'G2', 'E2'], style: 'drive', wave: 'square' },
+  raceB: { bpm: 148, chords: ['D3 F3 A3', 'D3 F3 A3', 'Bb2 D3 F3', 'C3 E3 G3', 'D3 F3 A3', 'D3 F3 A3', 'Bb2 D3 F3', 'A2 C#3 E3'],
+    lead: 'D5 - - F5 - - A5 - | G5 - F5 - E5 - C5 - | D5 - - F5 - - Bb5 - | A5 - - - - - . . | D5 - - F5 - - A5 - | C6 - Bb5 - A5 - G5 - | F5 - G5 - A5 - Bb5 - | A5 - C#6 - E6 - A6 -',
+    bass: ['D2', 'D2', 'Bb1', 'C2', 'D2', 'D2', 'Bb1', 'A1'], style: 'chase', wave: 'sawtooth' }
+};
+function midi(n) {
+  var m = /^([A-G])(#|b)?(-?\d)$/.exec(n);
+  var base = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
+  return 440 * Math.pow(2, (base + (parseInt(m[3]) + 1) * 12 - 69) / 12);
+}
+// 악보 문자열 → [칸, 주파수, 길이(칸)]
+function parse(s) {
+  var toks = s.replace(/\|/g, ' ').trim().split(/\s+/), out = [], cur = null;
+  toks.forEach(function (t, i) {
+    if (t === '-') { if (cur) cur[2]++; }
+    else if (t === '.') cur = null;
+    else { cur = [i, midi(t), 1]; out.push(cur); }
+  });
+  return out;
+}
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { playing: null }; }
+  componentWillUnmount() { this.stop(); }
+  ac() {
+    if (!this._ac) this._ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (this._ac.state === 'suspended') this._ac.resume();
+    return this._ac;
+  }
+  note(out, f, t, dur, wave, vol, decay) {
+    var c = this._ac, o = c.createOscillator(), g = c.createGain();
+    o.type = wave; o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+    if (decay) g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+    else { g.gain.exponentialRampToValueAtTime(vol * 0.55, t + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.98); }
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + (decay || dur) + 0.05);
+  }
+  hit(out, kind, t) {
+    var c = this._ac;
+    if (kind === 'kick') {
+      var o = c.createOscillator(), g = c.createGain();
+      o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.14);
+      g.gain.setValueAtTime(0.55, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.2);
+      return;
+    }
+    var dur = kind === 'snare' ? 0.12 : 0.035, n = Math.floor(c.sampleRate * dur), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    var s = c.createBufferSource(), fl = c.createBiquadFilter(), g2 = c.createGain();
+    s.buffer = b; fl.type = 'highpass'; fl.frequency.value = kind === 'snare' ? 1500 : 7000;
+    g2.gain.setValueAtTime(kind === 'snare' ? 0.3 : 0.12, t); g2.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(fl); fl.connect(g2); g2.connect(out); s.start(t); s.stop(t + dur + 0.02);
+  }
+  // 한 칸(8분음표)에 들어갈 소리들
+  step(song, k, t, sd, out) {
+    var bar = Math.floor(k / 8) % 8, pos = k % 8;
+    var chord = song.chords[bar].split(' ').map(midi), root = midi(song.bass[bar]);
+    var self = this;
+    song._lead.forEach(function (n) { if (n[0] === k % 64) self.note(out, n[1], t, n[2] * sd, song.wave, song.wave === 'sine' ? 0.32 : 0.12, song.wave === 'sine' ? Math.min(0.9, n[2] * sd + 0.2) : 0); });
+    if (song.style === 'bounce') {
+      if (pos % 4 === 0) this.note(out, pos === 0 ? root : root * 1.5, t, sd * 1.6, 'triangle', 0.3, 0.3);
+      if (pos % 4 === 2) chord.forEach(function (f) { self.note(out, f, t, sd, 'square', 0.025, 0.12); });
+      if (pos % 2 === 1) this.hit(out, 'hat', t);
+      if (pos === 0) this.hit(out, 'kick', t);
+    } else if (song.style === 'mallet') {
+      if (pos === 0 || pos === 4) this.note(out, root, t, sd * 4, 'sine', 0.35, sd * 4);
+      this.note(out, chord[pos % 3] * 2, t, sd, 'sine', 0.06, 0.35);
+      if (pos === 6) this.hit(out, 'hat', t);
+    } else if (song.style === 'drive') {
+      this.note(out, pos % 2 ? root * 2 : root, t, sd * 0.9, 'square', 0.09, 0);
+      if (pos % 4 === 0) this.hit(out, 'kick', t);
+      if (pos % 4 === 2) this.hit(out, 'snare', t);
+      this.hit(out, 'hat', t);
+    } else {
+      this.note(out, root, t, sd * 0.8, 'sawtooth', 0.07, 0);
+      if (pos % 2 === 0) this.hit(out, 'kick', t);
+      if (pos % 4 === 2) this.hit(out, 'snare', t);
+      if (pos % 2 === 1) this.hit(out, 'hat', t);
+      if (pos === 7 && bar === 7) chord.forEach(function (f) { self.note(out, f * 2, t, sd, 'square', 0.04, 0.2); });
+    }
+  }
+  stop() {
+    if (this._timer) clearInterval(this._timer);
+    this._timer = null;
+    if (this._out) { var o = this._out; o.gain.setTargetAtTime(0.0001, this._ac.currentTime, 0.05); setTimeout(function () { o.disconnect(); }, 400); }
+    this._out = null;
+  }
+  toggle(id) {
+    var was = this.state.playing;
+    this.stop();
+    if (was === id) { this.setState({ playing: null }); return; }
+    var c = this.ac(), song = SONGS[id], sd = 60 / song.bpm / 2, self = this;
+    song._lead = song._lead || parse(song.lead);
+    var out = c.createGain(); out.gain.value = 0.8; out.connect(c.destination);
+    this._out = out;
+    var k = 0, next = c.currentTime + 0.08;
+    this._timer = setInterval(function () {
+      while (next < c.currentTime + 0.2) { self.step(song, k, next, sd, out); k++; next += sd; }
+    }, 25);
+    this.setState({ playing: id });
+  }
+  renderVals() {
+    var self = this, n = 0, p = this.state.playing;
+    function item(id, name, spec, mood, color) {
+      n++;
+      var on = p === id;
+      return { no: n, name: name, spec: spec, mood: mood, color: on ? '#2B2140' : color, icon: on ? '■' : '▶', bg: on ? '#FFF1C4' : '#FFFFFF', toggle: function () { self.toggle(id); } };
+    }
+    return {
+      groups: [
+        { title: '🏠 메인 화면 (동물 고르기)', items: [
+          item('mainA', 'A · 동물 마을 산책', 'C장조 · 112bpm · 8마디 반복 (약 17초)', '통통 튀는 베이스 + 반짝 화음, 오늘은 누가 쏠까? 하는 장난스러운 기분', '#3FD0A6'),
+          item('mainB', 'B · 느긋한 오후', 'F장조 · 92bpm · 8마디 반복 (약 21초)', '실로폰처럼 똑똑 떨어지는 소리, 조용하고 포근하게 고르기', '#5AA9FF')
+        ] },
+        { title: '🏁 경기 중', items: [
+          item('raceA', 'A · 전력 질주 8비트', 'A단조 · 160bpm · 8마디 반복 (약 12초)', '쿵짝쿵짝 드럼 + 내달리는 멜로디, 운동회 계주 느낌', '#FFC93C'),
+          item('raceB', 'B · 두근두근 추격전', 'D단조 · 148bpm · 8마디 반복 (약 13초)', '쿵쿵 네 박 드럼 + 낮게 깔린 긴장감, 마지막 마디에서 치고 올라감', '#F2543F')
+        ] }
+      ]
+    };
+  }
+}
+
+// 앱에 넣는 곡: [파일 이름, 곡]
+var TRACKS = [['bgm_main', 'mainB'], ['bgm_race', 'raceA']];
+var SR = 44100;
+function wav(d) {
+  var n = d.length, b = new DataView(new ArrayBuffer(44 + n * 2));
+  function s(o, t) { for (var i = 0; i < t.length; i++) b.setUint8(o + i, t.charCodeAt(i)); }
+  s(0, 'RIFF'); b.setUint32(4, 36 + n * 2, true); s(8, 'WAVEfmt '); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+  b.setUint32(24, SR, true); b.setUint32(28, SR * 2, true); b.setUint16(32, 2, true); b.setUint16(34, 16, true); s(36, 'data'); b.setUint32(40, n * 2, true);
+  for (var i = 0; i < n; i++) b.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i])) * 32767, true);
+  var u = new Uint8Array(b.buffer), str = '';
+  for (var j = 0; j < u.length; j += 8192) str += String.fromCharCode.apply(null, u.subarray(j, j + 8192));
+  return btoa(str);
+}
+(async function () {
+  var lines = [];
+  for (var k = 0; k < TRACKS.length; k++) {
+    var song = SONGS[TRACKS[k][1]], sd = 60 / song.bpm / 2, loop = Math.round(64 * sd * SR);
+    song._lead = parse(song.lead);
+    var c = new OfflineAudioContext(1, loop * 2, SR), comp = new Component({});
+    comp._ac = c;
+    var out = c.createGain(); out.gain.value = 0.8; out.connect(c.destination);
+    for (var i = 0; i < 128; i++) comp.step(song, i, i * sd, sd, out);
+    var all = (await c.startRendering()).getChannelData(0);
+    lines.push(TRACKS[k][0] + ' ' + wav(all.subarray(loop, loop * 2)));
+  }
+  document.getElementById('out').textContent = lines.join('\n') + '\nDONE';
+})();
+</script>

@@ -38,6 +38,12 @@ class PrefsRepository(context: Context) : AppRepository {
         prefs.edit().putBoolean(KEY_SOUND, on).apply()
     }
 
+    override fun loadMusicOn(): Boolean = prefs.getBoolean(KEY_MUSIC, true)
+
+    override fun saveMusicOn(on: Boolean) {
+        prefs.edit().putBoolean(KEY_MUSIC, on).apply()
+    }
+
     override fun loadHistory(): List<RaceRecord> = runCatching {
         val arr = JSONArray(prefs.getString(KEY_HISTORY, null) ?: return emptyList())
         (0 until arr.length()).mapNotNull { i ->
@@ -82,6 +88,7 @@ class PrefsRepository(context: Context) : AppRepository {
     private companion object {
         const val KEY_SETUP = "setup"
         const val KEY_SOUND = "sound"
+        const val KEY_MUSIC = "music"
         const val KEY_HISTORY = "history"
     }
 }

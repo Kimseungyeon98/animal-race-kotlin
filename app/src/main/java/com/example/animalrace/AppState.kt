@@ -48,6 +48,15 @@ class AppState(private val repo: AppRepository) {
     val selected = mutableStateListOf<Animal>()
     var bet by mutableStateOf("꼴찌가 커피 쏘기")
 
+    /** 배경음악 켜기/끄기 (메인 화면 🎵 버튼) */
+    var musicOn by mutableStateOf(repo.loadMusicOn())
+        private set
+
+    fun toggleMusic() {
+        musicOn = !musicOn
+        repo.saveMusicOn(musicOn)
+    }
+
     /** 효과음 켜기/끄기 (진동과 별개, 메인 화면 🔊 버튼) */
     var soundOn by mutableStateOf(repo.loadSoundOn())
         private set

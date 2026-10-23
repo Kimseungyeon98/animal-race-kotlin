@@ -13,6 +13,9 @@ enum class Sfx {
     HEART, SNAP, PHEW, RATCHET, ROLL, TAP, POOF,
 }
 
+/** 배경음악 (시안: "배경음악 시안" 메인 B·경기 A). 파일은 `res/raw/bgm_*.ogg`, 끊김 없이 반복 */
+enum class Music { MAIN, RACE }
+
 fun interface SoundPlayer {
     fun play(sfx: Sfx)
 
@@ -21,6 +24,12 @@ fun interface SoundPlayer {
      * (카운트다운 "3"이 늦게 나와 "2"와 겹침). 박자가 중요한 연출 직전에 부르고 잠깐 기다린다.
      */
     fun warmUp() {}
+
+    /** 배경음악 바꾸기. null이면 스르르 끝. 같은 곡이면 그대로 이어서. [soft]면 더 작게 (미니게임) */
+    fun music(track: Music?, soft: Boolean = false) {}
+
+    /** 팡파레처럼 큰 소리가 날 때 배경음악을 잠깐 작게 */
+    fun duck(on: Boolean) {}
 
     companion object {
         val Silent = SoundPlayer { }

@@ -71,7 +71,7 @@ Claude-Session: <세션 링크>
 | 메인 / 경주(룰렛 포함) / 결과 / 미니게임 화면 | `ui/setup/`, `ui/race/RaceScreen.kt`, `ui/result/`, `ui/minigame/` |
 | 캐릭터 그림·연출, 경기장 | `ui/art/`, `ui/race/Stadium.kt`, `ui/race/Guests.kt` |
 | 색·폰트·공통 컴포넌트 | `ui/theme/`, `ui/components/` |
-| 효과음 (종류 / 재생 / 파일 만들기) | `ui/sound/Sound.kt`, `data/AndroidSound.kt`, `res/raw/sfx_*.ogg` ← `tools/sound/make_sfx.sh` |
+| 효과음·배경음악 (종류 / 재생 / 파일 만들기) | `ui/sound/Sound.kt`, `data/AndroidSound.kt`, `res/raw/sfx_*.ogg`·`bgm_*.ogg` ← `tools/sound/make_sfx.sh` (sfx.html·bgm.html). 다시 돌리면 효과음의 잡음이 매번 달라지니, 바꾼 소리 파일만 커밋 |
 
 ## 보류 중
 
