@@ -48,6 +48,15 @@ class AppState(private val repo: AppRepository) {
     val selected = mutableStateListOf<Animal>()
     var bet by mutableStateOf("꼴찌가 커피 쏘기")
 
+    /** 효과음 켜기/끄기 (진동과 별개, 메인 화면 🔊 버튼) */
+    var soundOn by mutableStateOf(repo.loadSoundOn())
+        private set
+
+    fun toggleSound() {
+        soundOn = !soundOn
+        repo.saveSoundOn(soundOn)
+    }
+
     /** 랜덤 등수 모드: 켜면 출발 전에 룰렛으로 당첨 등수를 뽑는다 (끄면 꼴찌 벌칙) */
     var randomRank by mutableStateOf(false)
         private set

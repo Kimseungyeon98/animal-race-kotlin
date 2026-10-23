@@ -37,4 +37,6 @@ interface AppRepository {
     fun saveSetup(setup: SavedSetup)
     fun loadHistory(): List<RaceRecord>
     fun saveHistory(history: List<RaceRecord>)
+    fun loadSoundOn(): Boolean = true
+    fun saveSoundOn(on: Boolean) {}
 }

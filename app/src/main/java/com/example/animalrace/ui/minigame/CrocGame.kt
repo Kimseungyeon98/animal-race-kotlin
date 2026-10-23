@@ -57,6 +57,8 @@ import com.example.animalrace.race.withSubject
 import com.example.animalrace.ui.art.AnimalSprite
 import com.example.animalrace.ui.art.svgPath
 import com.example.animalrace.ui.components.Tag
+import com.example.animalrace.ui.sound.LocalSound
+import com.example.animalrace.ui.sound.Sfx
 import com.example.animalrace.ui.theme.Pal
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -90,6 +92,7 @@ internal fun CrocGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Boo
     val shake = remember(session) { Animatable(0f) }
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
+    val sound = LocalSound.current
     val left = teeth - pressed.size
     val current = order[MiniGameDraw.turn(pressed.size, n)]
     val snapped = loser != null
@@ -104,7 +107,9 @@ internal fun CrocGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Boo
 
     fun press(i: Int) {
         pressed += i
+        sound.play(Sfx.CLICK)
         if (i == session.tooth) {
+            sound.play(Sfx.SNAP)
             scope.launch { jaw.animateTo(-2f, tween(90)) }
             scope.launch { repeat(5) { shake.animateTo(8f, tween(40)); shake.animateTo(-8f, tween(40)) }; shake.animateTo(0f, spring()) }
             onReveal(current, true)
@@ -112,6 +117,7 @@ internal fun CrocGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Boo
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             scope.launch { jaw.animateTo(-23f, tween(70)); jaw.animateTo(-30f, spring(dampingRatio = 0.4f)) }
             phew = current
+            sound.play(Sfx.PHEW)
         }
     }
 
@@ -119,6 +125,7 @@ internal fun CrocGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Boo
     LaunchedEffect(left, snapped) {
         if (snapped || left > n) return@LaunchedEffect
         while (true) {
+            sound.play(Sfx.HEART)
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             delay(140)
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)

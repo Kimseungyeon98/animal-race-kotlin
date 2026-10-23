@@ -161,6 +161,8 @@ object Icons2 {
     val Again = listOf("M21 12a9 9 0 1 1-3-6.7", "M21 4v5h-5")
     val Scale = listOf("M12 3v18", "M5 7h14", "M5 7l-3 7a3 3 0 0 0 6 0z", "M19 7l-3 7a3 3 0 0 0 6 0z")
     val Check = listOf("M5 12.5l4.5 4.5L19 7")
+    val SoundOn = listOf("M4 9h4l5-4v14l-5-4H4z", "M16.5 9a4 4 0 0 1 0 6", "M19 6a8 8 0 0 1 0 12")
+    val SoundOff = listOf("M4 9h4l5-4v14l-5-4H4z", "M17 9.5l5 5", "M22 9.5l-5 5")
     val Crown = listOf("M3 19 L5 5 L11 12 L15 3 L19 12 L25 5 L27 19 Z")
 }
 

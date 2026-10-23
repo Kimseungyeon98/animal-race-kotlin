@@ -63,6 +63,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
@@ -139,21 +140,33 @@ fun SetupScreen(state: AppState) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         OutlinedText("동물 대소동 레이스!", 26.sp)
-                        state.history.firstOrNull()?.let { last ->
-                            Text(
-                                buildAnnotatedString {
-                                    val miniGame = last.miniGame
-                                    append(if (miniGame != null) "지난 판 몰빵 " else if (last.picks == null) "지난 판 꼴찌 " else "지난 판 당첨 ")
-                                    withStyle(SpanStyle(color = Pal.TomatoText)) {
-                                        append(miniGame?.loser?.label ?: last.losers.joinToString("·") { it.animal.label })
-                                    }
-                                },
-                                fontSize = 14.sp, color = Pal.Ink,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(Color.White.copy(alpha = 0.75f))
-                                    .padding(horizontal = 8.dp, vertical = 2.dp),
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            // 효과음 켜기/끄기 (진동과 별개)
+                            Box(
+                                Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(if (state.soundOn) Color.White else Pal.Disabled)
+                                    .border(2.dp, Pal.Ink, CircleShape)
+                                    .clickable { state.toggleSound(); haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) },
+                                contentAlignment = Alignment.Center,
+                            ) { InkIcon(if (state.soundOn) Icons2.SoundOn else Icons2.SoundOff, size = 18.dp) }
+                            state.history.firstOrNull()?.let { last ->
+                                Text(
+                                    buildAnnotatedString {
+                                        val miniGame = last.miniGame
+                                        append(if (miniGame != null) "지난 판 몰빵 " else if (last.picks == null) "지난 판 꼴찌 " else "지난 판 당첨 ")
+                                        withStyle(SpanStyle(color = Pal.TomatoText)) {
+                                            append(miniGame?.loser?.label ?: last.losers.joinToString("·") { it.animal.label })
+                                        }
+                                    },
+                                    fontSize = 14.sp, color = Pal.Ink,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color.White.copy(alpha = 0.75f))
+                                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                                )
+                            }
                         }
                     }
                     IconTileButton(Icons2.Book, "도감", onClick = { dexIndex = focused.ordinal })

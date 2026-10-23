@@ -2,6 +2,7 @@ package com.example.animalrace.ui.minigame
 
 import androidx.compose.animation.AnimatedVisibility
 import kotlin.math.roundToInt
+import kotlin.math.abs
 import com.example.animalrace.ui.theme.LaneCloth
 import com.example.animalrace.model.Rung
 import androidx.compose.ui.platform.LocalDensity
@@ -72,6 +73,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import com.example.animalrace.ui.sound.LocalSound
+import com.example.animalrace.ui.sound.Sfx
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -110,6 +113,7 @@ private val TrailColors = listOf(Color(0xFF3FD0A6), Color(0xFF5AA9FF), Color(0xF
 @Composable
 fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: (Int) -> Unit, onClose: () -> Unit) {
     val haptic = LocalHapticFeedback.current
+    val sound = LocalSound.current
     val revealed = remember(session) { mutableStateListOf<Int>() }
     var loser by remember(session) { mutableStateOf<Int?>(null) }
     var done by remember(session) { mutableStateOf(false) }
@@ -125,12 +129,16 @@ fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: (Int) -> Un
             session.players.indices.filter { it !in revealed }.forEach { revealed += it }
         } else {
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            sound.play(Sfx.SAFE)
         }
     }
     LaunchedEffect(loser) {
         val l = loser ?: return@LaunchedEffect
         decided(l)
-        delay(1400)
+        // 게임마다의 콱!/펑!/팡! 뒤에 몰빵 뿌우우
+        delay(350)
+        sound.play(Sfx.BUST)
+        delay(1050)
         done = true
     }
 
@@ -194,6 +202,7 @@ fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: (Int) -> Un
 private fun LadderGame(session: MiniGameSession, revealed: List<Int>, loser: Int?, onReveal: (Int, Boolean) -> Unit) {
     val n = session.players.size
     val haptic = LocalHapticFeedback.current
+    val sound = LocalSound.current
     val order = remember(session) { session.players.indices.sortedBy { session.players[it].lane } }
     // 사람들이 그은 가로줄과 그은 사람
     val added = remember(session) { mutableStateListOf<Pair<Rung, Int>>() }
@@ -260,6 +269,11 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, loser: Int
                 List(n) { i -> ladder.path(i).map { (c, l) -> colX(c) to levelY(l) } }
             }
             val density = LocalDensity.current
+            // 내려가던 동물이 가로줄로 꺾일 때마다 통!
+            if (walking >= 0) {
+                val turns = turnsPassed(paths[walking], progress[walking].floatValue)
+                LaunchedEffect(walking, turns) { if (turns > 0) sound.play(Sfx.PLUCK) }
+            }
 
             Canvas(
                 Modifier
@@ -279,6 +293,7 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, loser: Int
                                     added += r to who
                                     drawTurn++
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    sound.play(Sfx.CLICK)
                                 } else {
                                     toast = "같은 높이에 이미 줄이 있어요"
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -400,12 +415,12 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, loser: Int
                         Text("${p.animal.label} 차례!", fontSize = 19.sp, color = Pal.Ink)
                         Text("두 세로줄 사이를 탭해서 가로줄 1개", fontSize = 12.sp, color = Pal.InkSoft, maxLines = 1)
                     }
-                    CartoonButton(onClick = { drawTurn++ }, color = Pal.Paper, height = 42.dp, depth = 3.dp, contentPadding = PaddingValues(horizontal = 12.dp)) {
+                    CartoonButton(onClick = { drawTurn++; sound.play(Sfx.CLICK) }, color = Pal.Paper, height = 42.dp, depth = 3.dp, contentPadding = PaddingValues(horizontal = 12.dp)) {
                         Text("넘기기", fontSize = 15.sp, color = Pal.Ink)
                     }
                 }
             }
-            !walkStarted -> CartoonButton(onClick = { walkStarted = true }, color = Pal.Sun, modifier = Modifier.fillMaxWidth(), height = 62.dp, depth = 5.dp) {
+            !walkStarted -> CartoonButton(onClick = { walkStarted = true; sound.play(Sfx.CLICK) }, color = Pal.Sun, modifier = Modifier.fillMaxWidth(), height = 62.dp, depth = 5.dp) {
                 Text("🪜 출발!", fontSize = 24.sp, color = Pal.Ink)
             }
             else -> {
@@ -424,6 +439,20 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, loser: Int
 }
 
 /** 꺾은선에서 처음부터 길이 비율 [t]만큼의 부분 */
+/** 길이 비율 [t]까지 가는 동안 들어선 가로 구간 수 */
+private fun turnsPassed(pts: List<Pair<Dp, Dp>>, t: Float): Int {
+    val segs = pts.zipWithNext()
+    val lens = segs.map { (a, b) -> abs((b.first - a.first).value) + abs((b.second - a.second).value) }
+    var at = lens.sum() * t
+    var turns = 0
+    for ((k, s) in segs.withIndex()) {
+        if (at <= 0f) break
+        if (s.first.first != s.second.first) turns++
+        at -= lens[k]
+    }
+    return turns
+}
+
 private fun partial(pts: List<Offset>, t: Float): List<Offset> {
     val total = pts.zipWithNext { a, b -> (b - a).getDistance() }.sum()
     var left = total * t
@@ -456,6 +485,7 @@ private fun withSubjectUi(word: String) = com.example.animalrace.race.withSubjec
  */
 @Composable
 private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?, onReveal: (Int, Boolean) -> Unit) {
+    val sound = LocalSound.current
     val n = session.players.size
     val order = remember(session) { session.players.indices.sortedBy { session.players[it].lane } }
     // 복권 자리마다 고른 사람 (아직 안 골랐으면 null)
@@ -525,7 +555,7 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                 player = session.players[p],
                 lose = lose,
                 revealed = out,
-                onScratched = { onReveal(p, lose) },
+                onScratched = { sound.play(Sfx.POP); onReveal(p, lose) },
                 nextLabel = if (out && !lose && loser == null && next != null) "${session.players[next].animal.label} 차례로 →" else null,
                 onNext = { open = null; turn++ },
             )
@@ -687,6 +717,7 @@ private fun ScratchArea(
     onScratched: () -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
+    val sound = LocalSound.current
     val strokes = remember { mutableStateListOf<List<Offset>>() }
     val cells = remember { BooleanArray(GX * GY) }
     // 결과 글자가 놓인 자리 (긁는 칸 기준 좌표)와 그 안의 확인 점들
@@ -774,6 +805,7 @@ private fun ScratchArea(
                             if (travel > tick) {
                                 travel = 0f
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                sound.play(Sfx.SCRATCH)
                             }
                             if (flakes.size < 40) dust(p, amount)
                         },

@@ -56,6 +56,8 @@ import com.example.animalrace.race.withSubject
 import com.example.animalrace.ui.art.AnimalSprite
 import com.example.animalrace.ui.art.svgPath
 import com.example.animalrace.ui.components.Tag
+import com.example.animalrace.ui.sound.LocalSound
+import com.example.animalrace.ui.sound.Sfx
 import com.example.animalrace.ui.theme.Pal
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -87,6 +89,7 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
     val wobble = remember(session) { Animatable(0f) }
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
+    val sound = LocalSound.current
     val rnd = remember(session) { Random(session.hashCode()) }
     // 돔 안 캡슐 (장식)
     val dome = remember(session) {
@@ -102,12 +105,14 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
 
     fun pulled() {
         phase = Gacha.DROPPED
+        sound.play(Sfx.ROLL)
         scope.launch { drop.snapTo(0f); drop.animateTo(1f, tween(900, easing = FastOutSlowInEasing)) }
     }
     fun tap() {
         if (phase != Gacha.OPENING) return
         taps++
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        sound.play(if (taps < 3) Sfx.TAP else if (bust) Sfx.POOF else Sfx.POP)
         scope.launch { wobble.snapTo(10f); wobble.animateTo(0f, spring(dampingRatio = 0.3f)) }
         if (taps >= 3) {
             phase = Gacha.OPENED
@@ -158,7 +163,7 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                             if (d < -180f) d += 360f
                             last = a
                             if (d > 0f) lever += d // 시계 방향만
-                            if ((lever / 45f).toInt() > tick) { tick = (lever / 45f).toInt(); haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+                            if ((lever / 45f).toInt() > tick) { tick = (lever / 45f).toInt(); haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); sound.play(Sfx.RATCHET) }
                             if (lever >= 360f && phase == Gacha.LEVER) pulled()
                         }
                     },
@@ -207,6 +212,7 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                             .clickable(remember { MutableInteractionSource() }, null) {
                                 phase = Gacha.OPENING
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                sound.play(Sfx.CLICK)
                             },
                     ) { Tag("톡! 열기", Pal.Ink, fontSize = 15.sp, modifier = Modifier.padding(6.dp)) }
                 }
@@ -217,7 +223,7 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                 else -> BigCapsule(colors[k], taps, lid.value, wobble.value, bust, phase == Gacha.OPENED, ::tap)
             }
             if (phase == Gacha.OPENED && !bust && loser == null) {
-                Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp).clickable { next() }) {
+                Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp).clickable { sound.play(Sfx.CLICK); next() }) {
                     Tag("다음 차례로 →", Pal.Ink, fontSize = 17.sp, modifier = Modifier.padding(4.dp))
                 }
             }

@@ -8,6 +8,7 @@
 | `design/dc_render.js` | 디자인 캔버스 보드(`.dc.html`)를 정적 HTML로 그리기 (sc-for / sc-if / `{{값}}` / Animal 컴포넌트) |
 | `design/shoot.sh` | 보드 → PNG (헤드리스 크롬) |
 | `design/make_gif.sh` | 실기기 녹화 → README 움짤 (상태바·내비게이션 바 잘라내고 360×715) |
+| `sound/make_sfx.sh` | 효과음 레시피(`sound/sfx.html`, 캔버스 "효과음 키트"와 같음) → 헤드리스 크롬 합성 → `app/src/main/res/raw/sfx_*.ogg` |
 | `hooks/test-before-commit.sh` | Claude Code 훅: `git commit` 전에 `verify` 테스트, 실패하면 커밋 차단 |
 
 ```bash

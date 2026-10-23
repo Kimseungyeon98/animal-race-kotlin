@@ -1,0 +1,70 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- 효과음 레시피 (캔버스 "효과음 키트" 보드와 같은 합성). make_sfx.sh가 헤드리스 크롬으로 열어 WAV로 뽑는다.
+     앱에서 이벤트마다 한 번씩 울리는 소리(tick·ratchet·heart·scratch)는 반복 한 번 분량만 -->
+<pre id="out"></pre>
+<script>
+var SR = 44100;
+function tone(c, f, dur, type, vol, f2, at) {
+  var t = at || 0, o = c.createOscillator(), g = c.createGain();
+  o.type = type || 'sine';
+  o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol || 0.3, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function noise(c, dur, vol, ftype, freq, at, q) {
+  var t = at || 0, n = Math.floor(SR * dur), buf = c.createBuffer(1, n, SR), d = buf.getChannelData(0);
+  for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  var s = c.createBufferSource(), fl = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = buf; fl.type = ftype || 'bandpass'; fl.frequency.value = freq || 1000; fl.Q.value = q || 1;
+  g.gain.setValueAtTime(vol || 0.3, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(fl); fl.connect(g); g.connect(c.destination);
+  s.start(t); s.stop(t + dur + 0.02);
+}
+// [이름, 길이(초), 레시피]
+var S = [
+  ['beep', 0.2, function (c) { tone(c, 660, 0.14, 'square', 0.18); }],
+  ['go', 0.45, function (c) { tone(c, 520, 0.35, 'square', 0.2, 1240); tone(c, 780, 0.35, 'triangle', 0.15, 1560, 0.02); }],
+  ['tick', 0.06, function (c) { noise(c, 0.025, 0.35, 'highpass', 3000); }],
+  ['clack', 0.15, function (c) { tone(c, 950, 0.08, 'square', 0.25, 600); noise(c, 0.05, 0.4, 'bandpass', 2200, 0, 4); }],
+  ['drum', 2.0, function (c) { for (var i = 0; i < 26; i++) noise(c, 0.05, 0.12 + i * 0.01, 'bandpass', 180, i * 0.045, 1.5); tone(c, 90, 0.7, 'sine', 0.6, 38, 1.2); noise(c, 0.6, 0.5, 'lowpass', 600, 1.2); tone(c, 1046, 0.5, 'triangle', 0.12, null, 1.22); }],
+  ['pluck', 0.22, function (c) { tone(c, 520, 0.16, 'triangle', 0.35, 480); noise(c, 0.03, 0.2, 'highpass', 4000); }],
+  ['scratch', 0.12, function (c) { noise(c, 0.09, 0.22, 'bandpass', 2600, 0, 2); }],
+  ['safe', 0.6, function (c) { [523, 659, 784, 1046].forEach(function (f, k) { tone(c, f, 0.22, 'triangle', 0.25, null, k * 0.09); }); }],
+  ['bust', 2.05, function (c) { [[392, 370], [370, 349], [349, 330]].forEach(function (p, k) { tone(c, p[0], 0.32, 'sawtooth', 0.12, p[1], k * 0.36); }); tone(c, 330, 0.9, 'sawtooth', 0.13, 262, 1.08); }],
+  ['fanfare', 1.25, function (c) { [[392, 0], [523, 0.12], [659, 0.24], [784, 0.36], [659, 0.6], [784, 0.72]].forEach(function (p) { tone(c, p[0], p[1] > 0.5 ? 0.45 : 0.14, 'square', 0.13, null, p[1]); }); }],
+  ['click', 0.06, function (c) { tone(c, 1500, 0.03, 'square', 0.2); noise(c, 0.02, 0.25, 'highpass', 5000); }],
+  ['heart', 0.4, function (c) { tone(c, 62, 0.13, 'sine', 0.7, 48); tone(c, 58, 0.12, 'sine', 0.55, 45, 0.2); }],
+  ['snap', 0.5, function (c) { noise(c, 0.18, 0.7, 'lowpass', 1400); tone(c, 220, 0.2, 'square', 0.3, 60); tone(c, 140, 0.4, 'sine', 0.5, 50, 0.02); }],
+  ['phew', 0.55, function (c) { noise(c, 0.5, 0.18, 'bandpass', 900, 0, 0.8); tone(c, 700, 0.4, 'sine', 0.12, 350, 0.05); }],
+  ['ratchet', 0.06, function (c) { tone(c, 1800, 0.02, 'square', 0.15); noise(c, 0.03, 0.2, 'highpass', 3500); }],
+  ['roll', 0.95, function (c) { tone(c, 160, 0.12, 'sine', 0.5, 90); var t = 0.15, gap = 0.06; for (var i = 0; i < 10; i++) { noise(c, 0.03, 0.18, 'bandpass', 1200, t, 3); t += gap; gap *= 1.08; } }],
+  ['tap', 0.08, function (c) { tone(c, 1250, 0.05, 'triangle', 0.3); noise(c, 0.03, 0.2, 'highpass', 3000); }],
+  ['pop', 0.2, function (c) { noise(c, 0.12, 0.45, 'bandpass', 1800, 0, 0.7); tone(c, 600, 0.16, 'sine', 0.35, 1800); }],
+  ['poof', 0.75, function (c) { noise(c, 0.7, 0.5, 'lowpass', 500); tone(c, 110, 0.5, 'sawtooth', 0.12, 55); }]
+];
+function wav(buf) {
+  var d = buf.getChannelData(0), n = d.length, b = new DataView(new ArrayBuffer(44 + n * 2));
+  function s(o, t) { for (var i = 0; i < t.length; i++) b.setUint8(o + i, t.charCodeAt(i)); }
+  s(0, 'RIFF'); b.setUint32(4, 36 + n * 2, true); s(8, 'WAVEfmt '); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+  b.setUint32(24, SR, true); b.setUint32(28, SR * 2, true); b.setUint16(32, 2, true); b.setUint16(34, 16, true); s(36, 'data'); b.setUint32(40, n * 2, true);
+  for (var i = 0; i < n; i++) b.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i])) * 32767, true);
+  var u = new Uint8Array(b.buffer), str = '';
+  for (var j = 0; j < u.length; j += 8192) str += String.fromCharCode.apply(null, u.subarray(j, j + 8192));
+  return btoa(str);
+}
+(async function () {
+  var lines = [];
+  for (var k = 0; k < S.length; k++) {
+    var c = new OfflineAudioContext(1, Math.ceil(SR * S[k][1]), SR);
+    S[k][2](c);
+    lines.push(S[k][0] + ' ' + wav(await c.startRendering()));
+  }
+  document.getElementById('out').textContent = lines.join('\n') + '\nDONE';
+})();
+</script>

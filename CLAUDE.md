@@ -41,7 +41,7 @@ Claude-Session: <세션 링크>
 
 - 이 환경엔 Android SDK가 없고 Google Maven이 막혀 있다. 대신 `tools/verify`가 앱 소스를 **데스크톱 Compose**로 컴파일하고 단위 테스트를 돌린다:
   `cd tools/verify && ./gradlew compileKotlin test -q --offline` (캐시가 없으면 `--offline` 빼고)
-- `MainActivity.kt`, `data/PrefsRepository.kt`, `ui/theme/Fonts.kt`는 안드로이드 전용이라 **검증에서 빠진다.** 이 파일을 고치면 코드를 눈으로 한 번 더 확인하고, 실기기 확인이 필요하다고 말한다.
+- `MainActivity.kt`, `data/PrefsRepository.kt`, `data/AndroidSound.kt`, `ui/theme/Fonts.kt`는 안드로이드 전용이라 **검증에서 빠진다.** 이 파일을 고치면 코드를 눈으로 한 번 더 확인하고, 실기기 확인이 필요하다고 말한다.
 - 화면은 직접 띄울 수 없다. 레이아웃·손맛은 "실기기에서 확인 필요"라고 정직하게 말한다.
 - 커밋 전 훅: `.claude/settings.json` → `tools/hooks/test-before-commit.sh` (테스트 실패 시 커밋 차단).
 
@@ -71,6 +71,7 @@ Claude-Session: <세션 링크>
 | 메인 / 경주(룰렛 포함) / 결과 / 미니게임 화면 | `ui/setup/`, `ui/race/RaceScreen.kt`, `ui/result/`, `ui/minigame/` |
 | 캐릭터 그림·연출, 경기장 | `ui/art/`, `ui/race/Stadium.kt`, `ui/race/Guests.kt` |
 | 색·폰트·공통 컴포넌트 | `ui/theme/`, `ui/components/` |
+| 효과음 (종류 / 재생 / 파일 만들기) | `ui/sound/Sound.kt`, `data/AndroidSound.kt`, `res/raw/sfx_*.ogg` ← `tools/sound/make_sfx.sh` |
 
 ## 보류 중
 

@@ -65,6 +65,8 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import com.example.animalrace.ui.sound.LocalSound
+import com.example.animalrace.ui.sound.Sfx
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -93,6 +95,7 @@ import com.example.animalrace.ui.theme.Fredoka
 import com.example.animalrace.ui.theme.NumberStyle
 import com.example.animalrace.ui.theme.Pal
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.exp
 import kotlin.math.floor
 import kotlin.math.min
@@ -158,6 +161,7 @@ fun RaceScreen(
     var skip by remember(raceKey) { mutableStateOf(false) }
     var speed by remember { mutableFloatStateOf(1f) }
     val haptic = LocalHapticFeedback.current
+    val sound = LocalSound.current
     val finish by rememberUpdatedState(onFinished)
     // 확인창이 떠 있는 동안 카운트다운·경주 시간이 흐르지 않는다
     val paused by rememberUpdatedState(confirmExit)
@@ -172,12 +176,20 @@ fun RaceScreen(
             }
             roulette = Roulette(stopped = 0, revealed = false)
             picks.indices.forEach { i ->
+                // 칸이 도는 동안 틱틱틱(점점 느리게) → 멈출 때 딱!
+                val ticking = launch {
+                    var gap = 55L
+                    while (!skip) { if (!paused) sound.play(Sfx.TICK); delay(gap); gap = (gap * 1.1).toLong().coerceAtMost(190) }
+                }
                 hold(if (i == 0) 1300 else 850)
+                ticking.cancel()
                 roulette = Roulette(stopped = i + 1, revealed = false)
-                if (!skip) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                if (!skip) { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); sound.play(Sfx.CLACK) }
             }
             skip = false
-            hold(450)
+            // 두구두구… 쾅! 에 맞춰 발표 (쾅은 소리 시작 1.2초 뒤)
+            sound.play(Sfx.DRUM)
+            hold(1200)
             roulette = Roulette(stopped = picks.size, revealed = true)
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             skip = false
@@ -188,6 +200,7 @@ fun RaceScreen(
             while (paused) delay(50)
             countdown = c
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            sound.play(if (c == "출발!") Sfx.GO else Sfx.BEEP)
             delay(if (c == "출발!") 500 else 750)
         }
         while (paused) delay(50)
@@ -673,6 +686,8 @@ private fun Overlays(frame: Frame, stadium: Stadium, countdown: String?) {
     val view = frame.view
     val winner = view.racers.firstOrNull { it.finished && it.rank == 0 }
     val showWinner = winner != null && frame.time - (winner.finishTime ?: 0.0) < 2.2
+    val sound = LocalSound.current
+    LaunchedEffect(showWinner) { if (showWinner) sound.play(Sfx.FANFARE) }
 
     AnimatedVisibility(countdown != null, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.fillMaxSize()) {
         // 화면 전체를 카운트다운 영역으로 쓰고, 크게 시작한 글자도 잘라내지 않는다
