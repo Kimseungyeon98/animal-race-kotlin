@@ -11,7 +11,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -25,6 +24,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import kotlin.math.abs
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -71,6 +77,8 @@ private val Smoke = Color(0xFF5A4A80)
 
 private enum class Gacha { LEVER, DROPPED, OPENING, OPENED }
 
+private class DomeCapsule(val angle: Float, val radius: Float, val color: Color, val tilt: Float)
+
 /**
  * 가챠 캡슐 (시안: "가챠 캡슐").
  * 출전 번호 순으로 레버를 한 바퀴 돌려 캡슐을 뽑고, 세 번 톡톡 두드려 깬다.
@@ -84,6 +92,8 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
     var phase by remember(session) { mutableStateOf(Gacha.LEVER) }
     var taps by remember(session) { mutableIntStateOf(0) }
     var lever by remember(session) { mutableFloatStateOf(0f) }
+    // 레버를 돌린 누적 각도 (차례가 바뀌어도 이어서): 돔 안 캡슐이 이만큼 섞인다
+    var stir by remember(session) { mutableFloatStateOf(0f) }
     val drop = remember(session) { Animatable(0f) }
     val lid = remember(session) { Animatable(0f) }
     val wobble = remember(session) { Animatable(0f) }
@@ -91,13 +101,9 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
     val haptic = LocalHapticFeedback.current
     val sound = LocalSound.current
     val rnd = remember(session) { Random(session.hashCode()) }
-    // 돔 안 캡슐 (장식)
+    // 돔 안 캡슐 (장식): 중심에서의 각도·거리, 색, 기울기
     val dome = remember(session) {
-        List(16) {
-            val a = rnd.nextFloat() * 6.283f
-            val r = 20f + rnd.nextFloat() * 70f
-            Triple(Offset(195f + cos(a) * r, 160f + sin(a) * r * 0.8f), CapsuleColors[rnd.nextInt(CapsuleColors.size)], rnd.nextFloat() * 180f)
-        }
+        List(16) { DomeCapsule(rnd.nextFloat() * 6.283f, 20f + rnd.nextFloat() * 70f, CapsuleColors[rnd.nextInt(CapsuleColors.size)], rnd.nextFloat() * 180f) }
     }
     val colors = remember(session) { List(n) { CapsuleColors[rnd.nextInt(CapsuleColors.size)] } }
     val current = order[MiniGameDraw.turn(k.coerceAtMost(n - 1), n)]
@@ -106,7 +112,13 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
     fun pulled() {
         phase = Gacha.DROPPED
         sound.play(Sfx.ROLL)
-        scope.launch { drop.snapTo(0f); drop.animateTo(1f, tween(900, easing = FastOutSlowInEasing)) }
+        scope.launch {
+            drop.snapTo(0f)
+            drop.animateTo(1f, tween(900, easing = FastOutSlowInEasing))
+            // 굴러 나오면 바로 깨기 화면으로
+            delay(250)
+            if (phase == Gacha.DROPPED) phase = Gacha.OPENING
+        }
     }
     fun tap() {
         if (phase != Gacha.OPENING) return
@@ -162,7 +174,7 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                             if (d > 180f) d -= 360f
                             if (d < -180f) d += 360f
                             last = a
-                            if (d > 0f) lever += d // 시계 방향만
+                            if (d > 0f) { lever += d; stir += d } // 시계 방향만
                             if ((lever / 45f).toInt() > tick) { tick = (lever / 45f).toInt(); haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); sound.play(Sfx.RATCHET) }
                             if (lever >= 360f && phase == Gacha.LEVER) pulled()
                         }
@@ -173,7 +185,13 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                     // 돔
                     ink(Path().apply { addOval(androidx.compose.ui.geometry.Rect(Offset(195f, 150f), 118f)) }, Color(0xFFE8F7FF), 5f)
                     val left = n - k
-                    dome.take((left * 3).coerceIn(2, dome.size)).forEach { (o, col, r) -> capsule(o, 19f, col, r, 3f) }
+                    // 레버를 돌리면 캡슐들이 돔 안을 빙글빙글 돌며 통통 튄다 (캡슐마다 빠르기·방향이 달라 섞여 보임)
+                    dome.take((left * 3).coerceIn(2, dome.size)).forEachIndexed { i, c ->
+                        val speed = (0.5f + (i % 4) * 0.25f) * (if (i % 2 == 0) 1f else -0.7f)
+                        val a = c.angle + Math.toRadians((stir * speed).toDouble()).toFloat()
+                        val hop = if (stir > 0f) abs(sin(Math.toRadians((stir * 3f + i * 40f).toDouble()).toFloat())) * 10f else 0f
+                        capsule(Offset(195f + cos(a) * c.radius, 160f + sin(a) * c.radius * 0.8f - hop), 19f, c.color, c.tilt + stir * speed * 2f, 3f)
+                    }
                     drawPath(svgPath("M120 80 A100 100 0 0 1 190 48"), Color.White.copy(alpha = 0.9f), style = androidx.compose.ui.graphics.drawscope.Stroke(10f, cap = androidx.compose.ui.graphics.StrokeCap.Round))
                     // 몸통
                     ink(svgPath("M92 246 H298 L312 452 Q312 462 300 462 H90 Q78 462 78 452 Z"), Pal.Tomato, 5f)
@@ -205,17 +223,6 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
             with(density) {
                 Text("몰아주기 가챠", fontSize = (17f * s).toDp().value.sp, color = Pal.Ink,
                     modifier = Modifier.offset(x = (dx + 140f * s).toDp(), y = (dy + 272f * s).toDp()))
-                if (phase == Gacha.DROPPED) {
-                    Box(
-                        Modifier
-                            .offset(x = (dx + 230f * s).toDp(), y = (dy + 405f * s).toDp())
-                            .clickable(remember { MutableInteractionSource() }, null) {
-                                phase = Gacha.OPENING
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                sound.play(Sfx.CLICK)
-                            },
-                    ) { Tag("톡! 열기", Pal.Ink, fontSize = 15.sp, modifier = Modifier.padding(6.dp)) }
-                }
             }
             when (phase) {
                 Gacha.LEVER -> if (loser == null) Tag("레버를 한 바퀴 돌려요 ↻", Pal.Paper, Pal.Ink, fontSize = 15.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 10.dp))
@@ -249,7 +256,7 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                     when {
                         loser != null -> "잠시 뒤 최종 발표"
                         phase == Gacha.OPENED -> "꽝 탈출! 🎉"
-                        phase == Gacha.OPENING -> "캡슐을 톡톡 두드려 깨요 (${3 - taps})"
+                        phase == Gacha.OPENING -> "캡슐을 톡톡 두드려 깨요"
                         n - k == 1 -> "마지막 캡슐… 그래도 열어 봐야죠"
                         else -> "레버를 드르륵 돌려 주세요"
                     },
@@ -299,7 +306,34 @@ private fun BigCapsule(color: Color, taps: Int, lid: Float, wobble: Float, bust:
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val slipY = maxHeight * 0.05f - maxWidth * (70f / 390f) * lid
         if (opened && lid > 0.6f) Text(if (bust) "몰빵! 💸" else "꽝 탈출 🎉", fontSize = 28.sp, color = if (bust) Pal.TomatoText else Pal.Ink, modifier = Modifier.offset(y = slipY))
-        else if (!opened) Text("톡! 톡! (${3 - taps})", fontSize = 22.sp, color = Color.White, modifier = Modifier.offset(y = maxHeight * 0.05f + maxWidth * (150f / 390f)))
+        else if (!opened) {
+            // 시안 "③ 톡톡 깨기": 두드린 만큼 노랗게 차는 동그라미 3개 + 안내, 캡슐 오른쪽 아래에 까딱이는 손가락
+            Column(
+                Modifier.offset(y = maxHeight * 0.05f + maxWidth * (165f / 390f)),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    repeat(3) { i ->
+                        Box(
+                            Modifier
+                                .size(18.dp)
+                                .clip(CircleShape)
+                                .background(if (i < taps) Pal.Sun else Color.Transparent)
+                                .border(3.dp, Color.White, CircleShape),
+                        )
+                    }
+                }
+                Text("톡톡 두드려서 깨기!", fontSize = 16.sp, color = Color.White)
+            }
+            val bob by rememberInfiniteTransition(label = "hand").animateFloat(
+                0f, 1f, infiniteRepeatable(tween(420), RepeatMode.Reverse), label = "bob",
+            )
+            Text(
+                "👆", fontSize = 44.sp,
+                modifier = Modifier.offset(x = maxWidth * (70f / 390f), y = maxHeight * 0.05f + maxWidth * (40f / 390f) + 8.dp * bob),
+            )
+        }
     }
 }
 

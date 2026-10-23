@@ -7,6 +7,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
  * 이벤트마다 한 번씩 울리는 소리(틱·드르륵·심장·슥슥)는 반복 한 번 분량이라 화면 쪽에서 박자를 맞춰 부른다.
  */
 enum class Sfx {
+    SELECT, DESELECT,
     BEEP, GO, FANFARE, DRUM,
     TICK, CLACK, SAFE, BUST,
     PLUCK, SCRATCH, POP, CLICK,

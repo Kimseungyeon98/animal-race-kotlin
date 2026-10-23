@@ -63,6 +63,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import com.example.animalrace.ui.sound.LocalSound
+import com.example.animalrace.ui.sound.Sfx
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -109,6 +111,7 @@ private val BetPresets = listOf("꼴찌가 커피 쏘기", "꼴찌가 점심 쏘
 @Composable
 fun SetupScreen(state: AppState) {
     val haptic = LocalHapticFeedback.current
+    val sound = LocalSound.current
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var focused by remember { mutableStateOf(state.selected.lastOrNull() ?: Animal.CHEETAH) }
@@ -120,6 +123,7 @@ fun SetupScreen(state: AppState) {
         if (state.toggle(animal)) {
             focused = animal
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            sound.play(if (animal in state.selected) Sfx.SELECT else Sfx.DESELECT)
         } else {
             scope.launch { snackbar.showSnackbar("최대 ${AppState.MAX_RACERS}마리까지 출전할 수 있어요") }
         }

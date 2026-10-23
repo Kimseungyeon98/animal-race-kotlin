@@ -90,7 +90,8 @@ class AndroidSound(private val context: Context) : SoundPlayer {
     private fun applyMusic() {
         val target = if (musicOn) wanted else null
         if (target == playing) return
-        player?.let(::fadeOut)
+        // 🎵 버튼으로 끈 건 바로 조용히, 화면이 바뀌어 곡이 끝나는 건 스르르
+        player?.let { if (musicOn) fadeOut(it) else { it.stop(); it.release() } }
         player = null
         playing = target
         ducked = false
@@ -115,6 +116,8 @@ class AndroidSound(private val context: Context) : SoundPlayer {
     }
 
     private fun raw(sfx: Sfx) = when (sfx) {
+        Sfx.SELECT -> R.raw.sfx_select
+        Sfx.DESELECT -> R.raw.sfx_deselect
         Sfx.BEEP -> R.raw.sfx_beep
         Sfx.GO -> R.raw.sfx_go
         Sfx.FANFARE -> R.raw.sfx_fanfare

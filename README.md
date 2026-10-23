@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.16-4C9A2A" alt="version 3.16">
+  <img src="https://img.shields.io/badge/version-3.17-4C9A2A" alt="version 3.17">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -90,6 +90,14 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.17 — 고르기 소리, 가챠 다듬기
+- 메인에서 동물을 고르면 "뽁!", 빼면 "쏙" (효과음 21종)
+- 🎵 버튼으로 음악을 끄면 서서히 줄지 않고 바로 조용 (화면이 바뀌어 곡이 끝날 때만 스르르)
+- 🎰 가챠
+  - 레버를 돌리면 돔 안 캡슐들이 빙글빙글 돌며 통통 튀어 섞여요 (캡슐마다 빠르기·방향이 달라서, 차례가 바뀌어도 이어서)
+  - 캡슐이 데구르르 굴러 나오면 누르지 않아도 바로 깨기 화면으로 ([톡! 열기] 없앰)
+  - 깨기 화면의 남은 횟수: 숫자 대신 시안처럼 두드릴 때마다 노랗게 차는 동그라미 3개 + "톡톡 두드려서 깨기!" + 까딱이는 👆
 
 ### 3.16 — 배경음악
 - 캔버스 "배경음악 시안"에서 고른 곡 (효과음처럼 합성한 곡이라 저작권 걱정 없음, 곡마다 약 110KB, 끊김 없이 반복)
