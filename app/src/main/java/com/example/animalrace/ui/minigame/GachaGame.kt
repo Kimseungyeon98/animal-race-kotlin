@@ -370,3 +370,12 @@ private fun DrawScope.capsule(o: Offset, r: Float, color: Color, deg: Float, sw:
         }
     }
 }
+
+/** 채우고(있으면) 잉크 테두리 */
+internal fun DrawScope.ink(path: Path, fill: Color?, sw: Float, stroke: Color = Pal.Ink) {
+    if (fill != null) drawPath(path, fill)
+    if (sw > 0f) drawPath(
+        path, stroke,
+        style = androidx.compose.ui.graphics.drawscope.Stroke(sw, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round),
+    )
+}

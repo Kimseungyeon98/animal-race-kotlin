@@ -329,38 +329,39 @@ private fun GamePicker(players: List<RaceResult>, lastGame: MiniGame, onDismiss:
                     }
                 }
             }
-            MiniGame.entries.chunked(2).forEach { pair ->
+            // 게임들 뒤에 [아무거나]를 붙여 두 칸씩
+            (MiniGame.entries + null).chunked(2).forEach { pair ->
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     pair.forEach { g ->
-                        GameTile(g.emoji, g.title, g.desc, selected = g == lastGame, modifier = Modifier.weight(1f)) { onPick(g) }
+                        if (g != null) GameTile(g.emoji, g.title, g.desc, selected = g == lastGame, modifier = Modifier.weight(1f)) { onPick(g) }
+                        else GameTile("🎲", "아무거나", "${MiniGame.entries.size}개 중 하나를 랜덤으로", selected = false, modifier = Modifier.weight(1f)) { onPick(null) }
                     }
                 }
             }
-            GameTile("🎲", "아무거나", "${MiniGame.entries.size}개 중 하나를 랜덤으로", selected = false, modifier = Modifier.fillMaxWidth(), wide = true) { onPick(null) }
         }
     }
 }
 
 @Composable
-private fun GameTile(icon: String, title: String, desc: String, selected: Boolean, modifier: Modifier, wide: Boolean = false, onClick: () -> Unit) {
+private fun GameTile(icon: String, title: String, desc: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     Box(modifier) {
         Box(Modifier.matchParentSize().offset(y = 4.dp).clip(RoundedCornerShape(18.dp)).background(Pal.Ink))
-        val content: @Composable () -> Unit = {
-            Text(icon, fontSize = if (wide) 26.sp else 38.sp)
-            Column(horizontalAlignment = if (wide) Alignment.Start else Alignment.CenterHorizontally) {
-                Text(title, fontSize = 19.sp, color = Pal.Ink)
-                Text(desc, fontSize = 13.sp, color = Pal.InkSoft, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            }
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .height(128.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(if (selected) Pal.SunPale else Pal.Paper)
+                .border(3.dp, Pal.Ink, RoundedCornerShape(18.dp))
+                .clickable(onClick = onClick)
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(icon, fontSize = 38.sp)
+            Text(title, fontSize = 19.sp, color = Pal.Ink)
+            Text(desc, fontSize = 13.sp, color = Pal.InkSoft, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
-        val base = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(if (selected) Pal.SunPale else Pal.Paper)
-            .border(3.dp, Pal.Ink, RoundedCornerShape(18.dp))
-            .clickable(onClick = onClick)
-            .padding(12.dp)
-        if (wide) Row(base, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { content() }
-        else Column(base.height(128.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) { content() }
     }
 }
 

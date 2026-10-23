@@ -179,7 +179,6 @@ fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: (Int) -> Un
                 when (session.game) {
                     MiniGame.LADDER -> LadderGame(session, revealed, loser, ::reveal)
                     MiniGame.LOTTO -> LottoGame(session, revealed, loser, ::reveal)
-                    MiniGame.CROC -> CrocGame(session, loser, ::reveal)
                     MiniGame.GACHA -> GachaGame(session, loser, ::reveal)
                 }
             }

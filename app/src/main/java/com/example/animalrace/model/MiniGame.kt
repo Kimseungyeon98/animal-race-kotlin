@@ -6,7 +6,6 @@ import kotlin.random.Random
 enum class MiniGame(val emoji: String, val title: String, val desc: String) {
     LADDER("🪜", "사다리 타기", "동물들이 직접 타고 내려가요"),
     LOTTO("🎫", "복권 긁기", "돌려 가며 손가락으로 슥슥"),
-    CROC("🐊", "악어 이빨", "차례로 꾹… 콱! 물리면 몰빵"),
     GACHA("🎰", "가챠 캡슐", "레버 돌리고 톡톡 깨기"),
 }
 
@@ -16,17 +15,14 @@ data class MiniGameResult(val game: MiniGame, val loser: Animal)
 /**
  * 몰아주기: 랜덤 등수로 2명 이상 걸렸을 때 그중 한 명에게 몰빵.
  * 모든 게임이 시작할 때 몰빵을 한 자리에 고르게 숨겨 둔다
- * (사다리: 아래 칸 하나, 복권: 한 장, 가챠: 몇 번째로 나오는 캡슐, 악어: 이빨 하나).
+ * (사다리: 아래 칸 하나, 복권: 한 장, 가챠: 몇 번째로 나오는 캡슐).
  * 숨긴 자리는 끝까지 가려져 있으므로, 사람들이 줄을 어디에 긋든 몇 번째로 고르든 걸릴 확률은 같다.
  */
 object MiniGameDraw {
     /** 몰빵이 숨은 자리 (사다리 아래 칸 / 복권 / 가챠 몇 번째 캡슐) */
     fun bomb(places: Int, rnd: Random = Random.Default): Int = rnd.nextInt(places)
 
-    /** 악어 이빨 수: 인원의 배수여야 차례가 몇 번째든 걸릴 확률이 같다 */
-    fun teeth(players: Int): Int = players * 3
-
-    /** [pressed]번째로 누르는 이빨·[pressed]번째 캡슐은 출전 순서상 몇 번째 사람 차례인지 */
+    /** [pressed]번째 캡슐은 출전 순서상 몇 번째 사람 차례인지 */
     fun turn(pressed: Int, players: Int): Int = pressed % players
 
     /** 게임을 고르지 않았을 때(아무거나) */

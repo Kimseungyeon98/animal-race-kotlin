@@ -130,9 +130,6 @@ class AndroidSound(private val context: Context) : SoundPlayer {
         Sfx.SCRATCH -> R.raw.sfx_scratch
         Sfx.POP -> R.raw.sfx_pop
         Sfx.CLICK -> R.raw.sfx_click
-        Sfx.HEART -> R.raw.sfx_heart
-        Sfx.SNAP -> R.raw.sfx_snap
-        Sfx.PHEW -> R.raw.sfx_phew
         Sfx.RATCHET -> R.raw.sfx_ratchet
         Sfx.ROLL -> R.raw.sfx_roll
         Sfx.TAP -> R.raw.sfx_tap

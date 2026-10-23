@@ -11,7 +11,7 @@ enum class Sfx {
     BEEP, GO, FANFARE, DRUM,
     TICK, CLACK, SAFE, BUST,
     PLUCK, SCRATCH, POP, CLICK,
-    HEART, SNAP, PHEW, RATCHET, ROLL, TAP, POOF,
+    RATCHET, ROLL, TAP, POOF,
 }
 
 /** 배경음악 (시안: "배경음악 시안" 메인 B·경기 A). 파일은 `res/raw/bgm_*.ogg`, 끊김 없이 반복 */
