@@ -13,6 +13,7 @@ import com.example.animalrace.model.Venue
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
@@ -210,33 +211,19 @@ private fun snowTrip(t: Float, loop: Boolean): FxFrame {
 }
 
 // ---------------------------------------------------------------- 사막: 모래 토네이도에 휘말려 빙글빙글
-// 시안: 캔버스 "사막 회오리 다듬기" A안 (Tornado.dc.html). 시안 픽셀 좌표(300×330 칸)를 그대로 쓰고
-// 시안 점 (TW_AX, TW_AY)를 그림 좌표 (TW_OX, TW_OY)에 맞춰 [TW_K]배로 그린다.
 
-private const val TW_TOP = 58f
-private const val TW_BOT = 258f
-private const val TW_CX = 150f
-private const val TW_AX = 150f
-private const val TW_AY = 164.5f
-private const val TW_K = 1.6f
-private const val TW_OX = 104f
-private const val TW_OY = 19f
-private val SandLight = Color(0xFFF2CC96)
-private val Sand = Color(0xFFD69A5C)
-private val SandMid = Color(0xFFC68749)
+private const val TW_X = -14f
+private const val TW_Y = -64f
+private const val TW_W = 128f
+private const val TW_H = 160f
+private const val CLOUD = "M2 16 Q-2 8 8 6 Q12 -1 22 2 Q30 -3 40 1 Q50 -3 58 2 Q68 -1 72 6 Q82 8 78 16 Q72 22 60 19 Q50 24 40 20 Q30 24 20 19 Q8 22 2 16 Z"
+private const val CLOUD_LINES = "M10 8 Q22 4 32 9 M44 6 Q56 3 66 9 M18 14 Q30 17 40 13"
+private const val BASE_LINES = "M22 20 Q34 15 46 19 M64 16 Q78 12 92 17"
+private val Sand = Color(0xFFC68749)
+private val SandCloud = Color(0xFFD49A5E)
 private val SandDark = Color(0xFF8E5428)
-private val SandDust = Color(0xFFEBC38E)
-private val SandCream = Color(0xFFFFF0D6)
-private val Tumble = Color(0xFFC9A15E)
-private val TumbleLine = Color(0xFF8A6A30)
-private val Pebble = Color(0xFFA8A29A)
-
-/** 몸통 단면: 높이 비율 [f](0 위 ~ 1 바닥) → (중심 x, y, 반폭). 위는 하늘에 붙고 바닥이 크게 춤춘다. */
-private fun twLevel(t: Float, f: Float): Triple<Float, Float, Float> {
-    val w = 70 * (1 - f).pow(1.15f) + 9
-    val cx = TW_CX + sin(t / 7 + f * 2.4f) * (2 + f * 16)
-    return Triple(cx, TW_TOP + f * (TW_BOT - TW_TOP), w)
-}
+private val SandLight = Color(0xFFF0C48E)
+private val SandDust = Color(0xFFE3B37E)
 
 /** 점들을 부드러운 곡선으로 (중점 사이를 Q로) */
 private fun Path.smoothThrough(pts: List<Offset>, move: Boolean) {
@@ -248,168 +235,75 @@ private fun Path.smoothThrough(pts: List<Offset>, move: Boolean) {
     lineTo(pts.last().x, pts.last().y)
 }
 
-/** 타원 반쪽: 앞(아래 반원) 또는 뒤(위 반원), 왼쪽에서 오른쪽으로 */
-private fun halfRing(cx: Float, y: Float, w: Float, ry: Float, front: Boolean) = Path().apply {
-    moveTo(cx - w, y)
-    arcTo(androidx.compose.ui.geometry.Rect(cx - w, y - ry, cx + w, y + ry), 180f, if (front) -180f else 180f, false)
-}
-
-private fun DrawScope.ink(path: Path, color: Color, width: Float, alpha: Float = 1f, dash: androidx.compose.ui.graphics.PathEffect? = null) =
-    drawPath(path, color, alpha = alpha, style = Stroke(width, cap = StrokeCap.Round, join = StrokeJoin.Round, pathEffect = dash))
-
-/** 동그라미 여러 개를 한 덩어리 구름으로: 잉크를 먼저 전부 깔고 그 위에 채우기 (겉테두리만 남음) */
-private fun DrawScope.cloud(puffs: List<Pair<Offset, Pair<Float, Color>>>) {
-    puffs.forEach { (c, rc) -> drawCircle(Ink, rc.first + 2.4f, c) }
-    puffs.forEach { (c, rc) -> drawCircle(rc.second, rc.first, c) }
-}
-
-private fun DrawScope.twFunnel(t: Float) {
-    val l = mutableListOf<Offset>(); val r = mutableListOf<Offset>()
-    for (i in 0..12) {
-        val (cx, y, w) = twLevel(t, i / 12f)
-        l += Offset(cx - w, y); r += Offset(cx + w, y)
-    }
-    val body = Path().apply { smoothThrough(l, move = true); smoothThrough(r.reversed(), move = false); close() }
-    drawPath(body, SandMid)
-    ink(body, Ink, 5f)
-    // 꼭대기 입구: 얇은 타원 (뚜껑처럼 보이지 않게)
-    val (tx, _, tw) = twLevel(t, 0f)
-    val ry = tw * 0.13f + 2
-    val rect = androidx.compose.ui.geometry.Rect(tx - tw, TW_TOP - ry, tx + tw, TW_TOP + ry)
-    drawOval(Sand, rect.topLeft, rect.size)
-    drawOval(Ink, rect.topLeft, rect.size, style = Stroke(3f))
-    // 맞닿아 감긴 띠 9개 + 띠 위를 흘러가는 밝은 줄 (도는 느낌)
-    for (j in 1 until 10) {
-        val g = j / 9f
-        val (cx, y, w) = twLevel(t, g)
-        val bry = w * 0.24f + 2
-        val th = 21 - g * 11
-        val band = halfRing(cx, y, w, bry, front = true)
-        ink(band, Ink, th + 4)
-        ink(band, if (j % 2 == 1) Sand else SandLight, th)
-        val flow = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(8f, 18f), t * (2.4f + g * 1.8f))
-        ink(halfRing(cx, y, w * 0.96f, bry, front = true), if (j % 2 == 1) SandLight else SandCream, maxOf(2f, th * 0.28f), 0.9f, flow)
-    }
-}
-
-/** 꼭대기 양끝 모래 구름 + 떨어져 나가 작아지며 흩어지는 뭉치 */
-private fun DrawScope.twRim(t: Float) {
-    val (cx, _, w) = twLevel(t, 0f)
-    val puffs = mutableListOf<Pair<Offset, Pair<Float, Color>>>()
-    listOf(-1, 1).forEachIndexed { si, side ->
-        for (k in 0..2) puffs += Offset(cx + side * (w - 4 + k * 9), TW_TOP + 3 - k * 3 + sin(t / 4 + k + si) * 1.5f) to
-            ((11 - k * 2.5f) to if (k % 2 == 1) SandLight else SandDust)
-    }
-    for (j in 0..3) {
-        val ph = (t * 0.02f + j / 4f) % 1f
-        val side = if (j % 2 == 1) 1 else -1
-        val r = 8 * (1 - ph)
-        if (r > 1.5f) puffs += Offset(cx + side * (w + 8 + ph * 34), TW_TOP + 2 - ph * 18) to (r to SandDust)
-    }
-    cloud(puffs)
-}
-
-/** 바닥 그림자 */
-private fun DrawScope.twShadow(t: Float) {
-    val (cx, _, _) = twLevel(t, 1f)
-    drawOval(Ink.copy(alpha = 0.15f), Offset(cx - 64, 257f), androidx.compose.ui.geometry.Size(128f, 12f))
-}
-
-/** 바닥: 닿은 자리에서 모래 구름이 양옆으로 굴러 나가며 작아짐 */
-private fun DrawScope.twSkirt(t: Float) {
-    val (cx, _, _) = twLevel(t, 1f)
-    val puffs = mutableListOf(Offset(cx, 254f) to (13f to SandLight))
-    for (k in 0..7) {
-        val ph = (t * 0.028f + k / 8f) % 1f
-        val side = if (k % 2 == 1) 1 else -1
-        puffs += Offset(cx + side * (10 + ph * 66), 258 - sin(ph * PI.toFloat()) * 9 + (1 - ph) * 2) to
-            ((13 * (1 - ph) + 3) to if (k % 4 < 2) SandDust else SandLight)
-    }
-    cloud(puffs)
-}
-
-/** 돌멩이·회전초: 몸통 둘레를 돌며 뒤([near] false)는 작고 흐리게 */
-private fun DrawScope.twDebris(t: Float, near: Boolean) {
-    for (k in 0..4) {
-        val (cx, y, w) = twLevel(t, 0.15f + k * 0.17f)
-        val a = t * 0.12f + k * 1.3f
-        if ((sin(a) > 0) != near) continue
-        val x = cx + cos(a) * (w + 14)
-        val yy = y + sin(a) * (w * 0.22f + 3)
-        val alpha = if (near) 1f else 0.5f
-        if (k == 2) {
-            val r = if (near) 10f else 7f
-            drawCircle(Tumble, r, Offset(x, yy), alpha = alpha)
-            drawCircle(Ink, r, Offset(x, yy), alpha = alpha, style = Stroke(2f))
-            val twig = Path().apply {
-                moveTo(x - r * 0.6f, yy - r * 0.2f)
-                quadraticTo(x, yy - r * 0.9f, x + r * 0.5f, yy)
-                quadraticTo(x, yy + r * 0.7f, x - r * 0.4f, yy + r * 0.3f)
-            }
-            ink(twig, TumbleLine, 1.6f, alpha)
-        } else {
-            val r = if (near) 4.5f else 3f
-            drawCircle(if (k % 2 == 1) SandDark else Pebble, r, Offset(x, yy), alpha = if (near) 1f else 0.45f)
-            drawCircle(Ink, r, Offset(x, yy), alpha = if (near) 1f else 0.45f, style = Stroke(1.6f))
-        }
-    }
-}
-
-/** 양옆 바람 줄 ) ( */
-private fun DrawScope.twWind(t: Float) {
-    for (k in 0..3) {
-        val (cx, y, w) = twLevel(t, 0.2f + k * 0.2f)
-        val side = if (k % 2 == 1) 1 else -1
-        val ph = (t * 0.05f + k * 0.3f) % 1f
-        val x = cx + side * (w + 22 + ph * 8)
-        ink(Path().apply { moveTo(x, y - 12); quadraticTo(x + side * 9, y, x, y + 12) }, Ink, 2.4f, 0.55f * sin(ph * PI.toFloat()))
-    }
-}
-
-/** 토끼를 감싸며 지나가는 모래 띠 두 줄 */
-private fun DrawScope.twWrap(t: Float, cx: Float, cy: Float) {
-    for (k in 0..1) {
-        val y = cy - 10 + k * 22
-        val w = 48f - k * 6
-        val ph = (t * 0.07f + k * 0.5f) % 1f
-        val dash = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(40f, 200f), ph * 240)
-        val band = halfRing(cx, y, w, 9f, front = true)
-        ink(band, Ink, 9f, 0.9f, dash)
-        ink(band, if (k == 1) SandLight else SandDust, 5f, 1f, dash)
-    }
-}
-
-/** 시안 좌표로 그리기 */
-private fun DrawScope.tw(block: DrawScope.() -> Unit) = withTransform({
-    translate(TW_OX - TW_AX * TW_K, TW_OY - TW_AY * TW_K)
-    scale(TW_K, TW_K, Offset.Zero)
-}) { block() }
-
 private fun desertTrip(t: Float): FxFrame {
-    // 토끼는 몸통 가운데쯤(높이 0.55)에서 작아져 빙글빙글, 몸통과 함께 흔들림
-    val (mx, my, _) = twLevel(t, 0.55f)
-    val rx = mx + cos(t / 9) * 8
-    val ry = my - 3.5f + sin(t / 5) * 5
+    // 깔때기 단면: (중심 x, y, 반폭) — viewBox 80×100
+    val n = 16
+    val lv = List(n) { i ->
+        val f = i / (n - 1f)
+        val w = (30 * (1 - f).pow(1.35f) + 2.5f) * (1 + 0.1f * sin(i * 1.7f + t / 2))
+        Triple(40 + sin(t / 5 + f * 2.2f) * (1 + f * 9), 12 + f * 84, w)
+    }
+    fun at(fy: Float): Triple<Float, Float, Float> {
+        val k = min(n - 1.001f, fy * (n - 1))
+        val i = floor(k).toInt()
+        val r = k - i
+        val a = lv[i]; val b = lv[i + 1]
+        return Triple(a.first + (b.first - a.first) * r, a.second + (b.second - a.second) * r, a.third + (b.third - a.third) * r)
+    }
+    val funnel = Path().apply {
+        smoothThrough(lv.map { Offset(it.first - it.third, it.second) }, move = true)
+        smoothThrough(lv.map { Offset(it.first + it.third, it.second) }.reversed(), move = false)
+        close()
+    }
+    // 소용돌이 줄 하나: 깔때기를 비스듬히 감싸는 곡선의 일부(시작·길이가 돌면서 바뀜)
+    fun streak(fy: Float, len: Float, off: Float): Path? {
+        val (cx, y, w0) = at(fy)
+        val w = w0 * 1.12f
+        val s0 = (t * 0.06f + off) % 1f
+        val pts = mutableListOf<Offset>()
+        for (k in 0..8) {
+            val u = s0 + k / 8f * len
+            if (u > 1f) break
+            pts += Offset(cx - w + 2 * w * u, y + sin(u * PI.toFloat()) * 5 - u * 5)
+        }
+        return if (pts.size < 3) null else Path().apply { smoothThrough(pts, move = true) }
+    }
+    val sway = sin(t / 6) * 3
+    val streakColors = listOf(SandDark, Color(0xFFEDBE85), Color(0xFFA86A35), Color(0xFFF4D2A2))
+    val g = sin(t / 3) * 2
+    val base = PathParser().parsePathString(
+        "M4 28 Q0 18 12 17 Q14 ${7 + g} 28 10 Q36 ${2 - g} 50 7 Q62 ${1 + g} 74 7 Q90 ${2 - g} 98 11 Q114 9 116 18 Q128 20 124 28 Z",
+    ).toPath()
     return FxFrame(
-        // 말풍선은 회오리 오른쪽 위로 비켜서 (토끼 얼굴을 가리지 않게)
-        front = listOf(hurt("휘잉~").copy(x = 236f, y = -96f)),
-        rot = (t * 24) % 360, scale = 0.66f, pivotY = 0.5f,
-        dx = TW_OX + (rx - TW_AX) * TW_K - 100f, dy = TW_OY + (ry - TW_AY) * TW_K - 85f, pose = 0,
+        front = listOf(hurt("휘잉~")),
+        // 토끼 등은 작아져서 토네이도 가운데에 떠올라 빙글빙글
+        rot = (t * 24) % 360, scale = 0.69f, pivotY = 0.5f,
+        dx = 3 * F, dy = (-22.15f + sin(t / 3) * 6) * F, pose = 0,
         under = {
-            tw {
-                twShadow(t)
-                twDebris(t, near = false)
-                twFunnel(t)
-                twRim(t)
+            part(funnel, 80f, 100f, TW_X, TW_Y, TW_W, TW_H, Sand, sw = 2f)
+            part(svg(CLOUD), 80f, 100f, TW_X + sway, TW_Y, TW_W, TW_H, SandCloud, sw = 2f)
+            for (j in 0 until 9) {
+                streak(0.04f + j * 0.105f, 0.45f + (j % 3) * 0.18f, j * 0.37f)?.let {
+                    part(it, 80f, 100f, TW_X, TW_Y, TW_W, TW_H, null, streakColors[j % 4], 2.4f)
+                }
             }
+            part(svg(CLOUD_LINES), 80f, 100f, TW_X + sway, TW_Y, TW_W, TW_H, null, SandLight, 2.2f)
         },
         over = {
-            tw {
-                twWrap(t, rx, ry)
-                twSkirt(t)
-                twDebris(t, near = true)
-                twWind(t)
+            for (q in 0..2) {
+                streak(0.3f + q * 0.16f, 0.5f, q * 0.5f + 0.2f)?.let {
+                    part(it, 80f, 100f, TW_X, TW_Y, TW_W, TW_H, null, if (q % 2 == 1) Color(0xFFF4D2A2) else SandDark, 2.2f, alpha = 0.85f)
+                }
             }
+            // 휘말린 모래알
+            for (k in 0..6) {
+                val ang = t / 3 + k * 0.9f
+                val (cx, y, w) = at(0.15f + (k % 7) * 0.11f)
+                dot(TW_X + (cx + cos(ang) * w * 1.3f) * 1.6f, TW_Y + y * 1.6f, 6f, SandDark, alpha = if (sin(ang) > 0) 1f else 0.35f)
+            }
+            // 바닥 모래 구름 (넓게 퍼지며 출렁)
+            part(base, 128f, 30f, -14f, 62f, 128f, 30f, SandDust, sw = 2f)
+            part(svg(BASE_LINES), 128f, 30f, -14f, 62f, 128f, 30f, null, Sand, 2f)
         },
     )
 }
