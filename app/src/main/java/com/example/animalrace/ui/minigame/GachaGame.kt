@@ -295,7 +295,7 @@ private fun BigCapsule(color: Color, taps: Int, lid: Float, wobble: Float, bust:
     Canvas(
         Modifier
             .fillMaxSize()
-            .background(Pal.Ink.copy(alpha = 0.35f))
+            .background(Pal.Ink.copy(alpha = 0.6f)) // 뒤 기계는 흐리게, 캡슐·동그라미에 눈이 가게
             .pointerInput(opened) { if (!opened) detectTapGestures { onTap() } },
     ) {
         val c = Offset(size.width / 2, size.height * 0.55f)
@@ -310,7 +310,8 @@ private fun BigCapsule(color: Color, taps: Int, lid: Float, wobble: Float, bust:
             }
             ink(svgPath("M-120 0 A120 120 0 0 0 120 0 Z"), Color.White, 6f)
             // 뚜껑
-            withTransform({ translate(lid * 160f, -lid * 320f); rotate(lid * 120f, Offset.Zero) }) {
+            // 뚜껑은 오른쪽 위 화면 밖까지 날아간다 (덜 날면 모서리에 걸려 남는다)
+            withTransform({ translate(lid * 420f, -lid * 600f); rotate(lid * 160f, Offset.Zero) }) {
                 ink(svgPath("M-120 0 A120 120 0 0 1 120 0 Z"), color, 6f)
                 if (taps >= 1) ink(svgPath("M-30 -110 l14 30 -18 18 20 26"), null, 4f)
                 if (taps >= 2) ink(svgPath("M40 -100 l-10 28 22 14 -14 30 M-80 -70 l20 22 -6 24"), null, 4f)

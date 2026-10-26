@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.18.2-4C9A2A" alt="version 3.18.2">
+  <img src="https://img.shields.io/badge/version-3.18.3-4C9A2A" alt="version 3.18.3">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -90,6 +90,11 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.18.3 — 가챠 캡슐 깨기 다듬기
+- 깨진 캡슐 뚜껑이 화면 모서리에 걸려 최종 발표까지 남아 있던 것 → 화면 밖까지 날아가게
+- 캡슐 깨기 화면 뒤를 더 어둡게 (35% → 60%): 기계에 섞이지 않고 캡슐·동그라미에 눈이 가게
+- `tools/verify shot`: 탭·드래그 각본으로 터치해야 열리는 화면도 촬영 (가챠·복권·사다리 진행, 기록·도감·벌칙 편집 창, 랜덤 등수 결과, 나가기 확인창)
 
 ### 3.18.2 — 화면을 직접 찍어 보고 고친 것들
 - 경주 1등 왕관: 그림 상자 가운데 위에 떠 있어서 동물에 따라 등 위 허공이나 윗줄 동물 발밑에 보이던 것 → 동물마다 머리 꼭대기에 얹기

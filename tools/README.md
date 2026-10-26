@@ -5,7 +5,7 @@
 | 폴더 | 내용 |
 |---|---|
 | `verify/` | Android SDK 없이 앱 소스를 **데스크톱 Compose(JVM)**로 컴파일하고 단위 테스트를 돌리는 Gradle 프로젝트. `stub/`는 안드로이드 전용 폰트 대신 쓰는 대역, `sim/`은 공정성·전개 시뮬레이션 |
-| `verify/sim/.../shot/Shot.kt` | **앱 화면 PNG**: `cd verify && ./gradlew shot [-Pscene=characters]` → `verify/build/shots/` (진짜 글꼴, 390×844dp, 2배). 장면: characters·crowns·fx·skills·skills-alt·race(시간대별)·roulette·setup·result·ladder·lotto·gacha |
+| `verify/sim/.../shot/Shot.kt` | **앱 화면 PNG**: `cd verify && ./gradlew shot [-Pscene=characters]` → `verify/build/shots/` (진짜 글꼴, 390×844dp, 2배). 장면: characters·crowns·fx·skills·skills-alt·race(시간대별)·roulette·setup·result·ladder·lotto·gacha, 터치 각본 `t-*` (`-Pscene=t` 로 전부): t-gacha·t-lotto·t-ladder·t-setup(기록)·t-dex·t-bet·t-result·t-exit |
 | `design/dc_render.js` | 디자인 캔버스 보드(`.dc.html`)를 정적 HTML로 그리기 (sc-for / sc-if / `{{값}}` / Animal 컴포넌트) |
 | `design/shoot.sh` | 보드 → PNG (헤드리스 크롬) |
 | `design/make_gif.sh` | 실기기 녹화 → README 움짤 (상태바·내비게이션 바 잘라내고 360×715) |

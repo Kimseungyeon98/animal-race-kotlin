@@ -91,4 +91,5 @@ tools/design/shoot.sh <보드>.dc.html <폭> <높이> out.png
 # 앱 화면 → PNG (진짜 글꼴, 390×844dp, 2배)
 cd tools/verify && ./gradlew shot                # 전체: characters, fx, setup, result, ladder, lotto, gacha
 cd tools/verify && ./gradlew shot -Pscene=characters
+cd tools/verify && ./gradlew shot -Pscene=t        # 터치 각본 장면 전부 (TouchScenes.kt: tap·drag·pause·snap)
 ```
