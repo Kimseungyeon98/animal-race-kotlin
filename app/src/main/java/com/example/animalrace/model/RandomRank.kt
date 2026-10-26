@@ -14,8 +14,13 @@ object RandomRank {
     fun draw(racers: Int, rnd: Random = Random.Default): List<Int> =
         (1..racers).shuffled(rnd).take(count(racers)).sorted()
 
-    /** "3등·6등" */
-    fun label(picks: List<Int>): String = picks.joinToString("·") { "${it}등" }
+    /** "3등·6등", 셋 이상이면 "1·4·7등" */
+    fun label(picks: List<Int>): String =
+        if (picks.size <= 2) picks.joinToString("·") { "${it}등" } else picks.joinToString("·") + "등"
+
+    /** 좁은 칩용: [max]개 넘으면 "1·2·3등 외 4" */
+    fun shortLabel(picks: List<Int>, max: Int = 4): String =
+        if (picks.size <= max) label(picks) else "${label(picks.take(max - 1))} 외 ${picks.size - max + 1}"
 
     /** 설정대로의 당첨 인원: 직접 정한 인원이 있으면 1 ~ 참가 −1 사이로, 없으면 자동 */
     fun count(racers: Int, setting: RankSetting): Int =

@@ -344,7 +344,7 @@ private fun TopBar(bet: String, picks: List<Int>?, t: Double, fast: Boolean, onT
             when {
                 picks == null -> Tag("꼴찌", Pal.Tomato, fontSize = 12.sp)
                 picks.isEmpty() -> Tag("🎯 ?등", Pal.Paper, Pal.Ink, fontSize = 12.sp)
-                else -> Tag("🎯 ${RandomRank.label(picks)}", Pal.Sun, Pal.Ink, fontSize = 12.sp)
+                else -> Tag("🎯 ${RandomRank.shortLabel(picks, 3)}", Pal.Sun, Pal.Ink, fontSize = 12.sp)
             }
             Text(shortBet(bet).ifEmpty { "자유 경기" }, fontSize = 15.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
@@ -887,9 +887,14 @@ private fun RouletteOverlay(state: Roulette, picks: List<Int>, racers: Int, bet:
                 if (!revealed) {
                     Tag("🎰 오늘의 당첨 등수", Pal.Sun, Pal.Ink, fontSize = 15.sp)
                     Text("${racers}마리 중 ${picks.size}명을 뽑아요", fontSize = 15.sp, color = Pal.InkSoft)
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        picks.forEachIndexed { i, p ->
-                            Reel(if (i < state.stopped) p else null, racers, seed = i, width = if (picks.size >= 3) 88.dp else 110.dp)
+                    // 4칸 이상이면 3칸씩 줄바꿈 (최대 9칸 = 3줄), 3줄이면 조금 낮게
+                    val reelHeight = if (picks.size > 6) 112.dp else 130.dp
+                    picks.chunked(3).forEachIndexed { row, line ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            line.forEachIndexed { j, p ->
+                                val i = row * 3 + j
+                                Reel(if (i < state.stopped) p else null, racers, seed = i, width = if (picks.size >= 3) 88.dp else 110.dp, height = reelHeight)
+                            }
                         }
                     }
                     Text(if (state.stopped < picks.size) "두근두근…" else "결정!", fontSize = 15.sp, color = Pal.InkSoft)
@@ -898,12 +903,12 @@ private fun RouletteOverlay(state: Roulette, picks: List<Int>, racers: Int, bet:
                         Tag("🎯 오늘의 당첨 등수", Pal.Sun, Pal.Ink, fontSize = 15.sp)
                         Text("미리 정한 등수예요 · ${racers}마리 중 ${picks.size}명", fontSize = 15.sp, color = Pal.InkSoft)
                     } else Text("오늘의 당첨 등수는…", fontSize = 20.sp, color = Pal.Ink)
-                    // 많으면 한 줄에 4개씩, 작게
+                    // 많으면 한 줄에 3개씩, 작게
                     val small = picks.size > 3
-                    picks.chunked(4).forEachIndexed { row, line ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    picks.chunked(3).forEachIndexed { row, line ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                             line.forEachIndexed { j, p ->
-                                val i = row * 4 + j
+                                val i = row * 3 + j
                                 Box(Modifier.rotate(if (i % 2 == 0) -4f else 4f)) {
                                     Box(Modifier.matchParentSize().offset(y = 5.dp).clip(RoundedCornerShape(20.dp)).background(Pal.Ink))
                                     Box(
@@ -920,7 +925,7 @@ private fun RouletteOverlay(state: Roulette, picks: List<Int>, racers: Int, bet:
                         }
                     }
                     Text(
-                        "${RandomRank.label(picks)}으로 들어오면", fontSize = 17.sp, color = Pal.Ink,
+                        "${RandomRank.label(picks)}으로 들어오면", fontSize = 17.sp, color = Pal.Ink, textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 4.dp),
                     )
                     Text("${shortBet(bet).ifEmpty { "벌칙 당첨" }}!", fontSize = 22.sp, color = Pal.TomatoText, textAlign = TextAlign.Center)
@@ -937,7 +942,7 @@ private fun RouletteOverlay(state: Roulette, picks: List<Int>, racers: Int, bet:
 
 /** 슬롯 한 칸. [value]가 null이면 숫자가 빠르게 돌고, 정해지면 그 등수에서 "딱!" 멈춘다. */
 @Composable
-private fun Reel(value: Int?, racers: Int, seed: Int, width: Dp) {
+private fun Reel(value: Int?, racers: Int, seed: Int, width: Dp, height: Dp = 130.dp) {
     var tick by remember { mutableIntStateOf(seed * 3) }
     LaunchedEffect(value) {
         while (value == null) { delay(65); tick++ }
@@ -949,9 +954,12 @@ private fun Reel(value: Int?, racers: Int, seed: Int, width: Dp) {
     fun wrap(k: Int) = ((k - 1 + racers) % racers) + 1
     val above = if (value != null) (center - 1).takeIf { it >= 1 } else wrap(center - 1)
     val below = if (value != null) (center + 1).takeIf { it <= racers } else wrap(center + 1)
+    // 위·아래 흐린 숫자 칸: 높이가 줄면 같이 줄인다
+    val side = (height - 58.dp) / 2
+    Box {
     Box(
         Modifier
-            .size(width, 130.dp)
+            .size(width, height)
             .clip(RoundedCornerShape(18.dp))
             .background(Pal.Paper)
             .border(3.dp, Pal.Ink, RoundedCornerShape(18.dp)),
@@ -963,14 +971,16 @@ private fun Reel(value: Int?, racers: Int, seed: Int, width: Dp) {
             Box(Modifier.fillMaxWidth().height(3.dp).background(Pal.Ink))
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.height(36.dp), contentAlignment = Alignment.Center) { above?.let { RankText(it, 22.sp, alpha = 0.35f) } }
+            Box(Modifier.height(side), contentAlignment = Alignment.Center) { above?.let { RankText(it, 22.sp, alpha = 0.35f) } }
             Box(Modifier.height(54.dp).graphicsLayer { scaleX = pop; scaleY = pop }, contentAlignment = Alignment.Center) {
                 RankText(center, 38.sp, alpha = if (value != null) 1f else 0.75f)
             }
-            Box(Modifier.height(36.dp), contentAlignment = Alignment.Center) { below?.let { RankText(it, 22.sp, alpha = 0.35f) } }
+            Box(Modifier.height(side), contentAlignment = Alignment.Center) { below?.let { RankText(it, 22.sp, alpha = 0.35f) } }
         }
+    }
+        // 칸 밖 오른쪽 위 모서리에 걸쳐서 (위 숫자를 가리지 않게)
         if (value != null) {
-            Tag("딱!", Pal.Tomato, fontSize = 12.sp, modifier = Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 4.dp))
+            Tag("딱!", Pal.Tomato, fontSize = 12.sp, modifier = Modifier.align(Alignment.TopEnd).offset(x = 8.dp, y = (-10).dp).rotate(8f))
         }
     }
 }

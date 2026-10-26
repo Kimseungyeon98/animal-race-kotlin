@@ -248,6 +248,8 @@ private fun PickCard(bet: String, picks: List<Int>, losers: List<RaceResult>, mi
                 Tag("🎯 랜덤 등수 당첨!", Pal.Tomato, fontSize = 14.sp)
                 Text(shortBet(bet).ifEmpty { "오늘의 당첨" }, fontSize = 24.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+            // 많이 걸리면 줄을 낮게
+            val sprite = if (losers.size > 3) 48.dp else 70.dp
             picks.zip(losers).forEach { (place, r) ->
                 Row(
                     Modifier
@@ -259,7 +261,7 @@ private fun PickCard(bet: String, picks: List<Int>, losers: List<RaceResult>, mi
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    AnimalSprite(r.animal, 70.dp, modifier = Modifier.graphicsLayer { translationX = shake.value * density; rotationZ = shake.value })
+                    AnimalSprite(r.animal, sprite, modifier = Modifier.graphicsLayer { translationX = shake.value * density; rotationZ = shake.value })
                     Tag("${place}등", Pal.Sun, Pal.Ink, fontSize = 15.sp)
                     LaneSticker(r.lane, size = 22.dp)
                     Text("${withRo(r.animal.label)} 출전한 사람!", fontSize = 15.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)

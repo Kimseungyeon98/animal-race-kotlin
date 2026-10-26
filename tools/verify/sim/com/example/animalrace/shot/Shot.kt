@@ -232,6 +232,29 @@ private fun scenes(): List<Scene> {
             RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG), "커피 쏘기", 0, { _, _ -> },
                 picks = listOf(2, 5), picksFixed = true)
         },
+        Scene("rank-many", snaps = listOf(2500, 6000)) {
+            RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG, Animal.DUCK, Animal.TURTLE, Animal.CHEETAH, Animal.ELEPHANT), "커피 쏘기", 0, { _, _ -> }, picks = listOf(1, 2, 4, 5, 6, 8))
+        },
+        Scene("rank-nine", snaps = listOf(3000, 8500)) {
+            RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG, Animal.DUCK, Animal.TURTLE, Animal.CHEETAH, Animal.ELEPHANT), "커피 쏘기", 0, { _, _ -> }, picks = (1..9).toList())
+        },
+        Scene("rank-fixed9", snaps = listOf(1000)) {
+            RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG, Animal.DUCK, Animal.TURTLE, Animal.CHEETAH, Animal.ELEPHANT), "커피 쏘기", 0, { _, _ -> }, picks = (1..9).toList(), picksFixed = true)
+        },
+        Scene("rank-setup9") {
+            val state = AppState(FakeRepo).apply {
+                listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG, Animal.DUCK, Animal.TURTLE, Animal.CHEETAH, Animal.ELEPHANT).forEach { toggle(it) }
+                updateRandomRank(true); updateRankSetting(RankSetting(RankMode.FIXED, fixed = (1..9).toList()))
+            }
+            SetupScreen(state)
+        },
+        Scene("rank-sheet9") { RankSheet(RankSetting(RankMode.FIXED, fixed = (1..9).toList()), 10, {}, {}) },
+        Scene("rank-result9") {
+            ResultScreen(
+                RaceRecord(0L, "커피 쏘기", 3, results(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG, Animal.DUCK, Animal.TURTLE, Animal.CHEETAH, Animal.ELEPHANT), Venue.MEADOW, (1..9).toList(), picksFixed = true),
+                onAgain = {}, onHome = {},
+            )
+        },
         Scene("lotto7") {
             val many = results(Animal.CAT, Animal.PIG, Animal.PANDA, Animal.DOG, Animal.DUCK, Animal.HORSE, Animal.RABBIT)
             MiniGameScreen(MiniGameSession(MiniGame.LOTTO, many, Ladder.random(7), 3), "커피 쏘기", {}, {})

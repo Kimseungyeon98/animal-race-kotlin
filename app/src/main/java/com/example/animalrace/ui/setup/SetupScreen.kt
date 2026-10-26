@@ -33,6 +33,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -403,7 +406,8 @@ private fun RandomRankRow(state: AppState, modifier: Modifier, onOpen: () -> Uni
             .clip(RoundedCornerShape(14.dp))
             .background(Pal.Paper)
             .border(3.dp, Pal.Ink, RoundedCornerShape(14.dp))
-            .padding(end = 8.dp),
+            .height(IntrinsicSize.Min)
+            .padding(end = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -439,20 +443,24 @@ private fun RandomRankRow(state: AppState, modifier: Modifier, onOpen: () -> Uni
             val count = RandomRank.count(maxOf(n, AppState.MIN_RACERS), s)
             val label = when {
                 s.mode == RankMode.ROULETTE -> "${if (s.count == null) "자동" else "직접"} ${count}명 · 🎰 룰렛"
-                state.rankReady -> "🎯 지정 ${RandomRank.label(RandomRank.picks(n, s))}"
+                state.rankReady -> "🎯 지정 ${RandomRank.shortLabel(RandomRank.picks(n, s))}"
                 else -> "🎯 등수를 골라 주세요"
             }
+            // 테두리 안쪽 위·아래·오른쪽 여백(6dp)을 같게: 줄 높이를 꽉 채운다
             Row(
                 Modifier
-                    .clip(RoundedCornerShape(12.dp))
+                    .widthIn(max = 210.dp)
+                    .fillMaxHeight()
+                    .padding(vertical = 6.dp)
+                    .clip(RoundedCornerShape(10.dp))
                     .background(if (state.rankReady) Pal.SunPale else Pal.Pink)
-                    .border(2.dp, Pal.Ink, RoundedCornerShape(12.dp))
+                    .border(2.dp, Pal.Ink, RoundedCornerShape(10.dp))
                     .clickable(onClick = onOpen)
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(label, fontSize = 14.sp, color = Pal.Ink, maxLines = 1)
+                Text(label, fontSize = 14.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 InkIcon(listOf("M6 9l6 6 6-6"), size = 12.dp, stroke = 3.5f)
             }
         }
