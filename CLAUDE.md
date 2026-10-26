@@ -39,10 +39,13 @@ Claude-Session: <세션 링크>
 
 ## 검증 (Android SDK 없음)
 
-- 이 환경엔 Android SDK가 없고 Google Maven이 막혀 있다. 대신 `tools/verify`가 앱 소스를 **데스크톱 Compose**로 컴파일하고 단위 테스트를 돌린다:
+- 이 환경엔 Android SDK가 없다 (Google Maven은 3.18 이후 허용됨). 대신 `tools/verify`가 앱 소스를 **데스크톱 Compose**로 컴파일하고 단위 테스트를 돌린다:
   `cd tools/verify && ./gradlew compileKotlin test -q --offline` (캐시가 없으면 `--offline` 빼고)
 - `MainActivity.kt`, `data/PrefsRepository.kt`, `data/AndroidSound.kt`, `ui/theme/Fonts.kt`는 안드로이드 전용이라 **검증에서 빠진다.** 이 파일을 고치면 코드를 눈으로 한 번 더 확인하고, 실기기 확인이 필요하다고 말한다.
-- 화면은 직접 띄울 수 없다. 레이아웃·손맛은 "실기기에서 확인 필요"라고 정직하게 말한다.
+- **앱 화면 PNG**: `cd tools/verify && ./gradlew shot [-Pscene=이름]` → `build/shots/*.png` (진짜 글꼴, 폰 390×844dp).
+  화면·그림을 바꾸면 찍어서 직접 보고 확인한다. 장면은 `tools/verify/sim/com/example/animalrace/shot/Shot.kt`에 추가.
+  손맛(터치·진동·소리·애니메이션 흐름)은 여전히 "실기기에서 확인 필요"라고 정직하게 말한다.
+- **그림 작업**(캐릭터·연출·미니게임 소품)은 먼저 `.claude/skills/animal-art/SKILL.md`를 읽는다. 레퍼런스 이미지는 `docs/design/refs/`.
 - 커밋 전 훅: `.claude/settings.json` → `tools/hooks/test-before-commit.sh` (테스트 실패 시 커밋 차단).
 
 ## 디자인 캔버스

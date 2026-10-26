@@ -1,3 +1,3 @@
 pluginManagement { repositories { mavenCentral(); gradlePluginPortal() } }
-dependencyResolutionManagement { repositories { mavenCentral() } }
+dependencyResolutionManagement { repositories { google(); mavenCentral() } }
 rootProject.name = "verify"

@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.18-4C9A2A" alt="version 3.18">
+  <img src="https://img.shields.io/badge/version-3.18.1-4C9A2A" alt="version 3.18.1">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -90,6 +90,11 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.18.1 — 그림 규칙 스킬, 앱 화면 스크린샷 도구
+- `.claude/skills/animal-art/SKILL.md`: 캐릭터·소품 그림 규칙(좌표계·선 굵기·색·그리는 순서), 레퍼런스 → 시안 → 앱 → 스크린샷 비교 작업 순서, 자주 한 실수
+- `tools/verify`: `./gradlew shot`으로 앱 화면을 진짜 글꼴로 PNG 촬영 (캐릭터 전체·연출·메인·결과·미니게임 3종)
+- `docs/design/refs/`: 디자인 레퍼런스 이미지 자리 (앱 동작 변경 없음)
 
 ### 3.18 — 악어 이빨 빼기
 - 🐊 악어 이빨 미니게임을 뺐어요 (화면·효과음 3종·공정성 테스트). 미니게임은 사다리 타기·복권 긁기·가챠 캡슐 3종
