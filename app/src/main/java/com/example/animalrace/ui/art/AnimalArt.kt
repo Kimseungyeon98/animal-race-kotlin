@@ -60,7 +60,7 @@ internal fun gait(seconds: Float, period: Float = 0.34f): Pose {
 /** 머리 꼭대기 (200×170 좌표): 1등 왕관 같은 것을 얹는 자리 */
 internal fun headTop(animal: Animal): Offset = when (animal) {
     HORSE -> Offset(158f, 36f)
-    CHEETAH -> Offset(158f, 58f)
+    CHEETAH -> Offset(160f, 62f)
     RABBIT -> Offset(142f, 50f)
     TURTLE -> Offset(164f, 84f)
     DOG -> Offset(150f, 46f)
@@ -261,23 +261,36 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
         CHEETAH -> {
             shadow(100f, 160f, 66f, 7f)
             translate(0f, bob) {
-                val body = listOf(oval(92f, 98f, 60f, 26f))
-                svg("M38 90 q-30 -8 -24 -42", null, sw = 12f)
-                svg("M38 90 q-30 -8 -24 -42", null, sw = 5f, stroke = c(0xFFF5C04A))
-                farLeg(56f, 104f, 14f, 46f, c(0xFFDDA437), b, 63f, 108f, hind = true, Foot.PAW)
-                farLeg(118f, 104f, 14f, 46f, c(0xFFDDA437), a, 125f, 108f, hind = false, Foot.PAW)
-                ellipse(92f, 98f, 60f, 26f, c(0xFFF5C04A))
+                val gold = c(0xFFF5C04A)
                 val spot = c(0xFF6B4A1E)
-                dot(66f, 92f, 5f, spot); dot(88f, 102f, 4f, spot); dot(106f, 88f, 5f, spot)
-                dot(58f, 106f, 4f, spot); dot(124f, 102f, 4f, spot); dot(84f, 84f, 3.5f, spot)
-                nearLeg(68f, 104f, 14f, 46f, c(0xFFF5C04A), a, 75f, 108f, hind = true, body, Foot.PAW)
-                nearLeg(130f, 104f, 14f, 46f, c(0xFFF5C04A), b, 137f, 108f, hind = false, body, Foot.PAW)
-                circle(146f, 62f, 8f, c(0xFFF5C04A)); circle(168f, 60f, 8f, c(0xFFF5C04A))
-                circle(158f, 84f, 24f, c(0xFFF5C04A))
-                ellipse(176f, 92f, 11f, 8f, c(0xFFFFF1D0))
-                eye(164f, 78f, 4.5f, 165.5f, 76.5f, 1.6f)
-                svg("M163 84 q1 10 8 14", null, sw = 3f)
-                dot(185f, 89f, 3f)
+                val body = listOf(oval(94f, 98f, 60f, 25f))
+                // 긴 꼬리: 끝으로 갈수록 진한 고리 무늬 + 흰 끝
+                val tail = "M38 94 q-28 2 -30 -30"
+                svg(tail, null, sw = 12f)
+                svg(tail, null, sw = 5f, stroke = gold)
+                dot(18f, 82f, 3f, spot); dot(11f, 72f, 3f, spot)
+                circle(8f, 63f, 3.5f, spot, sw = 3f)
+                farLeg(56f, 104f, 14f, 46f, c(0xFFDDA437), b, 63f, 108f, hind = true, Foot.PAW)
+                farLeg(120f, 104f, 14f, 46f, c(0xFFDDA437), a, 127f, 108f, hind = false, Foot.PAW)
+                ellipse(94f, 98f, 60f, 25f, gold)
+                // 밝은 배 + 작은 점무늬 여럿
+                svg("M46 108 q46 18 96 2", null, sw = 5f, stroke = c(0xFFFFE3A6))
+                for ((x, y, r) in listOf(Triple(60f, 92f, 4f), Triple(76f, 86f, 3f), Triple(90f, 98f, 3.5f), Triple(104f, 88f, 4f),
+                    Triple(118f, 96f, 3f), Triple(130f, 86f, 3f), Triple(70f, 104f, 3f), Triple(48f, 98f, 3f), Triple(112f, 106f, 2.5f))) dot(x, y, r, spot)
+                nearLeg(68f, 104f, 14f, 46f, gold, a, 75f, 108f, hind = true, body, Foot.PAW)
+                nearLeg(132f, 104f, 14f, 46f, gold, b, 139f, 108f, hind = false, body, Foot.PAW)
+                dot(74f, 128f, 2.5f, spot); dot(136f, 130f, 2.5f, spot)
+                // 작고 날렵한 머리, 뒤로 붙은 작은 귀
+                circle(146f, 66f, 6.5f, c(0xFFDDA437), sw = 4f)
+                circle(158f, 63f, 7f, gold, sw = 4f)
+                ellipse(160f, 80f, 23f, 19f, gold)
+                // 주둥이는 테두리 없이 머리 안쪽에 (선이 엉키지 않게)
+                ellipse(172f, 88f, 10f, 7.5f, c(0xFFFFF1D0), sw = 0f)
+                eye(163f, 75f, 4.5f, 164.5f, 73.5f, 1.6f)
+                // 치타의 눈물 줄무늬: 눈 앞쪽에서 주둥이 가장자리까지
+                svg("M166 79 q0 8 4 13", null, sw = 3.5f)
+                dot(180f, 84f, 3.2f)
+                svg("M173 93 q4 3 8 -1", null, sw = 2f)
             }
         }
         RABBIT -> {
@@ -413,6 +426,8 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
             translate(0f, bob) {
                 ellipse(88f, 150f, 15f, 7f, c(0xFFFF9F1C), a, 92f, 144f)
                 ellipse(118f, 150f, 15f, 7f, c(0xFFFF9F1C), b, 114f, 144f)
+                // 작은 꼬리: 몸 뒤 아래에 바짝 붙여 (몸보다 먼저 그려 끝만 보이게)
+                svg("M72 132 l-14 12 l20 -2 z", c(0xFF2E3A59), sw = 4f)
                 ellipse(100f, 94f, 42f, 56f, c(0xFF2E3A59))
                 ellipse(114f, 104f, 26f, 40f, White)
                 svg("M66 86 q-24 22 -12 42 q16 -14 18 -32 z", c(0xFF2E3A59), rot = b, px = 68f, py = 88f)
@@ -633,9 +648,15 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
                 val far = c(0xFF1E1A28)
                 roundLeg(60f, 116f, 18f, 34f, far, b, 69f, 120f, hind = true)
                 roundLeg(106f, 116f, 18f, 34f, far, a, 115f, 120f, hind = false)
-                ellipse(88f, 106f, 50f, 34f, White)
-                svg("M100 78 q22 -6 32 8 l-6 46 q-14 4 -26 -4 z", black)
-                // 몸과 색이 달라서, 가까운 다리는 몸 위에 테두리까지 통째로 그리고 위쪽을 둥글게 마무리
+                // 몸: 흰 몸 위에 어깨를 감싸는 둥근 검은 띠 (몸 윤곽 안에서만) → 윤곽선은 마지막에
+                val bodyPath = oval(88f, 106f, 50f, 34f)
+                drawPath(bodyPath, White)
+                clipPath(bodyPath) {
+                    svg("M100 66 Q116 104 108 150 L150 150 Q150 100 130 66 Z", black, sw = 0f)
+                }
+                paint(bodyPath, null, 5f, Ink)
+                // 띠 경계는 부드러운 곡선 하나만
+                clipPath(bodyPath) { svg("M100 66 Q116 104 108 150", null, sw = 4f) }
                 roundLeg(74f, 116f, 18f, 34f, black, a, 83f, 120f, hind = true)
                 roundLeg(120f, 116f, 18f, 34f, black, b, 129f, 120f, hind = false)
                 circle(125f, 56f, 13f, black); circle(177f, 56f, 13f, black)

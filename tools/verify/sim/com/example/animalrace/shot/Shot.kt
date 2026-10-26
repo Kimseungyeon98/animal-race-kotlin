@@ -254,13 +254,27 @@ private fun scenes(): List<Scene> {
                 }
             }
         },
-        Scene("duo", w = 4 * 230 + 20, h = 2 * 210 + 20) {
-            // 돼지·캥거루 크게: 서 있기 + 달리기 자세 3개
+        *listOf("duo" to listOf(Animal.PIG, Animal.KANGAROO), "trio" to listOf(Animal.CHEETAH, Animal.PENGUIN, Animal.PANDA)).map { (name, list) ->
+        Scene(name, w = 4 * 230 + 20, h = list.size * 210 + 20) {
+            // 크게: 서 있기 + 달리기 자세 3개
             Column(Modifier.padding(10.dp)) {
-                listOf(Animal.PIG, Animal.KANGAROO).forEach { a ->
+                list.forEach { a ->
                     Row {
                         AnimalSprite(a, 220.dp, modifier = Modifier.padding(5.dp))
                         (0..2).forEach { f -> AnimalSprite(a, 220.dp, frame = f, modifier = Modifier.padding(5.dp)) }
+                    }
+                }
+            }
+        } }.toTypedArray(),
+        Scene("review", w = 5 * 2 * 170 + 20, h = 4 * 175 + 20) {
+            // 전체 검토: 동물마다 서 있기 + 달리기 자세
+            Column(Modifier.padding(10.dp)) {
+                Animal.entries.chunked(5).forEach { row ->
+                    Row {
+                        row.forEach { a ->
+                            AnimalSprite(a, 160.dp, modifier = Modifier.padding(5.dp))
+                            AnimalSprite(a, 160.dp, frame = 1, modifier = Modifier.padding(5.dp))
+                        }
                     }
                 }
             }
