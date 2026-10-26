@@ -224,6 +224,16 @@ private fun scenes(): List<Scene> {
                 }
             }
         },
+        Scene("wave", w = 6 * 220, h = 300, snaps = listOf(1000)) {
+            // 해변 혼자 넘어짐 (파도) 한 주기(1.8초): 솟음 → 덮침 → 부서짐 → 젖음
+            Row(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF3DDA8))) {
+                listOf(0.15f, 0.45f, 0.75f, 0.95f, 1.2f, 1.5f).forEach { tm ->
+                    Box(Modifier.width(220.dp).padding(start = 40.dp, top = 120.dp)) {
+                        AnimalSprite(Animal.RABBIT, 100.dp, fx = Fx.TRIP, fxTime = tm, venue = Venue.BEACH)
+                    }
+                }
+            }
+        },
         sheet("skills", Fx.SKILL),
         sheet("skills-alt", Fx.SKILL_ALT),
         Scene("race", snaps = listOf(1500, 7000, 13000, 20000, 25000, 29000)) {

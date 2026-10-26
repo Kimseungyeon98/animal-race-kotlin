@@ -34,12 +34,6 @@ private val BubbleHurtBg = Color(0xFFFFE1DC)
 private val cache = HashMap<String, Path>()
 private fun svg(d: String): Path = cache.getOrPut(d) { PathParser().parsePathString(d).toPath() }
 
-/** 경로를 좌우 반전 (viewBox 너비 [vw]). M/Q/L/Z와 숫자 쌍만 쓰는 경로용 */
-private fun mirror(d: String, vw: Float): String {
-    var n = 0
-    return Regex("-?\\d+(\\.\\d+)?").replace(d) { m -> if (n++ % 2 == 0) (vw - m.value.toFloat()).toString() else m.value }
-}
-
 /**
  * 시안 좌표 상자 ([x],[y],[w],[h])에 viewBox [vbW]×[vbH] 경로를 그린다. 선 굵기 [sw]는 viewBox 단위.
  * [rot]는 상자 아래 가운데를 축으로 돈다 (시안의 transform-origin: 50% 100%).
@@ -113,39 +107,99 @@ private fun meadowTrip(t: Float): FxFrame {
     )
 }
 
-// ---------------------------------------------------------------- 해변: 앞에서 파도가 철썩
+// ---------------------------------------------------------------- 해변: 파도가 덮쳐 철썩 (시안 "해변 파도 다듬기" ②)
 
-private val WAVE_BODY = mirror("M2 68 Q14 64 22 50 Q34 24 54 12 Q72 2 88 8 Q100 14 96 28 Q93 34 87 30 Q85 38 77 35 Q73 42 67 38 Q60 46 66 54 Q74 61 94 64 Q74 71 57 63 Q48 71 30 68 Q16 71 2 68 Z", 100f)
-private val WAVE_DEEP = mirror("M22 54 Q32 30 50 17 Q56 15 58 19 Q54 25 58 29 Q54 33 58 38 Q50 42 48 50 Q41 59 30 61 Q22 60 22 54 Z", 100f)
-private val WAVE_STREAKS = mirror("M28 56 L36 42 M36 59 L43 46 M44 57 L49 48", 100f)
-private val WAVE_FOAM = mirror("M54 13 Q70 5 86 9 Q97 14 95 26 Q91 30 87 26 Q85 34 78 32 Q74 38 68 34 Q64 30 66 26 Q60 25 62 20 Q56 20 54 13 Z", 100f)
-private const val DROP = "M5 0 Q10 8 5 12 Q0 8 5 0 Z"
-private const val WASH = "M0 14 Q14 4 28 10 Q42 2 58 9 Q74 2 90 9 Q106 3 124 14 L124 20 L0 20 Z"
 private val WaveLight = Color(0xFF42C0E8)
 private val WaveDeep = Color(0xFF0A6FA6)
 private val Spray = Color(0xFF8FD6F2)
 
+// 새 파도 (viewBox 100×70, 왼쪽=토끼 쪽으로 말림). 몸통 → 말린 안쪽(관) → 거품 마루 → 물결 줄 → 거품 알갱이
+private const val WV_BODY = "M104 70 Q99 50 88 30 Q76 9 55 4 Q35 1 22 11 Q12 19 11 31 Q19 23 29 25 Q40 28 40 40 Q40 53 27 61 Q14 68 0 70 Z"
+private const val WV_TUBE = "M12 30 Q20 23 30 25 Q41 29 40 41 Q39 53 27 61 Q35 49 31 39 Q27 31 12 30 Z"
+private const val WV_MID = "M104 70 Q99 54 90 41 Q78 34 66 40 Q55 50 56 70 Z"
+private const val WV_FOAM = "M89 33 Q81 12 58 5 Q38 1 24 11 Q14 19 12 30 Q17 26 21 29 Q22 23 28 22 Q30 16 37 17 Q40 12 47 14 Q52 10 59 13 Q66 11 70 16 Q77 17 80 23 Q87 25 89 33 Z"
+private const val WV_LINES = "M60 22 Q70 30 72 44 M74 30 Q82 40 84 54 M50 30 Q58 40 58 54"
+private const val WV_SHINE = "M36 7 Q48 3 60 6"
+private const val DROP2 = "M6 0 Q12 9 6 14 Q0 9 6 0 Z"
+private const val PUDDLE = "M2 12 Q2 4 22 4 Q40 1 62 4 Q86 2 98 8 Q104 13 96 16 Q74 20 50 18 Q24 20 8 18 Q0 17 2 12 Z"
+private const val PUDDLE_FOAM = "M10 8 Q18 5 26 8 M44 5 Q54 3 62 6 M76 6 Q86 5 92 9"
+private val WaveMid = Color(0xFF2A9FD6)
+private val Foam = Color(0xFFF4FBFF)
+private val FoamShade = Color(0xFFCDEBF7)
+
+private fun smoothstep(a: Float, b: Float, x: Float): Float { val k = ((x - a) / (b - a)).coerceIn(0f, 1f); return k * k * (3 - 2 * k) }
+
+/** 새 파도 한 덩어리 */
+private fun DrawScope.wave2(x: Float, y: Float, w: Float, h: Float, rot: Float, alpha: Float = 1f) {
+    part(svg(WV_BODY), 100f, 70f, x, y, w, h, WaveLight, sw = 3f, rot = rot, alpha = alpha)
+    part(svg(WV_MID), 100f, 70f, x, y, w, h, WaveMid, null, rot = rot, alpha = alpha)
+    part(svg(WV_TUBE), 100f, 70f, x, y, w, h, WaveDeep, sw = 2f, rot = rot, alpha = alpha)
+    part(svg(WV_LINES), 100f, 70f, x, y, w, h, null, Color(0xFF8FDAF5), 2.6f, rot = rot, alpha = alpha * 0.9f)
+    part(svg(WV_FOAM), 100f, 70f, x, y, w, h, Foam, sw = 2.5f, rot = rot, alpha = alpha)
+    part(svg(WV_SHINE), 100f, 70f, x, y, w, h, null, FoamShade, 2.4f, rot = rot, alpha = alpha)
+}
+
+/** 물방울: 하늘색 + 잉크 + 흰 점 */
+private fun DrawScope.drop2(cx: Float, cy: Float, size: Float, alpha: Float, rot: Float = 0f) {
+    part(svg(DROP2), 12f, 14f, cx - size / 2, cy - size * 0.6f, size, size * 1.17f, Spray, sw = 1.8f, alpha = alpha, rot = rot)
+    dot(cx - size * 0.12f, cy + size * 0.12f, size * 0.22f, White, alpha = alpha)
+}
+
+/** 거품 뭉치(동그라미들을 한 덩어리로: 잉크 먼저, 채우기 나중) */
+private fun DrawScope.foamCloud(puffs: List<Triple<Float, Float, Float>>, alpha: Float = 1f) {
+    puffs.forEach { (x, y, d) -> dot(x, y, d + 4f, Ink, alpha = alpha) }
+    puffs.forEach { (x, y, d) -> dot(x, y, d, Foam, alpha = alpha) }
+}
+
+/** 해변 (시안 "해변 파도 다듬기" ②): 뒤에서 솟음 → 앞으로 말려 토끼를 덮침 → 하얗게 부서짐 → 흠뻑 젖어 물이 뚝뚝 */
 private fun beachTrip(t: Float): FxFrame {
     val ph = (t % 30f) / 30f
-    val rise = sin(ph * PI.toFloat())
-    val x = 16 + (1 - rise) * 34
-    val y = -44 + (1 - rise) * 26
-    val rot = 6 - rise * 6
+    val rise = smoothstep(0f, 0.32f, ph)
+    val crash = smoothstep(0.32f, 0.5f, ph)
+    val splash = smoothstep(0.45f, 0.8f, ph)
+    val after = smoothstep(0.55f, 1f, ph)
+    val hit = if (ph in 0.45f..0.75f) sin((ph - 0.45f) / 0.3f * PI.toFloat()) else 0f
     return FxFrame(
-        front = listOf(hurt("철썩!")),
-        dx = wobble(t, 1.5f), pose = 0,
+        front = listOf(hurt("철썩!").copy(x = -48f, y = -40f)),
+        // 맞는 순간 뒤로 밀리며 젖혀졌다가 돌아옴
+        dx = -9f * hit * F, rot = -12f * hit, dy = 2f * hit * F, pose = 0,
         under = {
-            part(svg(WAVE_BODY), 100f, 70f, x, y, 124f, 87f, WaveLight, rot = rot)
-            part(svg(WAVE_DEEP), 100f, 70f, x, y, 124f, 87f, WaveDeep, null, rot = rot)
-            part(svg(WAVE_STREAKS), 100f, 70f, x, y, 124f, 87f, null, WaveLight, 3.5f, rot = rot)
-            part(svg(WAVE_FOAM), 100f, 70f, x, y, 124f, 87f, White, sw = 2f, rot = rot)
+            // 물웅덩이: 덮친 뒤 넓어졌다가 줄어듦
+            val pw = 70f + 50f * splash - 20f * after
+            val pa = splash * (1 - after * 0.5f)
+            part(svg(PUDDLE), 104f, 20f, 50 - pw / 2, 70f, pw, 20f, Spray, sw = 2.5f, alpha = pa)
+            part(svg(PUDDLE_FOAM), 104f, 20f, 50 - pw / 2, 70f, pw, 20f, null, Foam, 2.6f, alpha = pa)
+            // 솟아오르는 동안은 토끼 뒤
+            if (crash < 0.01f) wave2(62 - rise * 34, 30 - rise * 76, 124f * (0.6f + rise * 0.4f), 87f * (0.6f + rise * 0.4f), 6 - rise * 6)
         },
         over = {
-            for (k in 0..3) {
-                val p = (ph + k * 0.22f) % 1f
-                part(svg(DROP), 10f, 12f, 70 - k * 18 - p * 14, -6 + p * 60, 8f, 10f, Spray, sw = 1.8f, alpha = 1 - p)
+            // 앞으로 말려 덮칠 때는 토끼 앞 (아래로 꺼지며 사라짐)
+            if (crash > 0.01f && splash < 0.6f) {
+                val a = 1 - smoothstep(0.42f, 0.55f, ph)
+                wave2(28 - crash * 30, -46 + crash * 40, 124f, 87f * (1 - crash * 0.35f), -crash * 18, alpha = a)
             }
-            part(svg(WASH), 124f, 20f, -12f, 66f, 124f, 20f, Spray, sw = 2f, alpha = 0.5f + rise * 0.5f)
+            // 하얗게 부서지는 거품: 위·옆으로 솟구쳐 퍼지며 작아져 사라짐 (흐려지지 않게 크기로)
+            if (splash > 0f && splash < 1f) {
+                val puffs = (0..8).map { k ->
+                    val ang = -PI.toFloat() * (0.12f + k * 0.095f)
+                    val r = 10 + splash * (30 + (k % 3) * 8)
+                    val d = (24 + (k % 2) * 6) * (1 - splash) * (1 - splash * 0.3f)
+                    Triple(48 + cos(ang) * r * 1.3f, 40 + sin(ang) * r - splash * 8, d)
+                }.filter { it.third > 1.5f } + listOf(Triple(48f, 42f, 30 * (1 - splash) * (1 - splash)))
+                foamCloud(puffs.filter { it.third > 1.5f })
+                for (k in 0..6) {
+                    val ang = -PI.toFloat() * (0.1f + k * 0.13f)
+                    val r = 30 + splash * 40
+                    drop2(48 + cos(ang) * r * 1.2f, 36 + sin(ang) * r + splash * splash * 40, 10f, 1 - splash * splash, rot = ang * 57f + 90f)
+                }
+            }
+            // 흠뻑 젖음: 몸에서 물이 뚝뚝
+            if (after > 0f) {
+                for (k in 0..3) {
+                    val p = (ph * 3 + k * 0.27f) % 1f
+                    drop2(24f + k * 16, 30f + p * 34, 7f, (1 - p) * after)
+                }
+            }
         },
     )
 }
