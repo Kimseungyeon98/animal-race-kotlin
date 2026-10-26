@@ -164,9 +164,11 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
             val wPx = constraints.maxWidth.toFloat()
             val hPx = constraints.maxHeight.toFloat()
             // 기계(시안 390×480)를 칸에 맞춰
-            val s = minOf(wPx / 390f, hPx / 490f)
+            // 기계는 10% 크게, 칸 아래쪽에 붙여 레버에 손이 닿기 쉽게. 위쪽은 남은 캡슐 줄 자리
+            val topRoom = with(LocalDensity.current) { 104.dp.toPx() }
+            val s = minOf(wPx / 390f * 1.1f, (hPx - topRoom) / 470f)
             val dx = (wPx - 390f * s) / 2
-            val dy = (hPx - 480f * s) / 2
+            val dy = hPx - 488f * s
             val density = LocalDensity.current
 
             Canvas(
@@ -246,9 +248,29 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                 Text("몰아주기 가챠", fontSize = (17f * s).toDp().value.sp, color = Pal.Ink,
                     modifier = Modifier.offset(x = (dx + 140f * s).toDp(), y = (dy + 272f * s).toDp()))
             }
+            // 위: 남은 캡슐 (숫자 대신 캡슐 그림, 쓴 건 흐리게) + 안내 (시안: "화면 다듬기" ④)
+            Column(
+                Modifier.align(Alignment.TopCenter).padding(top = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text("남은 캡슐", fontSize = 14.sp, color = Pal.InkSoft)
+                Row(horizontalArrangement = Arrangement.spacedBy(if (n > 7) 2.dp else 6.dp)) {
+                    for (j in 0 until n) {
+                        Canvas(Modifier.size(if (n > 7) 26.dp else 32.dp)) {
+                            val r = size.minDimension * 0.42f
+                            capsule(Offset(size.width / 2, size.height / 2), r, colors[j], -20f, 2.dp.toPx(), alpha = if (j < k) 0.25f else 1f)
+                        }
+                    }
+                }
+                when {
+                    loser != null -> {}
+                    phase == Gacha.LEVER -> Tag("레버를 한 바퀴 돌려요 ↻", Pal.Paper, Pal.Ink, fontSize = 15.sp)
+                    phase == Gacha.DROPPED -> Tag("데구르르~", Pal.Paper, Pal.Ink, fontSize = 15.sp)
+                }
+            }
             when (phase) {
-                Gacha.LEVER -> if (loser == null) Tag("레버를 한 바퀴 돌려요 ↻", Pal.Paper, Pal.Ink, fontSize = 15.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 10.dp))
-                Gacha.DROPPED -> Tag("데구르르~", Pal.Paper, Pal.Ink, fontSize = 15.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 10.dp))
+                Gacha.LEVER, Gacha.DROPPED -> {}
                 else -> BigCapsule(colors[k], taps, lid.value, wobble.value, bust, phase == Gacha.OPENED, ::tap)
             }
             if (phase == Gacha.OPENED && !bust && loser == null) {
@@ -256,7 +278,6 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                     Tag("다음 차례로 →", Pal.Ink, fontSize = 17.sp, modifier = Modifier.padding(4.dp))
                 }
             }
-            Tag("남은 캡슐 ${n - k}", Pal.Paper, Pal.Ink, fontSize = 14.sp, modifier = Modifier.align(Alignment.TopEnd).padding(10.dp))
         }
 
         val p = session.players[loser ?: current]

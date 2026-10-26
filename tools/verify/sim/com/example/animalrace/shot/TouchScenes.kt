@@ -34,12 +34,12 @@ internal fun touchScenes(): List<Scene> {
     return listOf(
         Scene("t-gacha", script = {
             pause(800)
-            drag(circle(195f, 520f, 42f, 1.15f), 1400); pause(300); snap("1-rolling")
+            drag(circle(195f, 605f, 44f, 1.15f), 1400); pause(300); snap("1-rolling")
             pause(1400); snap("2-open")
             tap(195f, 430f); pause(250); tap(195f, 430f); pause(300); snap("3-cracks")
             tap(195f, 430f); pause(900); snap("4-safe")
             tap(195f, 720f); pause(600); snap("5-next")
-            drag(circle(195f, 520f, 42f, 1.15f), 1400); pause(1700)
+            drag(circle(195f, 605f, 44f, 1.15f), 1400); pause(1700)
             repeat(3) { tap(195f, 430f); pause(250) }; pause(900); snap("6-bust")
             pause(2000); snap("7-final")
         }) { MiniGameScreen(session(MiniGame.GACHA), "커피 쏘기", {}, {}) },
@@ -47,6 +47,9 @@ internal fun touchScenes(): List<Scene> {
             pause(800); tap(80f, 445f); pause(900); snap("1-big")
             snap("1b")
         }) { MiniGameScreen(session(MiniGame.LOTTO), "커피 쏘기", {}, {}) },
+        Scene("lotto6", snaps = listOf(1000)) {
+            MiniGameScreen(MiniGameSession(MiniGame.LOTTO, results(Animal.CAT, Animal.PIG, Animal.PANDA, Animal.DOG, Animal.DUCK, Animal.HORSE), Ladder.random(6), 2), "커피 쏘기", {}, {})
+        },
         Scene("t-ladder", script = {
             // 고양이: 빈 높이에 한 줄 (사다리 칸 위 202dp ~ 아래 700dp, 높이 13칸), 돼지·판다: 넘기기 → 출발
             val free = (0 until Ladder.LEVELS).first { lv -> ladder.canAdd(Rung(lv, 0)) }

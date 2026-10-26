@@ -63,6 +63,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Brush
 import com.example.animalrace.ui.sound.LocalSound
 import com.example.animalrace.ui.sound.Sfx
 import androidx.compose.foundation.shape.CircleShape
@@ -307,22 +308,40 @@ private fun AnimalGrid(state: AppState, modifier: Modifier, onTap: (Animal) -> U
                 }
             }
         }
-        // 아래에 동물이 더 있으면 안내 (끝까지 내리면 사라짐)
+        // 아래에 동물이 더 있으면: 끝을 하늘색으로 흐리게 + 아래 가장자리에 작은 "▼ N종 더" (시안: "화면 다듬기" ③)
+        // 칸·이름을 가리지 않게 칩은 흐려진 자리에만. 끝까지 내리면 사라짐
+        val rowH = tileH + 5.dp + gap
+        val hidden = with(LocalDensity.current) {
+            animals.chunked(cols).withIndex().sumOf { (i, row) ->
+                val rowTop = stickerRoom + rowH * i - scroll.value.toDp()
+                if (rowTop + (tileH + 5.dp) * 0.5f > maxHeight) row.size else 0
+            }
+        }
         AnimatedVisibility(
             visible = scroll.canScrollForward,
             enter = fadeIn(), exit = fadeOut(),
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 2.dp, bottom = 6.dp),
+            modifier = Modifier.align(Alignment.BottomCenter),
         ) {
-            Row(
+            Box(
                 Modifier
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Pal.Ink.copy(alpha = 0.82f))
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .background(Brush.verticalGradient(listOf(Pal.Sky.copy(alpha = 0f), Pal.Sky.copy(alpha = 0.92f)))),
+                contentAlignment = Alignment.BottomCenter,
             ) {
-                InkIcon(listOf("M5 9l7 7 7-7"), size = 12.dp, color = Color.White, stroke = 3.5f)
-                Text("${animals.size}종 · 아래로 더 있어요", fontSize = 13.sp, color = Color.White)
+                if (hidden > 0) Row(
+                    Modifier
+                        .padding(bottom = 4.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.88f))
+                        .border(2.dp, Pal.Ink, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 10.dp, vertical = 1.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    InkIcon(listOf("M5 9l7 7 7-7"), size = 11.dp, stroke = 3.5f)
+                    Text("${hidden}종 더", fontSize = 13.sp, color = Pal.Ink)
+                }
             }
         }
     }

@@ -109,4 +109,16 @@ class MiniGameTest {
             assertEquals((0 until n).toList(), owners)
         }
     }
+
+    @Test(timeout = 10_000)
+    fun ladderCanBeMadeForAnyNumberOfPlayers() {
+        // 직접 지정으로 당첨자가 많아져도 사다리가 만들어져야 한다 (예전엔 6명부터 무한 반복)
+        val rnd = Random(3)
+        for (cols in 2..10) repeat(30) {
+            val l = Ladder.random(cols, rnd)
+            assertEquals((0 until cols).toSet(), (0 until cols).map { l.end(it) }.toSet())
+            val spots = (0 until l.levels).sumOf { lv -> (0 until cols - 1).count { c -> l.canAdd(Rung(lv, c)) } }
+            assertTrue("cols=$cols spots=$spots", spots >= cols + 2)
+        }
+    }
 }

@@ -58,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -97,6 +98,7 @@ import com.example.animalrace.ui.components.shortBet
 import com.example.animalrace.ui.theme.Fredoka
 import com.example.animalrace.ui.theme.NumberStyle
 import com.example.animalrace.ui.theme.Pal
+import com.example.animalrace.ui.theme.LaneCloth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.exp
@@ -422,14 +424,16 @@ private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width
             ground(stadium, i, top + i * lh, lh, frame.camX, frame.camW, pxPerM)
         }
         drawLine(Pal.Ink, Offset(0f, top), Offset(size.width, top), 3.dp.toPx())
-        // 출발 게이트
-        if (px(0.0) > -40) {
-            for (i in 0 until n) {
-                val y = top + i * lh + 4.dp.toPx()
-                drawRect(Color(0xFFB9C2CC), Offset(px(-14.0), y), Size(px(0.0) - px(-14.0), lh - 8.dp.toPx()))
-                drawRect(Pal.Ink, Offset(px(-14.0), y), Size(px(0.0) - px(-14.0), lh - 8.dp.toPx()),
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
+        // 출발 게이트: 레인마다 동물 몸 길이만큼 칸막이 칸 (앞문은 동물 위에 따로) (시안: "화면 다듬기" ⑤)
+        val gateRight = px(0.0) + 2.dp.toPx()
+        val gateLeft = gateRight - (laneH * 1.2f).coerceAtMost(110.dp).toPx() * 1.02f
+        if (gateRight > -20) {
+            drawRect(Color(0xFFDDE3EA).copy(alpha = 0.55f), Offset(gateLeft, top), Size(gateRight - gateLeft, lh * n))
+            for (i in 0..n) {
+                val y = top + i * lh
+                drawLine(Pal.Ink, Offset(gateLeft, y), Offset(gateRight, y), 4.dp.toPx())
             }
+            drawLine(Pal.Ink, Offset(gateLeft, top), Offset(gateLeft, top + lh * n), 5.dp.toPx())
         }
         // 체커 결승선
         val fx = px(TRACK)
@@ -518,6 +522,43 @@ private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width
             }
         }
     }
+    GateFront(frame, trackTop, laneH, n, width)
+}
+
+/** 출발 게이트 앞문(출전 번호 색 창살)과 지붕. "출발!"하면 앞문이 위로 말려 올라간다 */
+@Composable
+private fun GateFront(frame: Frame, trackTop: Dp, laneH: Dp, n: Int, width: Dp) {
+    val doorX = width * ((0.0 - frame.camX) / frame.camW).toFloat()
+    if (doorX < (-40).dp) return
+    val sprite = (laneH * 1.2f).coerceAtMost(110.dp)
+    val open = (frame.view.t / 0.3).coerceIn(0.0, 1.0).toFloat()
+    Canvas(Modifier.fillMaxSize()) {
+        val x = doorX.toPx() + 2.dp.toPx()
+        val w = 14.dp.toPx()
+        val lh = laneH.toPx()
+        val top = trackTop.toPx()
+        for (i in 0 until n) {
+            val y = top + i * lh
+            val h = lh * (1f - open)
+            if (h < 1f) continue
+            val (cloth, mark) = LaneCloth[i % LaneCloth.size]
+            drawRect(cloth, Offset(x, y), Size(w, h))
+            drawRect(Pal.Ink, Offset(x, y), Size(w, h), style = androidx.compose.ui.graphics.drawscope.Stroke(3.dp.toPx()))
+            for (k in 1..3) {
+                val by = y + lh * k / 4f
+                if (by < y + h - 4.dp.toPx()) drawLine(mark, Offset(x + 4.dp.toPx(), by), Offset(x + w - 4.dp.toPx(), by), 4.dp.toPx(), androidx.compose.ui.graphics.StrokeCap.Round)
+            }
+        }
+        // 지붕
+        val left = x - sprite.toPx() * 1.02f
+        drawRoundRect(Color(0xFFE9EEF3), Offset(left - 4.dp.toPx(), top - 20.dp.toPx()), Size(x + w - left + 8.dp.toPx(), 20.dp.toPx()), CornerRadius(4.dp.toPx()))
+        drawRoundRect(Pal.Ink, Offset(left - 4.dp.toPx(), top - 20.dp.toPx()), Size(x + w - left + 8.dp.toPx(), 20.dp.toPx()), CornerRadius(4.dp.toPx()),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(3.dp.toPx()))
+    }
+    Text(
+        "START", style = NumberStyle, fontSize = 12.sp, color = Pal.Ink,
+        modifier = Modifier.offset(x = doorX - sprite * 0.55f, y = trackTop - 19.dp),
+    )
 }
 
 /** 레인 경계 점선. 바닥 무늬처럼 트랙(월드 좌표)에 붙어 있어 줌이 바뀌어도 바닥과 같은 속도로 흘러간다. */
@@ -712,9 +753,10 @@ private fun Overlays(frame: Frame, stadium: Stadium, countdown: String?) {
     AnimatedVisibility(countdown != null, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.fillMaxSize()) {
         // 화면 전체를 카운트다운 영역으로 쓰고, 크게 시작한 글자도 잘라내지 않는다
         Box(Modifier.fillMaxSize().background(Pal.Ink.copy(alpha = 0.45f)), contentAlignment = Alignment.Center) {
+            // 출발 게이트(화면 왼쪽)를 가리지 않게 오른쪽으로 비켜서
             AnimatedContent(
                 targetState = countdown ?: "",
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().padding(start = 112.dp),
                 contentAlignment = Alignment.Center,
                 transitionSpec = {
                     // 숫자는 2배에서 줄어들고, 폭이 넓은 "출발!"은 시작해도 화면 폭을 넘지 않는 배율에서 줄어든다
@@ -731,13 +773,13 @@ private fun Overlays(frame: Frame, stadium: Stadium, countdown: String?) {
             }
             OutlinedText(
                 if (countdown == "출발!") "달려라!" else "준비…", 24.sp, outlineWidth = 6f,
-                modifier = Modifier.offset(y = 130.dp),
+                modifier = Modifier.offset(x = 56.dp, y = 130.dp),
             )
             // 이번 경기장 이름표 (카운트다운 때만)
             Text(
                 stadium.venue.label, fontSize = 20.sp, color = Pal.Ink,
                 modifier = Modifier
-                    .offset(y = (-150).dp)
+                    .offset(x = 56.dp, y = (-150).dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Pal.Paper)
                     .border(3.dp, Pal.Ink, RoundedCornerShape(16.dp))

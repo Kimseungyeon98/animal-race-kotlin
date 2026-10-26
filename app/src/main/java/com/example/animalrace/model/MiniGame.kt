@@ -69,18 +69,26 @@ class Ladder(val cols: Int, val levels: Int, val rungs: List<Rung>) {
         const val LEVELS = 13
 
         fun random(cols: Int, rnd: Random = Random.Default): Ladder {
+            var tries = 0
             while (true) {
+                tries++
                 val rungs = mutableListOf<Rung>()
                 for (level in 0 until LEVELS) {
                     if (rnd.nextDouble() < 0.45) continue
-                    // 세로줄이 3개 이상이면 한 높이에 한 줄만 (맞붙지 않게)
-                    rungs += Rung(level, rnd.nextInt(cols - 1))
+                    // 한 높이에 여러 줄도 되지만 맞붙지는 않게 (맞붙으면 사다리가 꼬인다)
+                    val lefts = (0 until cols - 1).shuffled(rnd)
+                    for ((k, left) in lefts.withIndex()) {
+                        if (k > 0 && rnd.nextDouble() < 0.6) continue
+                        if (rungs.none { it.level == level && kotlin.math.abs(it.left - left) <= 1 }) rungs += Rung(level, left)
+                    }
                 }
-                // 너무 밋밋하지 않게 세로줄마다 가로줄이 두 개 이상 닿도록,
-                // 그리고 사람마다 한 줄씩 그을 빈 높이가 넉넉하게 남도록
-                val touches = (0 until cols).all { c -> rungs.count { it.left == c || it.left + 1 == c } >= 2 }
-                val free = (0 until LEVELS).count { l -> rungs.none { it.level == l } }
-                if (touches && free >= cols + 2) return Ladder(cols, LEVELS, rungs)
+                // 너무 밋밋하지 않게 세로줄마다 가로줄이 두 개 이상 닿도록 (오래 안 나오면 하나로 완화),
+                // 그리고 사람마다 한 줄씩 그을 자리가 넉넉하게 남도록
+                val need = if (tries < 500) 2 else 1
+                val touches = (0 until cols).all { c -> rungs.count { it.left == c || it.left + 1 == c } >= need }
+                val ladder = Ladder(cols, LEVELS, rungs)
+                val spots = (0 until LEVELS).sumOf { l -> (0 until cols - 1).count { c -> ladder.canAdd(Rung(l, c)) } }
+                if (touches && spots >= cols + 2) return ladder
             }
         }
     }

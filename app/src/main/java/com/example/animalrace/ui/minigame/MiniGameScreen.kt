@@ -268,6 +268,11 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, loser: Int
                 List(n) { i -> ladder.path(i).map { (c, l) -> colX(c) to levelY(l) } }
             }
             val density = LocalDensity.current
+            // 그을 수 있는 자리 (같은 높이에 줄이 없는 곳): 점선 + ⊕로 미리 보여 준다
+            val spots = remember(ladder, drawing) {
+                if (!drawing) emptyList()
+                else (0 until ladder.levels).flatMap { l -> (0 until n - 1).map { c -> Rung(l, c) } }.filter { ladder.canAdd(it) }
+            }
             // 내려가던 동물이 가로줄로 꺾일 때마다 통!
             if (walking >= 0) {
                 val turns = turnsPassed(paths[walking], progress[walking].floatValue)
@@ -282,19 +287,23 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, loser: Int
                             if (!drawing) { fast = true; return@detectTapGestures }
                             val who = drawer ?: return@detectTapGestures
                             with(density) {
-                                // 탭한 곳: 두 세로줄 사이 칸, 가장 가까운 높이 칸
-                                val left = ((p.x / w.toPx()) * n - 0.5f).toInt()
-                                if (p.x < colX(0).toPx() || p.x > colX(n - 1).toPx() || p.y < top.toPx() || p.y > bottom.toPx()) return@detectTapGestures
-                                val level = (((p.y - top.toPx()) / (bottom - top).toPx()) * (ladder.levels + 1) - 1f).roundToInt()
-                                    .coerceIn(0, ladder.levels - 1)
-                                val r = Rung(level, left.coerceIn(0, n - 2))
-                                if (ladder.canAdd(r)) {
+                                // 탭한 곳에서 가장 가까운 점선 (손가락 반경 안에서만)
+                                val r = spots.minByOrNull { sp ->
+                                    val cx = ((colX(sp.left) + colX(sp.left + 1)) / 2).toPx()
+                                    val dx = (abs(p.x - cx) - ((colX(1) - colX(0)) / 2).toPx()).coerceAtLeast(0f)
+                                    val dy = p.y - levelY(sp.level).toPx()
+                                    dx * dx + dy * dy
+                                }?.takeIf { sp ->
+                                    val cx = ((colX(sp.left) + colX(sp.left + 1)) / 2).toPx()
+                                    abs(p.x - cx) < ((colX(1) - colX(0)) / 2).toPx() && abs(p.y - levelY(sp.level).toPx()) < 26.dp.toPx()
+                                }
+                                if (r != null) {
                                     added += r to who
                                     drawTurn++
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     sound.play(Sfx.CLICK)
                                 } else {
-                                    toast = "같은 높이에 이미 줄이 있어요"
+                                    toast = "점선 위를 탭해 주세요"
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 }
                             }
@@ -302,15 +311,19 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, loser: Int
                     },
             ) {
                 val stroke = 5.dp.toPx()
-                // 줄을 그을 수 있는 칸 (두 세로줄 사이)
-                if (drawing) {
-                    for (c in 0 until n - 1) {
-                        drawRoundRect(
-                            Pal.SunPale, Offset(colX(c).toPx() + 8.dp.toPx(), top.toPx()),
-                            Size((colX(c + 1) - colX(c)).toPx() - 16.dp.toPx(), (bottom - top).toPx()),
-                            androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()), alpha = 0.8f,
-                        )
-                    }
+                // 그을 수 있는 자리: 흐린 점선 + 가운데 ⊕ (시안: "화면 다듬기" ①)
+                val dash = PathEffect.dashPathEffect(floatArrayOf(7.dp.toPx(), 8.dp.toPx()))
+                spots.forEach { sp ->
+                    val y = levelY(sp.level).toPx()
+                    val x1 = colX(sp.left).toPx() + 8.dp.toPx()
+                    val x2 = colX(sp.left + 1).toPx() - 8.dp.toPx()
+                    drawLine(Pal.Ink.copy(alpha = 0.38f), Offset(x1, y), Offset(x2, y), 4.dp.toPx(), StrokeCap.Round, dash)
+                    val c = Offset((x1 + x2) / 2, y)
+                    val r = 11.dp.toPx()
+                    drawCircle(Pal.SunPale, r, c)
+                    drawCircle(Pal.Ink, r, c, style = Stroke(2.5.dp.toPx()))
+                    drawLine(Pal.Ink, c - Offset(5.dp.toPx(), 0f), c + Offset(5.dp.toPx(), 0f), 2.5.dp.toPx(), StrokeCap.Round)
+                    drawLine(Pal.Ink, c - Offset(0f, 5.dp.toPx()), c + Offset(0f, 5.dp.toPx()), 2.5.dp.toPx(), StrokeCap.Round)
                 }
                 for (c in 0 until n) {
                     drawLine(Pal.Ink, Offset(colX(c).toPx(), top.toPx()), Offset(colX(c).toPx(), bottom.toPx()), stroke, StrokeCap.Round)
@@ -411,7 +424,7 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, loser: Int
                     AnimalSprite(p.animal, 56.dp)
                     Column(Modifier.weight(1f)) {
                         Text("${p.animal.label} 차례!", fontSize = 19.sp, color = Pal.Ink)
-                        Text("두 세로줄 사이를 탭해서 가로줄 1개", fontSize = 12.sp, color = Pal.InkSoft, maxLines = 1)
+                        Text("점선을 탭해서 가로줄 1개", fontSize = 12.sp, color = Pal.InkSoft, maxLines = 1)
                     }
                     CartoonButton(onClick = { drawTurn++; sound.play(Sfx.CLICK) }, color = Pal.Paper, height = 42.dp, depth = 3.dp, contentPadding = PaddingValues(horizontal = 12.dp)) {
                         Text("넘기기", fontSize = 15.sp, color = Pal.Ink)
@@ -516,30 +529,43 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                     )
                 }
             }
-            // 똑같이 생긴 복권들 (나란히) + 안내를 남은 공간 세로 가운데에
-            Spacer(Modifier.weight(1f))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                for (t in 0 until n) {
-                    val who = owner[t]
-                    TicketFace(
-                        used = who?.let { session.players[it] },
-                        lose = who != null && who == loser,
-                        modifier = Modifier
-                            .weight(1f)
-                            .rotate(if (n == 1) 0f else (t - (n - 1) / 2f) * 4f),
-                        onClick = if (who == null && current != null && open == null) {
-                            { owner[t] = current; shown = t; open = t }
-                        } else null,
+            // 똑같이 생긴 복권들: 두 칸 격자, 출전 번호 순 (시안: "화면 다듬기" ②)
+            // 2~3장은 크게, 4장 이상은 남은 높이에 맞춰 납작하게
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                val cols = if (n == 1) 1 else 2
+                val rows = (n + cols - 1) / cols
+                val gap = 14.dp
+                val footer = 44.dp
+                val cardW = ((maxWidth - gap * (cols - 1)) / cols).coerceAtMost(175.dp)
+                val tallH = cardW / 0.76f
+                val cardH = minOf(tallH, (maxHeight - footer - gap * (rows - 1)) / rows)
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(gap)) {
+                    (0 until n).chunked(cols).forEach { line ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                            line.forEach { t ->
+                                val who = owner[t]
+                                TicketFace(
+                                    used = who?.let { session.players[it] },
+                                    lose = who != null && who == loser,
+                                    compact = cardH < tallH * 0.85f,
+                                    modifier = Modifier
+                                        .size(cardW, cardH)
+                                        .rotate(if (n <= 3) (if (t % 2 == 0) -1.5f else 1.5f) else 0f),
+                                    onClick = if (who == null && current != null && open == null) {
+                                        { owner[t] = current; shown = t; open = t }
+                                    } else null,
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        if (loser != null) "${withSubjectUi(session.players[loser].animal.label)} 몰빵! 💸"
+                        else if (owner.count { it == null } == 1) "마지막 한 장… 직접 긁어서 확인!"
+                        else "어느 장에 몰빵이 숨어 있을까…",
+                        fontSize = 16.sp, color = Pal.Ink, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp),
                     )
                 }
             }
-            Text(
-                if (loser != null) "${withSubjectUi(session.players[loser].animal.label)} 몰빵! 💸"
-                else if (owner.count { it == null } == 1) "마지막 한 장… 직접 긁어서 확인!"
-                else "어느 장에 몰빵이 숨어 있을까…",
-                fontSize = 16.sp, color = Pal.Ink, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.weight(1.4f))
         }
 
         // 고른 복권을 화면 가득
@@ -563,8 +589,8 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
 
 /** 고르기 화면의 복권 한 장. 아직 안 고른 장은 모두 똑같이 생겼고, 긁은 장은 결과와 주인이 남는다. */
 @Composable
-private fun TicketFace(used: RaceResult?, lose: Boolean, modifier: Modifier, onClick: (() -> Unit)?) {
-    Box(modifier.aspectRatio(0.76f).graphicsLayer { alpha = if (used != null && !lose) 0.55f else 1f }) {
+private fun TicketFace(used: RaceResult?, lose: Boolean, modifier: Modifier, onClick: (() -> Unit)?, compact: Boolean = false) {
+    Box(modifier.graphicsLayer { alpha = if (used != null && !lose) 0.55f else 1f }) {
         Box(Modifier.matchParentSize().offset(y = 4.dp).clip(RoundedCornerShape(16.dp)).background(Pal.Ink))
         Column(
             Modifier
@@ -577,9 +603,11 @@ private fun TicketFace(used: RaceResult?, lose: Boolean, modifier: Modifier, onC
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            Text("🎫 몰아주기 복권", fontSize = 12.sp, color = Pal.Ink, maxLines = 1)
-            Text("긁어서 확인하세요", fontSize = 10.sp, color = Pal.InkSoft, maxLines = 1)
-            Text("★ ★ ★", fontSize = 11.sp, color = Pal.TomatoText)
+            Text("🎫 몰아주기 복권", fontSize = if (compact) 13.sp else 15.sp, color = Pal.Ink, maxLines = 1)
+            if (!compact) {
+                Text("긁어서 확인하세요", fontSize = 12.sp, color = Pal.InkSoft, maxLines = 1)
+                Text("★ ★ ★", fontSize = 14.sp, color = Pal.TomatoText)
+            }
             DashedLine()
             Box(
                 Modifier
@@ -600,10 +628,10 @@ private fun TicketFace(used: RaceResult?, lose: Boolean, modifier: Modifier, onC
                             }
                         }
                     }
-                    Text("? ? ?", fontSize = 14.sp, color = Color(0xFF6A7684))
+                    Text("? ? ?", fontSize = 20.sp, color = Color(0xFF6A7684))
                 } else {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(if (lose) "몰빵!" else "꽝 탈출", fontSize = 17.sp, color = if (lose) Pal.TomatoText else Color(0xFF1D8A3A))
+                        Text(if (lose) "몰빵!" else "꽝 탈출", fontSize = 20.sp, color = if (lose) Pal.TomatoText else Color(0xFF1D8A3A))
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                             LaneSticker(used.lane, size = 16.dp)
                             Text(used.animal.label, fontSize = 12.sp, color = Pal.Ink, maxLines = 1)
