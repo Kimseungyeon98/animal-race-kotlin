@@ -12,6 +12,8 @@ import com.example.animalrace.model.MiniGame
 import com.example.animalrace.model.MiniGameResult
 import com.example.animalrace.model.MiniGameDraw
 import com.example.animalrace.model.RandomRank
+import com.example.animalrace.model.RankMode
+import com.example.animalrace.model.RankSetting
 import com.example.animalrace.model.RaceRecord
 import com.example.animalrace.model.RaceResult
 import com.example.animalrace.model.SavedSetup
@@ -68,8 +70,19 @@ class AppState(private val repo: AppRepository) {
     var randomRank by mutableStateOf(false)
         private set
 
+    /** 랜덤 등수 설정: 룰렛/직접 지정, 당첨 인원 (시안: "랜덤 등수 · 인원·등수 직접 정하기") */
+    var rankSetting by mutableStateOf(RankSetting())
+        private set
+
+    /** 출발 가능: 직접 지정인데 지금 출전 수 안에 남는 등수가 없으면 못 간다 */
+    val rankReady get() = !randomRank || RandomRank.ready(selected.size, rankSetting)
+
     /** 이번 판의 당첨 등수. 랜덤 등수 모드가 아니면 null */
     var picks by mutableStateOf<List<Int>?>(null)
+        private set
+
+    /** 이번 판 당첨 등수를 직접 정했는지 (경주 시작 때 룰렛 대신 발표 카드) */
+    var picksFixed by mutableStateOf(false)
         private set
     val history = mutableStateListOf<RaceRecord>()
     var lastRecord by mutableStateOf<RaceRecord?>(null)
@@ -98,7 +111,7 @@ class AppState(private val repo: AppRepository) {
 
     init {
         // 앱을 켤 때마다 출전 동물은 비운 채로 시작하고, 벌칙 문구와 랜덤 등수 모드만 지난번 것을 이어 쓴다
-        repo.loadSetup()?.let { bet = it.bet; randomRank = it.randomRank }
+        repo.loadSetup()?.let { bet = it.bet; randomRank = it.randomRank; rankSetting = it.rank }
         history.addAll(repo.loadHistory().take(HISTORY_SIZE))
     }
 
@@ -123,10 +136,13 @@ class AppState(private val repo: AppRepository) {
 
     fun updateRandomRank(on: Boolean) { randomRank = on; persistSetup() }
 
+    fun updateRankSetting(setting: RankSetting) { rankSetting = setting; persistSetup() }
+
     fun startRace() {
-        if (!canStart) return
-        // 경주와 따로 뽑으므로 경주 결과에는 영향이 없다
-        picks = if (randomRank) RandomRank.draw(selected.size) else null
+        if (!canStart || !rankReady) return
+        // 경주와 따로 정하므로 경주 결과에는 영향이 없다
+        picks = if (randomRank) RandomRank.picks(selected.size, rankSetting) else null
+        picksFixed = randomRank && rankSetting.mode == RankMode.FIXED
         miniGame = null
         raceSeq++
         confirmExit = false
@@ -141,6 +157,7 @@ class AppState(private val repo: AppRepository) {
             results = race.ranking().map { RaceResult(it.animal, it.finish ?: 0.0, it.uses, it.lane) },
             venue = venue,
             picks = picks,
+            picksFixed = picksFixed,
         )
         lastRecord = record
         history.add(0, record)
@@ -194,7 +211,7 @@ class AppState(private val repo: AppRepository) {
 
     fun keepRacing() { confirmExit = false }
 
-    private fun persistSetup() = repo.saveSetup(SavedSetup(selected.toList(), bet, randomRank))
+    private fun persistSetup() = repo.saveSetup(SavedSetup(selected.toList(), bet, randomRank, rankSetting))
 
     companion object {
         const val MIN_RACERS = 2

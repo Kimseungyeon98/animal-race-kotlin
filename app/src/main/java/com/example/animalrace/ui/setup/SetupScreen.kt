@@ -63,6 +63,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
+import com.example.animalrace.model.RankSetting
+import com.example.animalrace.model.RankMode
 import androidx.compose.ui.graphics.Brush
 import com.example.animalrace.ui.sound.LocalSound
 import com.example.animalrace.ui.sound.Sfx
@@ -119,6 +122,7 @@ fun SetupScreen(state: AppState) {
     var dexIndex by remember { mutableStateOf<Int?>(null) }
     var showHistory by remember { mutableStateOf(false) }
     var editBet by remember { mutableStateOf(false) }
+    var rankSheet by remember { mutableStateOf(false) }
 
     fun toggle(animal: Animal) {
         if (state.toggle(animal)) {
@@ -196,7 +200,7 @@ fun SetupScreen(state: AppState) {
                     InkIcon(Icons2.Pencil, size = 18.dp)
                 }
 
-                RandomRankRow(state, Modifier.padding(bottom = 4.dp))
+                RandomRankRow(state, Modifier.padding(bottom = 4.dp)) { rankSheet = true }
 
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -221,7 +225,7 @@ fun SetupScreen(state: AppState) {
                 onTap = ::toggle,
             )
 
-            BottomPanel(state, focused) {
+            BottomPanel(state, focused, onFixRanks = { rankSheet = true }) {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 state.startRace()
             }
@@ -249,6 +253,11 @@ fun SetupScreen(state: AppState) {
         }
         AnimatedVisibility(visible = editBet, enter = fadeIn(), exit = fadeOut()) {
             BetEditor(state.bet, onDismiss = { editBet = false }) { state.updateBet(it); editBet = false }
+        }
+        AnimatedVisibility(visible = rankSheet, enter = fadeIn(), exit = fadeOut()) {
+            RankSheet(state.rankSetting, maxOf(state.selected.size, AppState.MIN_RACERS), onDismiss = { rankSheet = false }) {
+                state.updateRankSetting(it); rankSheet = false
+            }
         }
     }
 }
@@ -383,8 +392,9 @@ private fun AnimalTile(animal: Animal, lane: Int, tileW: Dp, tileH: Dp, modifier
 }
 
 /** 랜덤 등수 모드 체크박스. 오른쪽에 지금 인원으로 몇 명이 당첨되는지 보여 준다. */
+/** 랜덤 등수 켜기/끄기 + 켜면 지금 설정 요약 알약 (탭하면 설정 창) */
 @Composable
-private fun RandomRankRow(state: AppState, modifier: Modifier) {
+private fun RandomRankRow(state: AppState, modifier: Modifier, onOpen: () -> Unit) {
     val on = state.randomRank
     val n = state.selected.size
     Row(
@@ -393,34 +403,207 @@ private fun RandomRankRow(state: AppState, modifier: Modifier) {
             .clip(RoundedCornerShape(14.dp))
             .background(Pal.Paper)
             .border(3.dp, Pal.Ink, RoundedCornerShape(14.dp))
-            .toggleable(value = on, role = Role.Checkbox, onValueChange = state::updateRandomRank)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+            .padding(end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Box(
+        Row(
             Modifier
-                .size(24.dp)
-                .clip(RoundedCornerShape(7.dp))
-                .background(if (on) Pal.Sun else Pal.Paper)
-                .border(3.dp, Pal.Ink, RoundedCornerShape(7.dp)),
-            contentAlignment = Alignment.Center,
-        ) { if (on) InkIcon(Icons2.Check, size = 18.dp, stroke = 3.5f) }
-        Text("랜덤 등수 모드", fontSize = 17.sp, color = Pal.Ink, modifier = Modifier.weight(1f))
-        Text(
-            if (n >= AppState.MIN_RACERS) buildAnnotatedString {
-                withStyle(SpanStyle(fontFamily = NumberStyle.fontFamily)) { append("$n") }
-                append("마리 → ")
-                withStyle(SpanStyle(fontFamily = NumberStyle.fontFamily, color = Pal.TomatoText)) { append("${RandomRank.count(n)}") }
-                append("명 당첨")
-            } else buildAnnotatedString { append("출발 전 룰렛으로 등수 뽑기") },
-            fontSize = 14.sp, color = Pal.InkSoft,
-        )
+                .weight(1f)
+                .toggleable(value = on, role = Role.Checkbox, onValueChange = state::updateRandomRank)
+                .padding(start = 12.dp, top = 7.dp, bottom = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                Modifier
+                    .size(24.dp)
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(if (on) Pal.Sun else Pal.Paper)
+                    .border(3.dp, Pal.Ink, RoundedCornerShape(7.dp)),
+                contentAlignment = Alignment.Center,
+            ) { if (on) InkIcon(Icons2.Check, size = 18.dp, stroke = 3.5f) }
+            Text(if (on) "랜덤 등수" else "랜덤 등수 모드", fontSize = 17.sp, color = Pal.Ink)
+            if (!on) Text(
+                if (n >= AppState.MIN_RACERS) buildAnnotatedString {
+                    withStyle(SpanStyle(fontFamily = NumberStyle.fontFamily)) { append("$n") }
+                    append("마리 → ")
+                    withStyle(SpanStyle(fontFamily = NumberStyle.fontFamily, color = Pal.TomatoText)) { append("${RandomRank.count(n)}") }
+                    append("명 당첨")
+                } else buildAnnotatedString { append("출발 전 룰렛으로 등수 뽑기") },
+                fontSize = 14.sp, color = Pal.InkSoft, modifier = Modifier.weight(1f), textAlign = TextAlign.End, maxLines = 1,
+            )
+        }
+        if (on) {
+            val s = state.rankSetting
+            val count = RandomRank.count(maxOf(n, AppState.MIN_RACERS), s)
+            val label = when {
+                s.mode == RankMode.ROULETTE -> "${if (s.count == null) "자동" else "직접"} ${count}명 · 🎰 룰렛"
+                state.rankReady -> "🎯 지정 ${RandomRank.label(RandomRank.picks(n, s))}"
+                else -> "🎯 등수를 골라 주세요"
+            }
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (state.rankReady) Pal.SunPale else Pal.Pink)
+                    .border(2.dp, Pal.Ink, RoundedCornerShape(12.dp))
+                    .clickable(onClick = onOpen)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(label, fontSize = 14.sp, color = Pal.Ink, maxLines = 1)
+                InkIcon(listOf("M6 9l6 6 6-6"), size = 12.dp, stroke = 3.5f)
+            }
+        }
+    }
+}
+
+/**
+ * 랜덤 등수 설정 창 (시안: "랜덤 등수 · 인원·등수 직접 정하기" ②③).
+ * 룰렛으로 뽑기(기본, 인원 −/+ · 자동) / 직접 고르기(1등~[racers]등 여러 개). [확인]해야 반영.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun RankSheet(current: RankSetting, racers: Int, onDismiss: () -> Unit, onConfirm: (RankSetting) -> Unit) {
+    var draft by remember { mutableStateOf(current) }
+    val count = RandomRank.count(racers, draft)
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Pal.Ink.copy(alpha = 0.45f))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
+                .background(Pal.Ivory)
+                .border(3.dp, Pal.Ink, RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("🎯 랜덤 등수 설정", fontSize = 22.sp, color = Pal.Ink, modifier = Modifier.weight(1f))
+                Box(
+                    Modifier.size(34.dp).clip(CircleShape).background(Pal.Paper).border(2.dp, Pal.Ink, CircleShape).clickable(onClick = onDismiss),
+                    contentAlignment = Alignment.Center,
+                ) { InkIcon(Icons2.Close, size = 16.dp, stroke = 3f) }
+            }
+            Text("① 등수 정하기", fontSize = 16.sp, color = Pal.Ink)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ModeCard("🎰 룰렛으로 뽑기", "출발 직전에 랜덤 (기본)", draft.mode == RankMode.ROULETTE, Modifier.weight(1f)) {
+                    draft = draft.copy(mode = RankMode.ROULETTE)
+                }
+                ModeCard("✋ 직접 고르기", "걸릴 등수를 미리 지정", draft.mode == RankMode.FIXED, Modifier.weight(1f)) {
+                    draft = draft.copy(mode = RankMode.FIXED)
+                }
+            }
+            if (draft.mode == RankMode.ROULETTE) {
+                Text("② 당첨 인원", fontSize = 16.sp, color = Pal.Ink)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CartoonButton(onClick = { draft = draft.copy(count = (count - 1).coerceAtLeast(1)) }, enabled = count > 1, color = Pal.Paper,
+                        height = 48.dp, depth = 3.dp, modifier = Modifier.width(54.dp)) { Text("−", fontSize = 24.sp, color = Pal.Ink) }
+                    Row(
+                        Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(14.dp)).background(Pal.Paper).border(3.dp, Pal.Ink, RoundedCornerShape(14.dp)),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
+                    ) {
+                        Text("$count", style = NumberStyle, fontSize = 24.sp, color = Pal.TomatoText)
+                        Text(" 명", fontSize = 18.sp, color = Pal.Ink)
+                    }
+                    CartoonButton(onClick = { draft = draft.copy(count = (count + 1).coerceAtMost(racers - 1)) }, enabled = count < racers - 1, color = Pal.Paper,
+                        height = 48.dp, depth = 3.dp, modifier = Modifier.width(54.dp)) { Text("+", fontSize = 24.sp, color = Pal.Ink) }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SmallChip(if (draft.count == null) "✓ 자동 (참가 ÷ 3)" else "↺ 자동으로 (${RandomRank.count(racers)}명)", selected = draft.count == null) {
+                        draft = draft.copy(count = null)
+                    }
+                    if (draft.count != null) Text("지금은 직접 ${count}명", fontSize = 13.sp, color = Pal.InkSoft)
+                }
+            } else {
+                Text("② 걸릴 등수 고르기 (여러 개 · 고른 수 = 당첨 인원)", fontSize = 16.sp, color = Pal.Ink)
+                FlowRow(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    for (r in 1..racers) {
+                        val picked = r in draft.fixed
+                        Box(
+                            Modifier
+                                .size(56.dp, 46.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (picked) Pal.Tomato else Pal.Paper)
+                                .border(3.dp, Pal.Ink, RoundedCornerShape(12.dp))
+                                .clickable { draft = draft.copy(fixed = if (picked) draft.fixed - r else (draft.fixed + r).sorted()) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text("$r", style = NumberStyle, fontSize = 20.sp, color = if (picked) Color.White else Pal.Ink)
+                                Text("등", fontSize = 12.sp, color = if (picked) Color.White else Pal.Ink)
+                            }
+                        }
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
+                    SmallChip("꼴찌만", false) { draft = draft.copy(fixed = listOf(racers)) }
+                    SmallChip("1등만", false) { draft = draft.copy(fixed = listOf(1)) }
+                    SmallChip("모두 해제", false) { draft = draft.copy(fixed = emptyList()) }
+                }
+            }
+            val picks = RandomRank.picks(racers, draft)
+            Text(
+                when {
+                    draft.mode == RankMode.ROULETTE -> "출발 직전 룰렛이 ${racers}마리 중 ${count}개 등수를 뽑아요"
+                    picks.isEmpty() -> "걸릴 등수를 하나 이상 골라 주세요"
+                    else -> "${RandomRank.label(picks)}으로 들어온 사람이 당첨 (${picks.size}명)\n룰렛 없이 바로 출발해요"
+                },
+                fontSize = 14.sp, color = Pal.Ink,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Pal.Mint).border(2.dp, Pal.Ink, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+            CartoonButton(onClick = { onConfirm(draft) }, enabled = RandomRank.ready(racers, draft), color = Pal.Sun, modifier = Modifier.fillMaxWidth(), height = 54.dp, depth = 4.dp) {
+                Text("확인", fontSize = 20.sp, color = Pal.Ink)
+            }
+        }
     }
 }
 
 @Composable
-private fun BottomPanel(state: AppState, focused: Animal, onStart: () -> Unit) {
+private fun ModeCard(title: String, sub: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Column(
+        modifier
+            .height(60.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) Pal.Sun else Pal.Paper)
+            .border(3.dp, Pal.Ink, RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(title, fontSize = 17.sp, color = Pal.Ink, maxLines = 1)
+        Text(sub, fontSize = 11.sp, color = Pal.InkSoft, maxLines = 1)
+    }
+}
+
+@Composable
+private fun SmallChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    Text(
+        text, fontSize = 13.sp, color = Pal.Ink,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) Pal.SunPale else Pal.Paper)
+            .border(2.dp, Pal.Ink, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 3.dp),
+    )
+}
+
+@Composable
+private fun BottomPanel(state: AppState, focused: Animal, onFixRanks: () -> Unit, onStart: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -447,11 +630,17 @@ private fun BottomPanel(state: AppState, focused: Animal, onStart: () -> Unit) {
                     Text(focused.desc, fontSize = 13.sp, color = Pal.InkSoft, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-            CartoonButton(onClick = onStart, enabled = state.canStart, modifier = Modifier.fillMaxWidth(), height = 62.dp, corner = 22.dp, depth = 6.dp) {
-                if (state.canStart) {
+            CartoonButton(onClick = if (state.canStart && !state.rankReady) onFixRanks else onStart, enabled = state.canStart, modifier = Modifier.fillMaxWidth(), height = 62.dp, corner = 22.dp, depth = 6.dp) {
+                if (state.canStart && !state.rankReady) {
+                    // 직접 지정한 등수가 출전 수 밖으로 다 빠졌을 때: 출발 대신 설정 열기
+                    Text("🎯 등수를 골라 주세요", fontSize = 21.sp, color = Color.White)
+                } else if (state.canStart) {
                     InkIcon(Icons2.Play, size = 22.dp, fill = Color.White, stroke = 2f)
                     Spacer(Modifier.width(10.dp))
-                    OutlinedText(if (state.randomRank) "룰렛 돌리고 출발!" else "${state.selected.size}마리 출발!", 26.sp, outlineWidth = 5f)
+                    OutlinedText(
+                        if (state.randomRank && state.rankSetting.mode == RankMode.ROULETTE) "룰렛 돌리고 출발!" else "${state.selected.size}마리 출발!",
+                        26.sp, outlineWidth = 5f,
+                    )
                 } else {
                     Text("2마리 이상 골라 주세요", fontSize = 21.sp, color = Color.White)
                 }
@@ -724,7 +913,7 @@ private fun HistoryCard(number: Int, record: RaceRecord) {
             Text("${formatTime(record.at)} · $venue${record.results.size}마리 · 역전 ${record.leadChanges}회", fontSize = 13.sp, color = Pal.InkSoft)
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (picks != null) Tag("🎯 랜덤", Pal.Sun, Pal.Ink, fontSize = 12.sp)
+            if (picks != null) Tag(if (record.picksFixed) "🎯 지정" else "🎯 랜덤", Pal.Sun, Pal.Ink, fontSize = 12.sp)
             Text(
                 buildAnnotatedString {
                     append(shortBet(record.bet).ifEmpty { if (picks == null) "꼴찌" else "당첨" })

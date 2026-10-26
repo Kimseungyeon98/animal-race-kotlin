@@ -63,4 +63,44 @@ class RandomRankTest {
         val normal = RaceRecord(0, "커피 쏘기", 0, results)
         assertEquals(listOf(results.last()), normal.losers)
     }
+
+    @Test
+    fun manualCountStaysBetweenOneAndAllButOne() {
+        for (n in 2..10) {
+            assertEquals(RandomRank.count(n), RandomRank.count(n, RankSetting()))
+            assertEquals(1, RandomRank.count(n, RankSetting(count = 0)))
+            assertEquals(n - 1, RandomRank.count(n, RankSetting(count = 99)))
+            val picks = RandomRank.picks(n, RankSetting(count = n - 1), Random(n))
+            assertEquals(n - 1, picks.size)
+            assertEquals(picks.size, picks.toSet().size)
+        }
+    }
+
+    @Test
+    fun fixedPicksAreKeptSortedAndClippedToRacers() {
+        val s = RankSetting(RankMode.FIXED, fixed = listOf(5, 2, 9, 2))
+        assertEquals(listOf(2, 5), RandomRank.picks(6, s))
+        assertEquals(listOf(2, 5, 9), RandomRank.picks(10, s))
+        assertTrue(RandomRank.ready(6, s))
+        assertTrue(!RandomRank.ready(4, RankSetting(RankMode.FIXED, fixed = listOf(5, 6))))
+        assertTrue(RandomRank.ready(4, RankSetting()))
+    }
+
+    @Test
+    fun everyAnimalIsEquallyLikelyToLandOnAFixedRank() {
+        // 직접 정한 등수(예: 2등)에 어느 동물이 들어올지는 경주가 정한다 → 모두 같은 확률
+        val animals = Animal.entries.take(5)
+        val fixedRank = 2
+        val counts = IntArray(animals.size)
+        val runs = 5_000
+        repeat(runs) { seed ->
+            val race = Race(animals, Random(seed))
+            while (!race.done) race.step(1 / 60.0)
+            counts[animals.indexOf(race.ranking()[fixedRank - 1].animal)]++
+        }
+        val expected = runs.toDouble() / animals.size
+        val chi = counts.sumOf { (it - expected) * (it - expected) / expected }
+        // 자유도 4, 유의수준 0.1% 임계값 18.5
+        assertTrue("χ² = $chi, counts = ${counts.toList()}", chi < 18.5)
+    }
 }

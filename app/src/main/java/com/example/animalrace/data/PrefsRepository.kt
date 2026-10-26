@@ -7,6 +7,8 @@ import com.example.animalrace.model.MiniGame
 import com.example.animalrace.model.MiniGameResult
 import com.example.animalrace.model.RaceRecord
 import com.example.animalrace.model.RaceResult
+import com.example.animalrace.model.RankMode
+import com.example.animalrace.model.RankSetting
 import com.example.animalrace.model.SavedSetup
 import com.example.animalrace.model.Venue
 import org.json.JSONArray
@@ -21,7 +23,14 @@ class PrefsRepository(context: Context) : AppRepository {
         val animals = json.getJSONArray("animals").let { arr ->
             (0 until arr.length()).mapNotNull { animalOf(arr.getString(it)) }
         }
-        SavedSetup(animals, json.optString("bet"), json.optBoolean("randomRank"))
+        val rank = json.optJSONObject("rank")?.let { r ->
+            RankSetting(
+                mode = RankMode.entries.firstOrNull { it.name == r.optString("mode") } ?: RankMode.ROULETTE,
+                count = if (r.has("count")) r.getInt("count") else null,
+                fixed = r.optJSONArray("fixed")?.let { a -> (0 until a.length()).map { a.getInt(it) } }.orEmpty(),
+            )
+        } ?: RankSetting()
+        SavedSetup(animals, json.optString("bet"), json.optBoolean("randomRank"), rank)
     }.getOrNull()
 
     override fun saveSetup(setup: SavedSetup) {
@@ -29,6 +38,7 @@ class PrefsRepository(context: Context) : AppRepository {
             .put("animals", JSONArray(setup.animals.map { it.name }))
             .put("bet", setup.bet)
             .put("randomRank", setup.randomRank)
+            .put("rank", JSONObject().put("mode", setup.rank.mode.name).put("count", setup.rank.count).put("fixed", JSONArray(setup.rank.fixed)))
         prefs.edit().putString(KEY_SETUP, json.toString()).apply()
     }
 
@@ -62,7 +72,7 @@ class PrefsRepository(context: Context) : AppRepository {
             }
             if (results.isEmpty()) null
             else RaceRecord(o.getLong("at"), o.optString("bet"), o.optInt("lead"), results,
-                Venue.entries.firstOrNull { it.name == o.optString("venue") }, picks, miniGame)
+                Venue.entries.firstOrNull { it.name == o.optString("venue") }, picks, miniGame, o.optBoolean("fixed"))
         }
     }.getOrDefault(emptyList())
 
@@ -77,6 +87,7 @@ class PrefsRepository(context: Context) : AppRepository {
                 JSONObject().put("at", rec.at).put("bet", rec.bet).put("lead", rec.leadChanges).put("results", results)
                     .put("venue", rec.venue?.name)
                     .put("picks", rec.picks?.let { JSONArray(it) })
+                    .put("fixed", rec.picksFixed)
                     .put("miniGame", rec.miniGame?.let { JSONObject().put("g", it.game.name).put("a", it.loser.name) }),
             )
         }

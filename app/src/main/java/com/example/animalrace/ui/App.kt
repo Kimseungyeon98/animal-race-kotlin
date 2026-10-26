@@ -40,6 +40,7 @@ fun App(state: AppState) {
                 bet = state.bet.trim(),
                 raceKey = state.raceSeq,
                 picks = state.picks,
+                picksFixed = state.picksFixed,
                 onFinished = state::finishRace,
                 confirmExit = state.confirmExit,
                 onKeepRacing = state::keepRacing,

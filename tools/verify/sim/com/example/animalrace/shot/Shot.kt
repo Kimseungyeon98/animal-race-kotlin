@@ -39,6 +39,9 @@ import com.example.animalrace.ui.minigame.MiniGameScreen
 import com.example.animalrace.ui.result.ResultScreen
 import com.example.animalrace.ui.race.RaceScreen
 import com.example.animalrace.ui.setup.SetupScreen
+import com.example.animalrace.ui.setup.RankSheet
+import com.example.animalrace.model.RankMode
+import com.example.animalrace.model.RankSetting
 import com.example.animalrace.ui.theme.AnimalRaceTheme
 import com.example.animalrace.ui.theme.Pal
 import org.jetbrains.skia.EncodedImageFormat
@@ -208,6 +211,30 @@ private fun scenes(): List<Scene> {
         Scene("setup") {
             val state = AppState(FakeRepo).apply { listOf(Animal.HORSE, Animal.CAT, Animal.PANDA).forEach { toggle(it) } }
             SetupScreen(state)
+        },
+        Scene("rank-setup") {
+            val state = AppState(FakeRepo).apply {
+                listOf(Animal.HORSE, Animal.CAT, Animal.PANDA, Animal.DOG, Animal.PIG, Animal.DUCK).forEach { toggle(it) }
+                updateRandomRank(true); updateRankSetting(RankSetting(RankMode.FIXED, fixed = listOf(2, 6)))
+            }
+            SetupScreen(state)
+        },
+        Scene("rank-empty") {
+            val state = AppState(FakeRepo).apply {
+                listOf(Animal.HORSE, Animal.CAT, Animal.PANDA).forEach { toggle(it) }
+                updateRandomRank(true); updateRankSetting(RankSetting(RankMode.FIXED))
+            }
+            SetupScreen(state)
+        },
+        Scene("rank-sheet-roulette") { RankSheet(RankSetting(count = 3), 7, {}, {}) },
+        Scene("rank-sheet-fixed") { RankSheet(RankSetting(RankMode.FIXED, fixed = listOf(1, 4, 7)), 10, {}, {}) },
+        Scene("rank-fixed", snaps = listOf(500, 1200, 2600)) {
+            RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG), "커피 쏘기", 0, { _, _ -> },
+                picks = listOf(2, 5), picksFixed = true)
+        },
+        Scene("lotto7") {
+            val many = results(Animal.CAT, Animal.PIG, Animal.PANDA, Animal.DOG, Animal.DUCK, Animal.HORSE, Animal.RABBIT)
+            MiniGameScreen(MiniGameSession(MiniGame.LOTTO, many, Ladder.random(7), 3), "커피 쏘기", {}, {})
         },
         Scene("result") {
             ResultScreen(

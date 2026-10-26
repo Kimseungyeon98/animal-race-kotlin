@@ -155,6 +155,8 @@ fun RaceScreen(
     onFinished: (Race, Venue) -> Unit,
     /** 랜덤 등수 모드의 당첨 등수. 있으면 카운트다운 전에 룰렛으로 보여 준다 */
     picks: List<Int>? = null,
+    /** 당첨 등수를 미리 직접 정한 판: 룰렛 대신 발표 카드만 잠깐 */
+    picksFixed: Boolean = false,
     confirmExit: Boolean = false,
     onKeepRacing: () -> Unit = {},
     onQuit: () -> Unit = {},
@@ -184,27 +186,35 @@ fun RaceScreen(
                 while (left > 0 && !skip) { delay(30); if (!paused) left -= 30 }
                 while (paused) delay(50)
             }
-            roulette = Roulette(stopped = 0, revealed = false)
-            picks.indices.forEach { i ->
-                // 칸이 도는 동안 틱틱틱(점점 느리게) → 멈출 때 딱!
-                val ticking = launch {
-                    var gap = 55L
-                    while (!skip) { if (!paused) sound.play(Sfx.TICK); delay(gap); gap = (gap * 1.1).toLong().coerceAtMost(190) }
+            if (picksFixed) {
+                roulette = Roulette(stopped = picks.size, revealed = true, fixed = true)
+                sound.play(Sfx.CLACK)
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                hold(1600)
+                roulette = null
+            } else {
+                roulette = Roulette(stopped = 0, revealed = false)
+                picks.indices.forEach { i ->
+                    // 칸이 도는 동안 틱틱틱(점점 느리게) → 멈출 때 딱!
+                    val ticking = launch {
+                        var gap = 55L
+                        while (!skip) { if (!paused) sound.play(Sfx.TICK); delay(gap); gap = (gap * 1.1).toLong().coerceAtMost(190) }
+                    }
+                    hold(if (i == 0) 1300 else 850)
+                    ticking.cancel()
+                    roulette = Roulette(stopped = i + 1, revealed = false)
+                    if (!skip) { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); sound.play(Sfx.CLACK) }
                 }
-                hold(if (i == 0) 1300 else 850)
-                ticking.cancel()
-                roulette = Roulette(stopped = i + 1, revealed = false)
-                if (!skip) { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); sound.play(Sfx.CLACK) }
+                skip = false
+                // 두구두구… 쾅! 에 맞춰 발표 (쾅은 소리 시작 1.2초 뒤)
+                sound.play(Sfx.DRUM)
+                hold(1200)
+                roulette = Roulette(stopped = picks.size, revealed = true)
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                skip = false
+                hold(1800)
+                roulette = null
             }
-            skip = false
-            // 두구두구… 쾅! 에 맞춰 발표 (쾅은 소리 시작 1.2초 뒤)
-            sound.play(Sfx.DRUM)
-            hold(1200)
-            roulette = Roulette(stopped = picks.size, revealed = true)
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            skip = false
-            hold(1800)
-            roulette = null
         }
         for (c in listOf("3", "2", "1", "출발!")) {
             while (paused) delay(50)
@@ -834,7 +844,7 @@ private fun Overlays(frame: Frame, stadium: Stadium, countdown: String?) {
 // ---------------------------------------------------------------- 랜덤 등수 룰렛
 
 /** 룰렛 진행: 멈춘 칸 수, 그리고 결과 발표 중인지. */
-private data class Roulette(val stopped: Int, val revealed: Boolean)
+private data class Roulette(val stopped: Int, val revealed: Boolean, val fixed: Boolean = false)
 
 /** 해설: 랜덤 등수 판이면 당첨 등수로 들어온 동물마다 한 줄을 더한다 (화면 표시만). */
 private fun withPickLines(view: RaceView, picks: List<Int>?): List<RaceEvent> {
@@ -884,19 +894,28 @@ private fun RouletteOverlay(state: Roulette, picks: List<Int>, racers: Int, bet:
                     }
                     Text(if (state.stopped < picks.size) "두근두근…" else "결정!", fontSize = 15.sp, color = Pal.InkSoft)
                 } else {
-                    Text("오늘의 당첨 등수는…", fontSize = 20.sp, color = Pal.Ink)
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        picks.forEachIndexed { i, p ->
-                            Box(Modifier.rotate(if (i % 2 == 0) -4f else 4f)) {
-                                Box(Modifier.matchParentSize().offset(y = 5.dp).clip(RoundedCornerShape(20.dp)).background(Pal.Ink))
-                                Box(
-                                    Modifier
-                                        .size(if (picks.size >= 3) 88.dp else 104.dp, 88.dp)
-                                        .clip(RoundedCornerShape(20.dp))
-                                        .background(Pal.Sun)
-                                        .border(3.dp, Pal.Ink, RoundedCornerShape(20.dp)),
-                                    contentAlignment = Alignment.Center,
-                                ) { RankText(p, 48.sp) }
+                    if (state.fixed) {
+                        Tag("🎯 오늘의 당첨 등수", Pal.Sun, Pal.Ink, fontSize = 15.sp)
+                        Text("미리 정한 등수예요 · ${racers}마리 중 ${picks.size}명", fontSize = 15.sp, color = Pal.InkSoft)
+                    } else Text("오늘의 당첨 등수는…", fontSize = 20.sp, color = Pal.Ink)
+                    // 많으면 한 줄에 4개씩, 작게
+                    val small = picks.size > 3
+                    picks.chunked(4).forEachIndexed { row, line ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            line.forEachIndexed { j, p ->
+                                val i = row * 4 + j
+                                Box(Modifier.rotate(if (i % 2 == 0) -4f else 4f)) {
+                                    Box(Modifier.matchParentSize().offset(y = 5.dp).clip(RoundedCornerShape(20.dp)).background(Pal.Ink))
+                                    Box(
+                                        Modifier
+                                            .size(if (small) 66.dp else if (picks.size == 3) 88.dp else 104.dp, if (small) 66.dp else 88.dp)
+                                            .clip(RoundedCornerShape(20.dp))
+                                            .background(Pal.Sun)
+                                            .border(3.dp, Pal.Ink, RoundedCornerShape(20.dp)),
+                                        contentAlignment = Alignment.Center,
+                                    ) { RankText(p, if (small) 34.sp else 48.sp) }
+                                    if (state.fixed) Tag("지정", Pal.Tomato, fontSize = 11.sp, modifier = Modifier.align(Alignment.TopEnd).offset(x = 8.dp, y = (-8).dp).rotate(8f))
+                                }
                             }
                         }
                     }
@@ -909,7 +928,7 @@ private fun RouletteOverlay(state: Roulette, picks: List<Int>, racers: Int, bet:
             }
         }
         Text(
-            if (state.revealed) "잠시 후 출발해요" else "화면을 탭하면 바로 멈춰요",
+            if (state.fixed) "누가 이 등수로 들어올지는… 달려 봐야 알아요!" else if (state.revealed) "잠시 후 출발해요" else "화면을 탭하면 바로 멈춰요",
             fontSize = 15.sp, color = Color.White,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 170.dp),
         )

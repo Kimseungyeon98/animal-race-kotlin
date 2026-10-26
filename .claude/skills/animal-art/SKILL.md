@@ -89,7 +89,7 @@ description: 복불복 동물 레이스의 그림 규칙과 작업 절차. 캐�
 # 캔버스 보드 → PNG (캔버스 artifact-files 폴더에서)
 tools/design/shoot.sh <보드>.dc.html <폭> <높이> out.png
 # 앱 화면 → PNG (진짜 글꼴, 390×844dp, 2배)
-cd tools/verify && ./gradlew shot                # 전체: characters, fx, setup, result, ladder, lotto, gacha
+cd tools/verify && ./gradlew shot                # 전체: characters, fx, setup, rank-*, result, ladder, lotto(7), gacha
 cd tools/verify && ./gradlew shot -Pscene=characters
 cd tools/verify && ./gradlew shot -Pscene=t        # 터치 각본 장면 전부 (TouchScenes.kt: tap·drag·pause·snap)
 ```

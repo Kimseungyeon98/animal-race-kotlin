@@ -31,6 +31,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -110,6 +112,7 @@ private val TrailColors = listOf(Color(0xFF3FD0A6), Color(0xFF5AA9FF), Color(0xF
  * 결과는 [session]에 이미 숨겨져 있고(사다리: 몰빵할 사람, 복권: 몰빵 복권 자리), 게임은 그걸 한 명씩 드러내는 연출이다.
  * 몰빵이 공개되면 [onDecided]로 기록하고, 잠시 뒤 최종 발표 카드를 띄운다.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: (Int) -> Unit, onClose: () -> Unit) {
     val haptic = LocalHapticFeedback.current
@@ -156,7 +159,12 @@ fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: (Int) -> Un
                 OutlinedText(session.game.title, 28.sp, modifier = Modifier.weight(1f))
                 Tag(shortBet(bet).ifEmpty { "몰아주기" }, Pal.Cream, Pal.Ink, fontSize = 13.sp)
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
+            // 인원이 많으면 두 줄로 (10명까지)
+            FlowRow(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
                 session.players.forEachIndexed { i, p ->
                     val out = i in revealed
                     val lose = out && i == loser
