@@ -244,6 +244,16 @@ private fun scenes(): List<Scene> {
                 }
             }
         },
+        Scene("meadow", w = 6 * 220, h = 300, snaps = listOf(1000)) {
+            // 초원 혼자 넘어짐 1.8초: 돌부리에 걸림 → 데굴 → 꽈당
+            Row(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFD9EFC4))) {
+                listOf(0.15f, 0.45f, 0.75f, 0.95f, 1.2f, 1.6f).forEach { tm ->
+                    Box(Modifier.width(220.dp).padding(start = 40.dp, top = 120.dp)) {
+                        AnimalSprite(Animal.RABBIT, 100.dp, fx = Fx.TRIP, fxTime = tm, venue = Venue.MEADOW)
+                    }
+                }
+            }
+        },
         sheet("skills", Fx.SKILL),
         sheet("skills-alt", Fx.SKILL_ALT),
         Scene("race", snaps = listOf(1500, 7000, 13000, 20000, 25000, 29000)) {

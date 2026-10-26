@@ -71,38 +71,84 @@ private fun hurt(text: String) =
 
 /** 경기장에 맞는 "혼자 넘어짐" 장면. [loop]이면 한 주기를 반복, 아니면 시간 순서대로 한 번. */
 internal fun venueTrip(venue: Venue, t: Float, loop: Boolean): FxFrame = when (venue) {
-    Venue.MEADOW -> meadowTrip(t)
+    Venue.MEADOW -> meadowTrip(t, loop)
     Venue.BEACH -> beachTrip(t)
     Venue.SNOW -> snowTrip(t, loop)
     Venue.DESERT -> desertTrip(t)
 }
 
-// ---------------------------------------------------------------- 초원: 돌부리에 걸려 꽈당
+// ---------------------------------------------------------------- 초원: 돌부리에 걸려 데굴 → 꽈당 (시안 "초원 연출 다듬기" ②)
 
-private const val ROCK = "M3 27 Q1 13 10 8 Q15 1 24 3 Q36 6 37 27 Z"
-private const val ROCK_LINES = "M24 3 Q31 12 29 27 M14 10 Q12 18 15 26"
-private const val ROCK_SHINE = "M10 11 Q14 6 19 7"
-private const val MOUND = "M-5 30 Q6 23 18 27 Q30 22 45 30 Z"
 
-private fun meadowTrip(t: Float): FxFrame {
-    val q = (t / 6).coerceAtMost(1f)
-    val tw = abs(sin(t / 3))
-    val sc = 0.8f + tw * 0.4f
-    val front = mutableListOf<FxPart>()
+private const val PEBBLE = "M2 16 Q1 7 9 4 Q15 0 22 3 Q30 6 29 16 Z"
+private const val PEBBLE_LINES = "M20 4 Q24 9 23 15 M9 6 Q8 10 10 14"
+private const val PEBBLE_SHINE = "M7 8 Q10 5 14 5"
+private const val TUFT = "M0 12 L3 2 L5 12 M5 12 L9 0 L10 12 M10 12 L14 4 L15 12"
+private const val LEAF = "M0 4 Q5 -2 11 4 Q5 10 0 4 Z"
+private val Pebble2 = Color(0xFFB4ADA3)
+private val PebbleLine = Color(0xFF857E74)
+private val GrassTuft = Color(0xFF5DB65E)
+private val Dust2 = Color(0xFFE8D3B0)
+private val Leaf = Color(0xFF7ED37A)
+
+/** 흙먼지 뭉치 (잉크 먼저, 채우기 나중 → 한 덩어리) */
+private fun DrawScope.dust(puffs: List<Triple<Float, Float, Float>>) {
+    val ps = puffs.filter { it.third > 1.5f }
+    ps.forEach { (x, y, d) -> dot(x, y, d + 4f, Ink) }
+    ps.forEach { (x, y, d) -> dot(x, y, d, Dust2) }
+}
+
+/** 땅에 반쯤 묻힌 작은 돌부리 + 풀 */
+private fun DrawScope.pebble(x: Float) {
+    part(svg(TUFT), 15f, 12f, x - 12, 70f, 13f, 11f, null, GrassTuft, 2.2f)
+    part(svg(PEBBLE), 30f, 16f, x, 66f, 26f, 14f, Pebble2, sw = 2.4f)
+    part(svg(PEBBLE_LINES), 30f, 16f, x, 66f, 26f, 14f, null, PebbleLine, 1.8f)
+    part(svg(PEBBLE_SHINE), 30f, 16f, x, 66f, 26f, 14f, null, White, 2.4f)
+    part(svg(TUFT), 15f, 12f, x + 20, 71f, 12f, 10f, null, GrassTuft, 2.2f)
+}
+
+/** 머리 위를 도는 노란 별 3개 (얼굴은 가리지 않게) */
+private fun DrawScope.dizzy(cx: Float, cy: Float, t: Float, alpha: Float) {
     for (k in 0..2) {
-        val ang = t / 4 + k * 2.1f
-        front += FxPart(140 + cos(ang) * 24, 16 + sin(ang) * 7, 18f, 18f, text = "✦", fontSize = 15f, textColor = Color(0xFFFFB020), numberFont = true)
+        val a = t / 4 + k * 2.1f
+        val front = sin(a) > 0
+        val sz = if (front) 13f else 10f
+        part(svg(STAR), 20f, 19f, cx + cos(a) * 20 - sz / 2, cy + sin(a) * 5 - sz / 2, sz, sz, StarYellow, sw = 2f, alpha = alpha * if (front) 1f else 0.7f)
     }
-    front += hurt("꽈당!")
+}
+
+/** 초원 (시안 "초원 연출 다듬기" ②): 돌부리에 걸려 → 앞으로 한 바퀴 데굴 → 납작 엎어져 별 빙글, 풀잎 팔랑 */
+private fun meadowTrip(t: Float, loop: Boolean): FxFrame {
+    val ph = if (loop) (t % 30f) / 30f else (t / 30f).coerceAtMost(1f)
+    val trip = (ph / 0.15f).coerceAtMost(1f)
+    val roll = ((ph - 0.15f) / 0.4f).coerceIn(0f, 1f)
+    val after = ((ph - 0.55f) / 0.45f).coerceIn(0f, 1f)
+    val e = roll * roll * (3 - 2 * roll)
+    val rot = when {
+        ph < 0.15f -> 25f * trip
+        ph < 0.55f -> 25f + 335f * e
+        // 굴러 멈춘 뒤 앞으로 납작 엎어짐
+        else -> 30f * (after * 4).coerceAtMost(1f)
+    }
     return FxFrame(
-        back = listOf(FxPart(120f, 146f, 44f, 14f, fill = Color(0xFFE8D3B0), border = Ink, alpha = 0.85f)),
-        front = front, dx = -4f * q, dy = 8f * q, rot = -18f * q, pose = 0,
+        front = listOf(hurt(if (ph < 0.55f) "어어어~" else "꽈당!").copy(x = -48f, y = -40f)),
+        rot = rot % 360, pivotY = 0.5f,
+        dx = (8f * trip + 26f * e) * F, dy = (-sin(e * PI.toFloat()) * 22f + 10f * (after * 4).coerceAtMost(1f)) * F,
+        pose = 0,
+        under = { pebble(54f) },
         over = {
-            part(svg(ROCK), 40f, 30f, 52f, 38f, 60f, 45f, Color(0xFFA8A29A))
-            part(svg(ROCK_LINES), 40f, 30f, 52f, 38f, 60f, 45f, null, Color(0xFF7E776E), 2f)
-            part(svg(ROCK_SHINE), 40f, 30f, 52f, 38f, 60f, 45f, null, White, 3f)
-            part(svg(MOUND), 40f, 30f, 52f, 38f, 60f, 45f, Color(0xFFD9A866), sw = 2f)
-            part(svg(STAR), 20f, 19f, 46f, 24f, 22f * sc, 21f * sc, StarYellow, sw = 2f, alpha = 0.6f + 0.4f * tw)
+            // 구르는 동안 뒤에 흙먼지 자국
+            if (roll in 0.05f..0.99f) dust(listOf(Triple(40f + e * 50, 74f, 10 * (1 - e) + 3), Triple(30f + e * 40, 72f, 7 * (1 - e) + 2)))
+            if (after > 0f) {
+                val k = (after * 2.5f).coerceAtMost(1f)
+                dust(listOf(Triple(132f + k * 18, 76f - k * 6, 15 * (1 - k)), Triple(104f - k * 14, 78f - k * 4, 12 * (1 - k))))
+                dizzy(122f, 22f, t, 1f)
+                // 풀잎이 팔랑팔랑 떨어짐
+                for (j in 0..2) {
+                    val f = ((after * 1.4f) + j * 0.3f) % 1f
+                    part(svg(LEAF), 11f, 8f, 104f + j * 16 + sin(f * 8 + j) * 5, -10f + f * 70, 10f, 7f, Leaf, sw = 1.6f, rot = sin(f * 6 + j) * 50, alpha = 1 - f * 0.5f)
+                }
+            }
         },
     )
 }
