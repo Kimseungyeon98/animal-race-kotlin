@@ -57,6 +57,30 @@ internal fun gait(seconds: Float, period: Float = 0.34f): Pose {
     )
 }
 
+/** 머리 꼭대기 (200×170 좌표): 1등 왕관 같은 것을 얹는 자리 */
+internal fun headTop(animal: Animal): Offset = when (animal) {
+    HORSE -> Offset(158f, 36f)
+    CHEETAH -> Offset(158f, 58f)
+    RABBIT -> Offset(142f, 50f)
+    TURTLE -> Offset(164f, 84f)
+    DOG -> Offset(150f, 46f)
+    CAT -> Offset(155f, 52f)
+    PIG -> Offset(146f, 56f)
+    MONKEY -> Offset(154f, 50f)
+    PENGUIN -> Offset(108f, 42f)
+    KANGAROO -> Offset(160f, 38f)
+    ELEPHANT -> Offset(152f, 46f)
+    DUCK -> Offset(140f, 44f)
+    SNAIL -> Offset(100f, 58f)
+    CHICKEN -> Offset(136f, 40f)
+    SKUNK -> Offset(154f, 65f)
+    HEDGEHOG -> Offset(150f, 90f)
+    CAPYBARA -> Offset(152f, 54f)
+    SLOTH -> Offset(152f, 52f)
+    HAMSTER -> Offset(139f, 54f)
+    PANDA -> Offset(151f, 55f)
+}
+
 private val pathCache = HashMap<String, Path>()
 
 /** SVG path 문자열을 한 번만 파싱해서 재사용한다. */

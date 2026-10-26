@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
@@ -86,6 +87,7 @@ import com.example.animalrace.race.TRACK
 import com.example.animalrace.race.withSubject
 import com.example.animalrace.ui.art.AnimalSprite
 import com.example.animalrace.ui.components.Crown
+import com.example.animalrace.ui.art.headTop
 import com.example.animalrace.ui.components.Icons2
 import com.example.animalrace.ui.components.InkIcon
 import com.example.animalrace.ui.components.LaneSticker
@@ -110,7 +112,9 @@ private const val COAST = 22.0
 private data class Frame(val view: RaceView, val camX: Double, val camW: Double, val time: Double)
 
 private const val START_W = 130.0
-private const val START_X = -0.12 * START_W
+/** 출발선을 화면 왼쪽에서 이만큼 띄운다: 출발 전 동물(그림 폭 ≈ 화면의 28%)이 잘리지 않게 */
+private const val START_LEFT = 0.32
+private const val START_X = -START_LEFT * START_W
 
 /** 아직 달리는 앞쪽 4마리가 들어오게 확대/축소하고, 선두를 화면 70% 지점에 둔다. */
 private fun cameraTarget(v: RaceView): Pair<Double, Double> {
@@ -121,7 +125,7 @@ private fun cameraTarget(v: RaceView): Pair<Double, Double> {
     val pack = running.take(4)
     val spread = front - (pack.lastOrNull()?.x ?: front)
     val w = (spread * 1.35 + 110).coerceIn(START_W, 420.0)
-    val x = (front - 0.70 * w).coerceIn(-0.12 * w, TRACK + 0.2 * w - w)
+    val x = (front - 0.70 * w).coerceIn(-START_LEFT * w, TRACK + 0.2 * w - w)
     return x to w
 }
 
@@ -358,9 +362,11 @@ private fun Standings(view: RaceView, picks: List<Int>?) {
         view.racers.forEach { r ->
             key(r.lane) {
                 val x by animateDpAsState((avatar + gap) * r.rank, spring(stiffness = Spring.StiffnessMediumLow), label = "pos")
-                val first = r.rank == 0
-                val hit = picks?.contains(r.rank + 1) == true
-                val last = hit || (picks == null && r.rank == n - 1)
+                // 출발 전엔 출전 순서일 뿐이라 1등·꼴찌·당첨 표시를 하지 않는다
+                val started = view.t > 0
+                val first = started && r.rank == 0
+                val hit = started && picks?.contains(r.rank + 1) == true
+                val last = hit || (started && picks == null && r.rank == n - 1)
                 Box(Modifier.offset(x = x).size(avatar, 52.dp)) {
                     Box(
                         Modifier
@@ -482,16 +488,20 @@ private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width
             OffscreenTag(r, view, Modifier.offset(x = 40.dp, y = trackTop + laneH * r.lane + (laneH - 30.dp) / 2))
         } else if (nose - sprite < width) {
             Box(Modifier.offset(x = nose - sprite * 0.92f, y = y)) {
-                if (!r.finished && !r.stopped) Dust(stadium.dust, r.lane, frame.time, Modifier.size(sprite, spriteH))
+                // 출발 전(카운트다운·룰렛)엔 출발 칸에 서서 기다린다
+                val moving = view.t > 0 && !r.finished && !r.stopped
+                if (moving) Dust(stadium.dust, r.lane, frame.time, Modifier.size(sprite, spriteH))
                 AnimalSprite(
                     r.animal, sprite,
-                    running = !r.finished && !r.stopped,
+                    running = moving,
                     fx = if (shock) Fx.SCARED else r.fx,
                     fxTime = if (shock) sinceFinish.toFloat() else r.fxElapsed.toFloat(),
                     venue = stadium.venue,
                 )
                 if (r.rank == 0 && !r.finished && r.fx == Fx.NONE && view.t > 1) {
-                    Crown(Modifier.align(Alignment.TopCenter).offset(x = sprite * 0.12f, y = (-14).dp), width = 30.dp)
+                    // 머리 꼭대기에 얹기 (동물마다 머리 위치가 달라서 상자 가운데에 두면 허공에 뜬다)
+                    val head = headTop(r.animal)
+                    Crown(Modifier.offset(x = sprite * (head.x / 200f) - 15.dp, y = sprite * (head.y / 200f) - 19.dp), width = 30.dp)
                 }
             }
             // 등수 태그는 코끝 앞(오른쪽)에, 레인 가운데 높이로 — 윗줄 동물을 가리지 않게
@@ -764,8 +774,9 @@ private fun Overlays(frame: Frame, stadium: Stadium, countdown: String?) {
         }
     }
 
-    Box(Modifier.fillMaxSize().padding(bottom = 160.dp), contentAlignment = Alignment.BottomCenter) {
-        AnimatedVisibility(view.done && !showWinner, enter = slideInVertically { it } + fadeIn()) {
+    // 순위 칩 아래 하늘·펜스 자리에 (아래에 두면 마지막 레인 동물과 등수 태그를 가린다)
+    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(top = 142.dp), contentAlignment = Alignment.TopCenter) {
+        AnimatedVisibility(view.done && !showWinner, enter = slideInVertically { -it } + fadeIn()) {
             Text(
                 "경기 종료! 결과 집계 중…", fontSize = 17.sp, color = Pal.Ink,
                 modifier = Modifier

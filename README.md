@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-3.18.1-4C9A2A" alt="version 3.18.1">
+  <img src="https://img.shields.io/badge/version-3.18.2-4C9A2A" alt="version 3.18.2">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -90,6 +90,14 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 3.18.2 — 화면을 직접 찍어 보고 고친 것들
+- 경주 1등 왕관: 그림 상자 가운데 위에 떠 있어서 동물에 따라 등 위 허공이나 윗줄 동물 발밑에 보이던 것 → 동물마다 머리 꼭대기에 얹기
+- 출발 전 동물이 화면 왼쪽에 반쯤 잘려 있던 것 → 출발선을 화면 왼쪽 32% 지점으로 (응원할 동물이 다 보이게)
+- 카운트다운 동안엔 달리는 자세·먼지 없이 출발 칸에서 대기, 순위 칩의 "1등·꼴찌"도 출발 후부터
+- "경기 종료! 결과 집계 중…" 배너가 마지막 레인 동물과 등수 태그를 가리던 것 → 위쪽 하늘 자리로
+- 복권 고르기: 카드가 위에 몰려 화면 절반이 비던 것 → 카드와 안내를 가운데로
+- `tools/verify shot`: 경주(시간대별 6장)·랜덤 등수 룰렛·동물별 스킬 2종·왕관 자리 장면 추가
 
 ### 3.18.1 — 그림 규칙 스킬, 앱 화면 스크린샷 도구
 - `.claude/skills/animal-art/SKILL.md`: 캐릭터·소품 그림 규칙(좌표계·선 굵기·색·그리는 순서), 레퍼런스 → 시안 → 앱 → 스크린샷 비교 작업 순서, 자주 한 실수

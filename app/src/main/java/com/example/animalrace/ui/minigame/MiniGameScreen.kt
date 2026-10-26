@@ -516,8 +516,9 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                     )
                 }
             }
-            // 똑같이 생긴 복권들 (나란히)
-            Row(Modifier.fillMaxWidth().padding(top = 24.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // 똑같이 생긴 복권들 (나란히) + 안내를 남은 공간 세로 가운데에
+            Spacer(Modifier.weight(1f))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 for (t in 0 until n) {
                     val who = owner[t]
                     TicketFace(
@@ -532,13 +533,13 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                     )
                 }
             }
-            Spacer(Modifier.weight(1f))
             Text(
                 if (loser != null) "${withSubjectUi(session.players[loser].animal.label)} 몰빵! 💸"
                 else if (owner.count { it == null } == 1) "마지막 한 장… 직접 긁어서 확인!"
                 else "어느 장에 몰빵이 숨어 있을까…",
                 fontSize = 16.sp, color = Pal.Ink, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
             )
+            Spacer(Modifier.weight(1.4f))
         }
 
         // 고른 복권을 화면 가득

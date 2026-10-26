@@ -29,8 +29,12 @@ import com.example.animalrace.model.RaceResult
 import com.example.animalrace.model.SavedSetup
 import com.example.animalrace.model.Venue
 import com.example.animalrace.ui.art.AnimalSprite
+import com.example.animalrace.ui.art.headTop
+import com.example.animalrace.ui.components.Crown
+import androidx.compose.foundation.layout.offset
 import com.example.animalrace.ui.minigame.MiniGameScreen
 import com.example.animalrace.ui.result.ResultScreen
+import com.example.animalrace.ui.race.RaceScreen
 import com.example.animalrace.ui.setup.SetupScreen
 import com.example.animalrace.ui.theme.AnimalRaceTheme
 import com.example.animalrace.ui.theme.Pal
@@ -45,23 +49,24 @@ fun main(args: Array<String>) {
     val out = File(args.getOrElse(0) { "build/shots" }).apply { mkdirs() }
     val only = args.getOrElse(1) { "all" }
     val scenes = scenes()
-    scenes.filter { only == "all" || it.name == only }.forEach { s ->
-        val file = File(out, "${s.name}.png")
-        shoot(file, s.w, s.h, s.frames, s.content)
-        println(file.path)
-    }
+    scenes.filter { only == "all" || it.name == only || it.name.startsWith("$only-") }.forEach { s -> shoot(out, s) }
 }
 
-private class Scene(val name: String, val w: Int = 390, val h: Int = 844, val frames: Int = 30, val content: @Composable () -> Unit)
+/** [snaps]: 찍을 순간(밀리초). 여러 개면 이름-1000ms.png 처럼 여러 장. 화면 안 delay()가 실제 시간으로 흐르므로 실제 시간에 맞춰 돌린다 */
+private class Scene(val name: String, val w: Int = 390, val h: Int = 844, val snaps: List<Long> = listOf(1000), val content: @Composable () -> Unit)
 
-private fun shoot(file: File, w: Int, h: Int, frames: Int, content: @Composable () -> Unit) {
+private fun shoot(out: File, s: Scene) {
     val d = 2f
-    ImageComposeScene((w * d).toInt(), (h * d).toInt(), Density(d)) {
-        AnimalRaceTheme { Box(Modifier.fillMaxSize().background(Pal.Ivory)) { content() } }
+    ImageComposeScene((s.w * d).toInt(), (s.h * d).toInt(), Density(d)) {
+        AnimalRaceTheme { Box(Modifier.fillMaxSize().background(Pal.Ivory)) { s.content() } }
     }.use { sc ->
-        var t = 0L
-        repeat(frames) { t += 33_000_000L; sc.render(t) }
-        file.writeBytes(sc.render(t).encodeToData(EncodedImageFormat.PNG)!!.bytes)
+        val start = System.nanoTime()
+        s.snaps.forEach { ms ->
+            while ((System.nanoTime() - start) / 1_000_000 < ms) { sc.render(System.nanoTime() - start); Thread.sleep(16) }
+            val file = File(out, if (s.snaps.size == 1) "${s.name}.png" else "${s.name}-${ms}ms.png")
+            file.writeBytes(sc.render(System.nanoTime() - start).encodeToData(EncodedImageFormat.PNG)!!.bytes)
+            println(file.path)
+        }
     }
 }
 
@@ -70,6 +75,22 @@ private object FakeRepo : AppRepository {
     override fun saveSetup(setup: SavedSetup) {}
     override fun loadHistory(): List<RaceRecord> = emptyList()
     override fun saveHistory(history: List<RaceRecord>) {}
+}
+
+/** 동물 20마리 × 한 가지 연출 (0.6초 지점) */
+private fun sheet(name: String, fx: Fx) = Scene(name, w = 120 * 5 + 24, h = 140 * 4 + 24) {
+    Column(Modifier.padding(12.dp)) {
+        Animal.entries.chunked(5).forEach { row ->
+            Row {
+                row.forEach { a ->
+                    Column(Modifier.width(120.dp).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        AnimalSprite(a, 104.dp, fx = fx, fxTime = 0.6f)
+                        Text(a.label, fontSize = 14.sp, color = Pal.Ink)
+                    }
+                }
+            }
+        }
+    }
 }
 
 private fun results(vararg a: Animal) = a.mapIndexed { i, x -> RaceResult(x, 30.0 + i * 0.6, 1, lane = i) }
@@ -107,6 +128,33 @@ private fun scenes(): List<Scene> {
                     }
                 }
             }
+        },
+        Scene("crowns", w = 120 * 5 + 24, h = 140 * 4 + 24) {
+            // 경주 1등 왕관 자리 확인 (RaceScreen과 같은 계산)
+            Column(Modifier.padding(12.dp)) {
+                Animal.entries.chunked(5).forEach { row ->
+                    Row {
+                        row.forEach { a ->
+                            Column(Modifier.width(120.dp).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box {
+                                    AnimalSprite(a, 104.dp)
+                                    val head = headTop(a)
+                                    Crown(Modifier.offset(x = 104.dp * (head.x / 200f) - 15.dp, y = 104.dp * (head.y / 200f) - 19.dp), width = 30.dp)
+                                }
+                                Text(a.label, fontSize = 14.sp, color = Pal.Ink)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        sheet("skills", Fx.SKILL),
+        sheet("skills-alt", Fx.SKILL_ALT),
+        Scene("race", snaps = listOf(1500, 7000, 13000, 20000, 25000, 29000)) {
+            RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.TURTLE, Animal.PIG), "커피 쏘기", 0, { _, _ -> })
+        },
+        Scene("roulette", snaps = listOf(900, 2600, 4200)) {
+            RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG), "커피 쏘기", 0, { _, _ -> }, picks = listOf(2, 5))
         },
         Scene("setup") {
             val state = AppState(FakeRepo).apply { listOf(Animal.HORSE, Animal.CAT, Animal.PANDA).forEach { toggle(it) } }
