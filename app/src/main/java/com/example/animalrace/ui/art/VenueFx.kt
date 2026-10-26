@@ -216,11 +216,9 @@ private const val TW_X = -14f
 private const val TW_Y = -64f
 private const val TW_W = 128f
 private const val TW_H = 160f
-private const val CLOUD = "M2 16 Q-2 8 8 6 Q12 -1 22 2 Q30 -3 40 1 Q50 -3 58 2 Q68 -1 72 6 Q82 8 78 16 Q72 22 60 19 Q50 24 40 20 Q30 24 20 19 Q8 22 2 16 Z"
-private const val CLOUD_LINES = "M10 8 Q22 4 32 9 M44 6 Q56 3 66 9 M18 14 Q30 17 40 13"
 private const val BASE_LINES = "M22 20 Q34 15 46 19 M64 16 Q78 12 92 17"
 private val Sand = Color(0xFFC68749)
-private val SandCloud = Color(0xFFD49A5E)
+private val HoleDeep = Color(0xFF6B3D1C)
 private val SandDark = Color(0xFF8E5428)
 private val SandLight = Color(0xFFF0C48E)
 private val SandDust = Color(0xFFE3B37E)
@@ -234,6 +232,9 @@ private fun Path.smoothThrough(pts: List<Offset>, move: Boolean) {
     }
     lineTo(pts.last().x, pts.last().y)
 }
+
+private fun oval(cx: Float, cy: Float, rx: Float, ry: Float) =
+    Path().apply { addOval(androidx.compose.ui.geometry.Rect(cx - rx, cy - ry, cx + rx, cy + ry)) }
 
 private fun desertTrip(t: Float): FxFrame {
     // 깔때기 단면: (중심 x, y, 반폭) — viewBox 80×100
@@ -268,26 +269,30 @@ private fun desertTrip(t: Float): FxFrame {
         }
         return if (pts.size < 3) null else Path().apply { smoothThrough(pts, move = true) }
     }
-    val sway = sin(t / 6) * 3
     val streakColors = listOf(SandDark, Color(0xFFEDBE85), Color(0xFFA86A35), Color(0xFFF4D2A2))
     val g = sin(t / 3) * 2
     val base = PathParser().parsePathString(
         "M4 28 Q0 18 12 17 Q14 ${7 + g} 28 10 Q36 ${2 - g} 50 7 Q62 ${1 + g} 74 7 Q90 ${2 - g} 98 11 Q114 9 116 18 Q128 20 124 28 Z",
     ).toPath()
     return FxFrame(
-        front = listOf(hurt("휘잉~")),
+        // 말풍선은 회오리 오른쪽으로 비켜서 (토끼 얼굴을 가리지 않게)
+        front = listOf(hurt("휘잉~").copy(x = 196f, y = -70f)),
         // 토끼 등은 작아져서 토네이도 가운데에 떠올라 빙글빙글
         rot = (t * 24) % 360, scale = 0.69f, pivotY = 0.5f,
         dx = 3 * F, dy = (-22.15f + sin(t / 3) * 6) * F, pose = 0,
         under = {
             part(funnel, 80f, 100f, TW_X, TW_Y, TW_W, TW_H, Sand, sw = 2f)
-            part(svg(CLOUD), 80f, 100f, TW_X + sway, TW_Y, TW_W, TW_H, SandCloud, sw = 2f)
             for (j in 0 until 9) {
                 streak(0.04f + j * 0.105f, 0.45f + (j % 3) * 0.18f, j * 0.37f)?.let {
                     part(it, 80f, 100f, TW_X, TW_Y, TW_W, TW_H, null, streakColors[j % 4], 2.4f)
                 }
             }
-            part(svg(CLOUD_LINES), 80f, 100f, TW_X + sway, TW_Y, TW_W, TW_H, null, SandLight, 2.2f)
+            // 꼭대기 구멍 (시안 "회오리 꼭대기 · 뚜껑 대신 구멍" ②): 밝은 테두리 안쪽이 두 단계로 어두워짐.
+            // 소용돌이 줄보다 나중에, 몸통 위 양끝을 덮게 조금 넓게
+            val (tx, ty, tw) = lv[0]
+            part(oval(tx, ty, tw * 1.06f, tw * 0.26f), 80f, 100f, TW_X, TW_Y, TW_W, TW_H, SandLight, sw = 2f)
+            part(oval(tx, ty + tw * 0.04f, tw * 0.8f, tw * 0.17f), 80f, 100f, TW_X, TW_Y, TW_W, TW_H, SandDark, null)
+            part(oval(tx, ty + tw * 0.09f, tw * 0.5f, tw * 0.09f), 80f, 100f, TW_X, TW_Y, TW_W, TW_H, HoleDeep, null)
         },
         over = {
             for (q in 0..2) {
