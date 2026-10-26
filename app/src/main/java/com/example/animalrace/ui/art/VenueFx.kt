@@ -204,61 +204,79 @@ private fun beachTrip(t: Float): FxFrame {
     )
 }
 
-// ---------------------------------------------------------------- 설원: 빙판에서 미끄덩 → 눈더미 와르르
+// ---------------------------------------------------------------- 설원: 빙판에서 미끄덩 → 눈더미에 푹 (시안 "설원 연출 다듬기" ②)
 
 private const val ICE = "M4 14 Q4 2 40 3 Q72 0 104 3 Q140 2 140 14 Q140 26 104 25 Q72 28 40 25 Q4 26 4 14 Z"
 private const val ICE_CRACKS = "M30 8 L44 14 L40 22 M44 14 L58 12 M96 6 L104 14 L118 12 M104 14 L100 22"
 private const val ICE_SHINE = "M18 9 L34 7 M66 6 L86 5 M114 18 L126 17"
-private const val WIND = "M2 5 Q16 0 32 5"
-private const val CHIP = "M4 0 L8 4 L4 8 L0 4 Z"
-private const val CLUMP_FALL = "M6 22 Q0 12 10 9 Q14 0 26 4 Q36 -2 44 6 Q56 6 54 16 Q58 24 46 25 Q30 30 18 26 Q6 28 6 22 Z"
-private const val CLUMP_LAND = "M2 26 Q0 16 10 14 Q14 4 26 7 Q36 2 44 9 Q56 10 56 20 Q60 28 48 28 Q30 31 14 29 Q2 31 2 26 Z"
-private const val CLUMP_SHADE = "M16 12 Q22 9 28 11 M36 10 Q42 9 46 13"
 
+private const val ICE_RIM = "M8 18 Q40 27 72 25 Q104 28 136 18"
+private const val SKID = "M0 0 L26 0 M4 5 L22 5"
+private const val BANK = "M0 52 Q0 38 10 32 Q10 18 24 16 Q30 4 44 7 Q56 2 64 14 Q74 20 72 34 Q78 42 76 52 Z"
+private const val BANK_SHADE = "M8 46 Q40 52 70 46 M20 26 Q28 22 36 25 M50 16 Q58 15 62 21"
+private val Snow = Color(0xFFFDFEFF)
+private val SnowShade = Color(0xFFBFD9EE)
+private val IceBlue = Color(0xFFCFE8F8)
+private val IceEdge = Color(0xFF9CC8EA)
+
+/** 하얀 눈 뭉치 덩어리 (동그라미들을 한 덩어리로: 잉크 먼저, 채우기 나중) */
+private fun DrawScope.poof(puffs: List<Triple<Float, Float, Float>>) {
+    val ps = puffs.filter { it.third > 1.5f }
+    ps.forEach { (x, y, d) -> dot(x, y, d + 4f, Ink) }
+    ps.forEach { (x, y, d) -> dot(x, y, d, Snow) }
+}
+
+/** 반짝이는 빙판 + 미끄러진 자국 */
+private fun DrawScope.ice2(skid: Float) {
+    part(svg(ICE), 144f, 28f, -22f, 56f, 144f, 28f, IceBlue, sw = 2.5f)
+    part(svg(ICE_RIM), 144f, 28f, -22f, 56f, 144f, 28f, null, IceEdge, 2.4f)
+    part(svg(ICE_CRACKS), 144f, 28f, -22f, 56f, 144f, 28f, null, Color(0xFF7FAED6), 1.8f)
+    part(svg(ICE_SHINE), 144f, 28f, -22f, 56f, 144f, 28f, null, White, 3.2f)
+    if (skid > 0f) part(svg(SKID), 26f, 6f, 10f - skid * 6, 70f, 26f + skid * 20, 6f, null, White, 2.6f, alpha = 0.9f)
+}
+
+/** 반짝 (✦ 모양 4갈래) */
+private fun DrawScope.twinkle(cx: Float, cy: Float, r: Float, alpha: Float) {
+    val d = "M0 -1 L0.25 -0.25 L1 0 L0.25 0.25 L0 1 L-0.25 0.25 L-1 0 L-0.25 -0.25 Z"
+    part(svg(d), 2f, 2f, cx - r, cy - r, r * 2, r * 2, White, IceEdge, 0.12f, alpha = alpha)
+}
+
+/** 빙판에서 미끄러져 빙글 → 앞 눈더미에 머리부터 쿵 → 엉덩이만 나와 버둥 */
 private fun snowTrip(t: Float, loop: Boolean): FxFrame {
-    // 약 1.8초 동안: 앞 절반은 미끄덩, 0.45부터 눈더미가 떨어져 0.6에 머리에 착지
     val ph = if (loop) (t % 30f) / 30f else (t / 30f).coerceAtMost(1f)
-    val sliding = ph < 0.5f
-    val tw = abs(sin(t / 2))
+    val slide = (ph / 0.45f).coerceIn(0f, 1f)
+    val stuck = ph >= 0.45f
+    val burst = ((ph - 0.45f) / 0.35f).coerceIn(0f, 1f)
     return FxFrame(
-        front = listOf(hurt(if (sliding) "미끄덩!" else "와르르!")),
-        rot = if (sliding) sin(t * 0.9f) * 24 else -10f,
-        dx = if (sliding) sin(t * 0.45f) * 12 * F else 0f,
-        dy = if (sliding) 0f else 6 * F,
-        pose = 0,
-        under = {
-            part(svg(ICE), 144f, 28f, -22f, 56f, 144f, 28f, Color(0xFFCFE8F8))
-            part(svg(ICE_CRACKS), 144f, 28f, -22f, 56f, 144f, 28f, null, Color(0xFF7FAED6), 1.8f)
-            part(svg(ICE_SHINE), 144f, 28f, -22f, 56f, 144f, 28f, null, White, 3f)
-        },
+        front = listOf(hurt(if (!stuck) "미끄덩~" else "푹!").copy(x = -48f, y = -40f)),
+        // 미끄러지며 앞으로 쭉 → 처박히면 앞으로 고꾸라져 버둥
+        rot = if (!stuck) sin(t * 0.9f) * 18 * (1 - slide) + slide * 20 else 38f + sin(t * 1.4f) * 6,
+        dx = if (!stuck) slide * slide * 16 * F else 16 * F + sin(t * 1.4f) * 1.5f * F,
+        dy = if (!stuck) 0f else 6 * F,
+        pose = 0, pivotY = 0.8f,
+        under = { ice2(slide) },
         over = {
-            if (sliding) {
-                for (k in 0..2) part(svg(WIND), 34f, 10f, -30 - (ph * 40) % 10, 22f + k * 14, 34f, 10f, null, Ink, 2.2f, alpha = 0.55f)
-            } else {
-                part(svg(STAR), 20f, 19f, 4f, -8f, 16f, 16f, White, sw = 2f, alpha = 0.5f + tw * 0.5f)
-                part(svg(STAR), 20f, 19f, 78f, -2f, 12f, 12f, White, sw = 2f, alpha = 1 - tw * 0.5f)
+            if (!stuck) for (c in 0..3) {
+                val q = (ph * 3 + c * 0.25f) % 1f
+                twinkle(40 - q * 40, 66 - sin(q * PI.toFloat()) * 20, 6f * (1 - q) + 2, 1 - q)
             }
-            for (c in 0..3) {
-                val q = (ph * 2 + c * 0.25f) % 1f
-                val dir = if (c % 2 == 1) 1 else -1
-                part(svg(CHIP), 8f, 8f, 46 + dir * (14 + q * 44), 66 - sin(q * PI.toFloat()) * 34, 8f, 8f,
-                    Color(0xFFE8F6FF), sw = 1.6f, alpha = 1 - q, rot = q * 180)
+            // 눈더미 (토끼 앞): 다가오다가 처박히면 머리를 덮음
+            val bx = if (!stuck) 112 - slide * 32 else 80f
+            if (stuck) {
+                // 처박힌 순간 눈더미 위로 눈 뭉치가 솟구쳐 작아지며 사라짐 (눈더미 뒤)
+                val q = (burst * 1.6f).coerceAtMost(1f)
+                poof(listOf(Triple(98f - q * 14, 22 - q * 26, 20 * (1 - q)), Triple(112f + q * 12, 20 - q * 20, 16 * (1 - q)), Triple(88f - q * 24, 30 - q * 10, 13 * (1 - q))))
             }
-            if (ph >= 0.45f) {
-                val fall = ((ph - 0.45f) / 0.15f).coerceIn(0f, 1f)
-                val sy = -70 + fall * 66
-                part(svg(if (fall < 1f) CLUMP_FALL else CLUMP_LAND), 60f, 31f, 26f, sy - 10, 84f, 43f, White, sw = 2.2f)
-                part(svg(CLUMP_SHADE), 60f, 31f, 26f, sy - 10, 84f, 43f, null, Color(0xFFBFD9EE), 2f)
-                if (fall >= 1f) {
-                    val pf = ((ph - 0.6f) / 0.4f).coerceIn(0f, 1f)
-                    for (f in 0..4) {
-                        val ang = -PI.toFloat() + f * (PI.toFloat() / 4)
-                        val r = 30 + pf * 26
-                        dot(68 + cos(ang) * r, 10 + sin(ang) * r * 0.8f, 9 - pf * 5, White, 1.6f, 1 - pf)
-                    }
-                } else {
-                    for (g in 0..2) dot(43f + g * 18, sy - 19 - g * 6, 6f, White, 1.4f)
+            part(svg(BANK), 76f, 52f, bx, 26f, 70f, 54f, Snow, sw = 2.6f)
+            part(svg(BANK_SHADE), 76f, 52f, bx, 26f, 70f, 54f, null, SnowShade, 2.2f)
+            if (stuck) {
+                // 위에서 떨어지는 눈 조각
+                for (k in 0..2) {
+                    val q = (ph * 2.5f + k * 0.33f) % 1f
+                    dot(86f + k * 12, -10f + q * 40, 7f * (1 - q), Snow, 1.6f)
                 }
+                twinkle(68f, 4f, 5f, 0.5f + 0.5f * abs(sin(t / 2)))
+                twinkle(118f, 10f, 4f, 1 - 0.5f * abs(sin(t / 2)))
             }
         },
     )
