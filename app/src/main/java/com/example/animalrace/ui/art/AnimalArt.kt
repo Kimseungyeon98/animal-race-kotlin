@@ -77,7 +77,7 @@ internal fun headTop(animal: Animal): Offset = when (animal) {
     HEDGEHOG -> Offset(150f, 90f)
     CAPYBARA -> Offset(152f, 54f)
     SLOTH -> Offset(152f, 52f)
-    HAMSTER -> Offset(139f, 54f)
+    HAMSTER -> Offset(148f, 66f)
     PANDA -> Offset(151f, 55f)
 }
 
@@ -226,6 +226,46 @@ private fun oval(cx: Float, cy: Float, rx: Float, ry: Float) = Path().apply { ad
 
 private fun roundBox(x: Float, y: Float, w: Float, h: Float, r: Float) =
     Path().apply { addRoundRect(RoundRect(x, y, x + w, y + h, CornerRadius(r, r))) }
+
+private val HamFur = Color(0xFFF2C38E)
+private val HamWhite = Color(0xFFFFF8EE)
+private val HamFeet = Color(0xFFF2C9A0)
+private val HamEarIn = Color(0xFFD9A28A)
+private val HamNose = Color(0xFFF28FA0)
+
+/** 햄스터 (시안 "햄스터 다듬기" B): 다른 동물처럼 옆모습. 머리가 몸에 묻힌 통통한 덩어리 + 볼록한 볼주머니 */
+private fun DrawScope.hamsterSide(a: Float, b: Float, bob: Float) {
+    val sw = 4.5f
+    val far = c(0xFFE0A970)
+    shadow(100f, 160f, 58f, 7f)
+    translate(0f, bob) {
+        // 짧은 다리 네 개 (같은 모양, 먼 쪽은 진하게). 몸 뒤에 그려 아래만 살짝 보이게
+        fun leg(x: Float, fill: Color, rot: Float) = rotate(rot, Offset(x, 134f)) {
+            rrect(x - 7f, 128f, 14f, 22f, 7f, fill)
+            ellipse(x + 3f, 151f, 9f, 4.5f, HamFeet, sw = 3.5f)
+        }
+        leg(80f, far, b); leg(136f, far, a)
+        leg(68f, HamFur, a); leg(124f, HamFur, b)
+        circle(45f, 112f, 5f, HamFeet, sw = 3.5f)
+        circle(124f, 72f, 9f, far, sw = sw)
+        val body = oval(100f, 110f, 58f, 37f)
+        drawPath(body, HamFur)
+        clipPath(body) {
+            drawOval(HamWhite, Offset(66f, 114f), Size(84f, 44f))
+            // 등의 진한 털 무늬
+            svg("M56 92 q30 -26 74 -12", null, sw = 9f, stroke = far)
+        }
+        paint(body, null, sw, Ink)
+        ellipse(148f, 96f, 32f, 29f, HamFur, sw = sw)
+        // 볼주머니: 볼록한 흰 볼
+        ellipse(156f, 110f, 17f, 13f, HamWhite, sw = 0f)
+        circle(136f, 68f, 10f, HamFur, sw = sw); dot(136f, 69f, 5f, HamEarIn)
+        eye(160f, 90f, 5f, 161.6f, 88.3f, 1.7f)
+        ellipse(178f, 98f, 4.2f, 3.2f, HamNose, sw = 2.2f)
+        svg("M171 107 q3 3 6 0", null, sw = 2.2f)
+        svg("M176 102 l13 -3 M176 105 l13 2", null, sw = 1.6f)
+    }
+}
 
 /** 200×170 좌표계 기준으로 동물 한 마리를 그린다. 호출하는 쪽에서 크기에 맞게 scale한다. */
 internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
@@ -619,28 +659,7 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
                 svg("M143 99 q11 7 22 0", null, sw = 3f, stroke = c(0xFF1E1A24))
             }
         }
-        HAMSTER -> {
-            val sw = 4.5f
-            shadow(100f, 160f, 54f, 7f)
-            translate(0f, bob) {
-                ellipse(72f, 146f, 11f, 7f, c(0xFFF2C9A0), rot = b, px = 72f, py = 138f, sw = sw)
-                ellipse(104f, 148f, 11f, 7f, c(0xFFF2C9A0), rot = a, px = 104f, py = 140f, sw = sw)
-                ellipse(88f, 120f, 46f, 32f, c(0xFFF3DCBC), sw = sw)
-                ellipse(98f, 134f, 26f, 14f, c(0xFFFFF8EE), sw = 0f)
-                circle(112f, 56f, 13f, c(0xFFEACBA6), sw = sw); dot(112f, 57f, 6.5f, c(0xFFD9A28A))
-                circle(162f, 54f, 13f, c(0xFFEACBA6), sw = sw); dot(162f, 55f, 6.5f, c(0xFFD9A28A))
-                ellipse(139f, 92f, 44f, 40f, c(0xFFF6E6CF), sw = sw)
-                ellipse(146f, 106f, 17f, 11f, c(0xFFFFF8EE), sw = 0f)
-                ellipse(119f, 104f, 8f, 4.5f, c(0xFFFFB3BF), sw = 0f)
-                ellipse(173f, 102f, 8f, 4.5f, c(0xFFFFB3BF), sw = 0f)
-                eye(127f, 90f, 4.5f, 128.5f, 88.5f, 1.5f)
-                eye(165f, 88f, 4.5f, 166.5f, 86.5f, 1.5f)
-                ellipse(146f, 100f, 5f, 3.6f, c(0xFFF28FA0), sw = 2.5f)
-                svg("M139 106 q3.5 4 7 0 q3.5 4 7 0", null, sw = 2.5f)
-                ellipse(127f, 132f, 7f, 6f, c(0xFFFFF3E2), rot = a, px = 127f, py = 126f, sw = 3.5f)
-                ellipse(153f, 132f, 7f, 6f, c(0xFFFFF3E2), rot = b, px = 153f, py = 126f, sw = 3.5f)
-            }
-        }
+        HAMSTER -> hamsterSide(a, b, bob)
         PANDA -> {
             val black = c(0xFF2E2838)
             shadow(100f, 160f, 60f, 7f)

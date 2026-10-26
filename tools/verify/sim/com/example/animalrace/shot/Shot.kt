@@ -279,6 +279,14 @@ private fun scenes(): List<Scene> {
                 }
             }
         },
+        Scene("hamster", w = 3 * 200 + 20 + 3 * 70, h = 200) {
+            // 햄스터: 서 있기 + 달리기 2 + 실제 크기로 토끼·돼지와 나란히
+            Row(Modifier.padding(10.dp), verticalAlignment = Alignment.Bottom) {
+                AnimalSprite(Animal.HAMSTER, 190.dp, modifier = Modifier.padding(5.dp))
+                (1..2).forEach { f -> AnimalSprite(Animal.HAMSTER, 190.dp, frame = f, modifier = Modifier.padding(5.dp)) }
+                listOf(Animal.HAMSTER, Animal.RABBIT, Animal.PIG).forEach { a -> AnimalSprite(a, 64.dp, modifier = Modifier.padding(3.dp)) }
+            }
+        },
         sheet("skills", Fx.SKILL),
         sheet("skills-alt", Fx.SKILL_ALT),
         Scene("race", snaps = listOf(1500, 7000, 13000, 20000, 25000, 29000)) {
