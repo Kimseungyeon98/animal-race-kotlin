@@ -65,10 +65,10 @@ internal fun headTop(animal: Animal): Offset = when (animal) {
     TURTLE -> Offset(164f, 84f)
     DOG -> Offset(150f, 46f)
     CAT -> Offset(155f, 52f)
-    PIG -> Offset(146f, 56f)
+    PIG -> Offset(146f, 62f)
     MONKEY -> Offset(154f, 50f)
     PENGUIN -> Offset(108f, 42f)
-    KANGAROO -> Offset(160f, 38f)
+    KANGAROO -> Offset(148f, 42f)
     ELEPHANT -> Offset(152f, 46f)
     DUCK -> Offset(140f, 44f)
     SNAIL -> Offset(100f, 58f)
@@ -359,22 +359,34 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
         PIG -> {
             shadow(100f, 160f, 62f, 7f)
             translate(0f, bob) {
-                val body = listOf(oval(92f, 98f, 56f, 40f))
-                val curl = "M40 92 q-14 -2 -16 -12 q-1 -9 7 -9 q7 1 5 8 q-2 6 -9 4"
-                svg(curl, null, sw = 10f)
-                svg(curl, null, sw = 4.5f, stroke = c(0xFFFF9DB5))
-                farLeg(56f, 118f, 18f, 30f, c(0xFFF28AA5), b, 65f, 122f, hind = true, Foot.HOOF, c(0xFFC9637F))
-                farLeg(110f, 118f, 18f, 30f, c(0xFFF28AA5), a, 119f, 122f, hind = false, Foot.HOOF, c(0xFFC9637F))
-                ellipse(92f, 98f, 56f, 40f, c(0xFFFFB8C9))
-                nearLeg(70f, 118f, 18f, 30f, c(0xFFFFB8C9), a, 79f, 122f, hind = true, body, Foot.HOOF, c(0xFFC9637F))
-                nearLeg(124f, 118f, 18f, 30f, c(0xFFFFB8C9), b, 133f, 122f, hind = false, body, Foot.HOOF, c(0xFFC9637F))
-                svg("M128 60 l4 -26 l18 20 z", c(0xFFFF9DB5))
-                circle(146f, 86f, 32f, c(0xFFFFB8C9))
-                ellipse(176f, 94f, 14f, 11f, c(0xFFFF9DB5))
-                ellipse(172f, 94f, 2.5f, 4f, Ink, sw = 0f)
-                ellipse(181f, 94f, 2.5f, 4f, Ink, sw = 0f)
-                eye(152f, 76f, 5f, 154f, 74f, 1.8f)
-                ellipse(146f, 100f, 7f, 4.5f, c(0xFFFF7A9A), sw = 0f)
+                val body = listOf(oval(92f, 100f, 58f, 40f))
+                // 꼬리: 열린 돼지꼬리 (닫힌 고리는 눈처럼 보여서)
+                val curl = "M38 92 q-8 -10 -15 -5 q-6 5 1 9 q7 3 -2 10 q-4 3 -8 1"
+                svg(curl, null, sw = 9f)
+                svg(curl, null, sw = 4f, stroke = c(0xFFFF9DB5))
+                farLeg(56f, 120f, 18f, 30f, c(0xFFF28AA5), b, 65f, 124f, hind = true, Foot.HOOF, c(0xFFC9637F))
+                farLeg(110f, 120f, 18f, 30f, c(0xFFF28AA5), a, 119f, 124f, hind = false, Foot.HOOF, c(0xFFC9637F))
+                // 먼 쪽 귀 (머리 뒤, 진하게)
+                svg("M126 68 Q126 52 134 42 Q142 52 146 64 Z", c(0xFFF28AA5))
+                ellipse(92f, 100f, 58f, 40f, c(0xFFFFB8C9))
+                // 등 윤기 · 배 그늘
+                svg("M58 74 q26 -14 56 -8", null, sw = 5f, stroke = c(0xFFFFD6E0))
+                svg("M54 120 q38 20 80 4", null, sw = 3f, stroke = c(0xFFF28AA5))
+                nearLeg(70f, 120f, 18f, 30f, c(0xFFFFB8C9), a, 79f, 124f, hind = true, body, Foot.HOOF, c(0xFFC9637F))
+                nearLeg(124f, 120f, 18f, 30f, c(0xFFFFB8C9), b, 133f, 124f, hind = false, body, Foot.HOOF, c(0xFFC9637F))
+                // 머리: 목 없이 몸에 묻힌 둥근 얼굴
+                ellipse(146f, 90f, 32f, 29f, c(0xFFFFB8C9))
+                // 주둥이 (예전 그대로, 머리가 내려온 만큼만 아래로)
+                ellipse(176f, 98f, 14f, 11f, c(0xFFFF9DB5))
+                ellipse(172f, 98f, 2.5f, 4f, Ink, sw = 0f)
+                ellipse(181f, 98f, 2.5f, 4f, Ink, sw = 0f)
+                // 가까운 귀: 앞으로 접혀 내려온 귀
+                // 가까운 귀: 앞으로 기운 세모 귀
+                svg("M140 66 Q144 48 158 38 Q164 52 162 64 Z", c(0xFFFF9DB5))
+                svg("M147 60 Q151 50 157 45", null, sw = 3f, stroke = c(0xFFF28AA5))
+                eye(156f, 82f, 5.2f, 157.6f, 80f, 1.8f)
+                // 입: 주둥이 아래로 비켜 보이게
+                svg("M152 113 q7 6 15 1", null, sw = 3f)
             }
         }
         MONKEY -> {
@@ -406,26 +418,43 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
                 svg("M66 86 q-24 22 -12 42 q16 -14 18 -32 z", c(0xFF2E3A59), rot = b, px = 68f, py = 88f)
                 svg("M136 74 l20 6 l-20 7 z", c(0xFFFFB020))
                 eye(122f, 66f, 5f, 123.5f, 64.5f, 1.8f)
-                ellipse(126f, 84f, 7f, 4f, c(0xFFFFB3C7), sw = 0f)
             }
         }
         KANGAROO -> {
-            shadow(100f, 160f, 62f, 7f)
+            shadow(100f, 160f, 64f, 7f)
             translate(0f, bob) {
-                svg("M70 124 q-38 8 -54 30", null, sw = 14f)
-                svg("M70 124 q-38 8 -54 30", null, sw = 6f, stroke = c(0xFFD59A5B))
-                ellipse(84f, 150f, 26f, 8f, c(0xFFB97D40), a, 90f, 146f)
-                ellipse(134f, 26f, 7f, 17f, c(0xFFD59A5B), rot = -12f)
-                ellipse(98f, 102f, 34f, 46f, c(0xFFD59A5B), rot = 28f)
-                ellipse(110f, 110f, 16f, 26f, c(0xFFF1D2A8), rot = 28f, sw = 4f)
-                ellipse(84f, 128f, 24f, 17f, c(0xFFD59A5B))
-                ellipse(106f, 152f, 26f, 8f, c(0xFFD59A5B), b, 98f, 146f)
-                svg("M128 90 q14 12 24 4", null, sw = 6f)
-                ellipse(148f, 26f, 7f, 17f, c(0xFFD59A5B), rot = 12f)
-                ellipse(146f, 54f, 22f, 18f, c(0xFFD59A5B))
-                ellipse(166f, 60f, 13f, 9f, c(0xFFF1D2A8))
-                eye(150f, 49f, 4.5f, 151.5f, 47.5f, 1.6f)
-                dot(177f, 57f, 3f)
+                val fur = c(0xFFD59A5B)
+                val dark = c(0xFFB97D40)
+                val cream = c(0xFFF1D2A8)
+                // 굵게 시작해 가늘어지는 꼬리 (땅을 짚음)
+                svg("M80 110 Q42 124 14 148 Q10 156 20 156 Q50 140 86 132 Z", fur)
+                // 먼 쪽 긴 뒷발
+                svg("M84 143 L128 145 Q138 147 134 154 L84 155 Q77 150 84 143 Z", dark, rot = b, px = 90f, py = 148f)
+                // 먼 쪽 귀 · 팔
+                ellipse(134f, 30f, 7f, 18f, dark, rot = -18f)
+                svg("M128 84 q8 14 22 15", null, sw = 10f)
+                svg("M128 84 q8 14 22 15", null, sw = 4.5f, stroke = dark)
+                // 몸통 (앞으로 기운 상체) + 배·주머니
+                ellipse(104f, 96f, 30f, 44f, fur, rot = 24f)
+                ellipse(117f, 106f, 15f, 27f, cream, rot = 24f, sw = 0f)
+                // 힘센 허벅지
+                ellipse(86f, 124f, 29f, 22f, fur, rot = -12f)
+                svg("M72 118 q10 -8 24 -6", null, sw = 3f, stroke = c(0xFFE8B880))
+                // 가까운 긴 뒷발
+                svg("M82 142 L132 144 Q143 146 139 154 L82 156 Q74 150 82 142 Z", fur, rot = a, px = 90f, py = 148f)
+                // 머리: 길쭉한 주둥이 + 코 + 입
+                ellipse(148f, 58f, 20f, 17f, fur)
+                ellipse(167f, 66f, 15f, 10f, cream, rot = 14f)
+                ellipse(181f, 64f, 4.2f, 3.2f, Ink, sw = 0f)
+                svg("M170 74 q5 3 10 -1", null, sw = 2.2f)
+                // 가까운 귀 (안쪽 분홍)
+                ellipse(150f, 28f, 8f, 19f, fur, rot = 10f)
+                ellipse(150f, 30f, 3.5f, 12f, c(0xFFF4B8A8), rot = 10f, sw = 0f)
+                eye(153f, 52f, 5f, 154.6f, 50.2f, 1.7f)
+                // 가까운 팔 + 앞발
+                svg("M134 84 q8 14 22 14", null, sw = 11f)
+                svg("M134 84 q8 14 22 14", null, sw = 5.5f, stroke = fur)
+                circle(157f, 98f, 4.5f, fur, sw = 3f)
             }
         }
         ELEPHANT -> {
@@ -535,7 +564,6 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
                 svg("M168 104 q22 4 18 16 q-8 6 -22 0 z", c(0xFFF0D2A8))
                 dot(186f, 113f, 4.5f)
                 eye(158f, 102f, 4.5f, 159.5f, 100.5f, 1.6f)
-                ellipse(156f, 116f, 6f, 3.5f, c(0xFFFF9DB5), sw = 0f)
             }
         }
         CAPYBARA -> {
@@ -618,8 +646,6 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
                 svg("M146 94 q5 -3 10 0 q-1 5 -5 6 q-4 -1 -5 -6 z", Ink, sw = 2f)
                 svg("M143 103 q8 7 16 0", null, sw = 3f)
                 svg("M148 106 q3 8 6 0 z", c(0xFFE5484D), sw = 2f)
-                ellipse(129f, 98f, 5f, 3f, c(0xFFFFB3BF), sw = 0f)
-                ellipse(173f, 98f, 5f, 3f, c(0xFFFFB3BF), sw = 0f)
             }
         }
     }

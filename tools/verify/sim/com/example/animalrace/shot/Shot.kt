@@ -254,6 +254,17 @@ private fun scenes(): List<Scene> {
                 }
             }
         },
+        Scene("duo", w = 4 * 230 + 20, h = 2 * 210 + 20) {
+            // 돼지·캥거루 크게: 서 있기 + 달리기 자세 3개
+            Column(Modifier.padding(10.dp)) {
+                listOf(Animal.PIG, Animal.KANGAROO).forEach { a ->
+                    Row {
+                        AnimalSprite(a, 220.dp, modifier = Modifier.padding(5.dp))
+                        (0..2).forEach { f -> AnimalSprite(a, 220.dp, frame = f, modifier = Modifier.padding(5.dp)) }
+                    }
+                }
+            }
+        },
         sheet("skills", Fx.SKILL),
         sheet("skills-alt", Fx.SKILL_ALT),
         Scene("race", snaps = listOf(1500, 7000, 13000, 20000, 25000, 29000)) {
