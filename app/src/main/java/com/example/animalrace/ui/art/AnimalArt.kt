@@ -267,6 +267,38 @@ private fun DrawScope.hamsterSide(a: Float, b: Float, bob: Float) {
     }
 }
 
+/** 오리 (시안 "오리 · 닭 다듬기" C안): 들린 꼬리·말린 깃·둥근 머리·날개 + 흰 몸·머리, 주황 부리·발. 머리·목·몸은 한 도형 */
+private fun DrawScope.duck(a: Float, b: Float, bob: Float, flap: Float) {
+    val orange = c(0xFFFF7A1C)
+    val wing = c(0xFFEDEAF1)
+    val feather = c(0xFFD3CCD9)
+    shadow(100f, 160f, 54f, 7f)
+    translate(0f, bob) {
+        fun leg(x: Float, rot: Float) = rotate(rot, Offset(x, 132f)) {
+            svg("M$x 132 l-1 15", null, sw = 9f)
+            svg("M$x 132 l-1 15", null, sw = 4f, stroke = c(0xFFE8892A))
+            svg("M${x - 9} 151 q10 -8 24 -1 q-12 7 -24 1 z", orange, sw = 3.5f)
+        }
+        leg(92f, a); leg(114f, b)
+        svg("M52 96 q-16 -4 -26 -20 q16 0 30 10 z", White)
+        svg("M40 80 q-6 -8 2 -12", null, sw = 3.5f)
+        // 몸 + 목 + 머리를 하나로 합쳐 윤곽선을 한 번만 (흰색끼리 겹친 선이 보이지 않게)
+        val whole = Path().apply {
+            op(oval(96f, 106f, 50f, 32f), oval(140f, 66f, 24f, 24f), androidx.compose.ui.graphics.PathOperation.Union)
+            op(this, oval(132f, 86f, 15f, 14f), androidx.compose.ui.graphics.PathOperation.Union)
+        }
+        drawPath(whole, White)
+        clipPath(whole) { drawOval(c(0xFFF1EEF4), Offset(52f, 116f), Size(96f, 30f)) }
+        paint(whole, null, 5f, Ink)
+        svg("M124 92 Q96 80 58 104 Q92 120 118 114 Q130 104 124 92 Z", wing, sw = 4f, rot = flap, px = 96f, py = 100f)
+        svg("M74 106 q14 6 30 4 M88 98 q14 -3 26 1", null, sw = 2.5f, stroke = feather, rot = flap, px = 96f, py = 100f)
+        svg("M159 61 q24 -3 28 8 q-3 9 -28 6 z", orange, sw = 4f)
+        svg("M162 69 q12 2 22 0", null, sw = 2f, stroke = c(0xFFD95F10))
+        dot(171f, 65f, 1.8f)
+        eye(147f, 60f, 4.5f, 148.5f, 58.5f, 1.6f)
+    }
+}
+
 /** 200×170 좌표계 기준으로 동물 한 마리를 그린다. 호출하는 쪽에서 크기에 맞게 scale한다. */
 internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
     val a = p.legA; val b = p.legB; val bob = p.bob
@@ -530,27 +562,7 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
                 eye(164f, 68f, 4.5f, 165.5f, 66.5f, 1.6f)
             }
         }
-        DUCK -> {
-            shadow(100f, 160f, 54f, 7f)
-            translate(0f, bob) {
-                rotate(a, Offset(92f, 134f)) {
-                    svg("M92 134 l-2 16", null, stroke = c(0xFFE8892A))
-                    ellipse(94f, 152f, 12f, 5f, c(0xFFFF9F1C))
-                }
-                rotate(b, Offset(112f, 134f)) {
-                    svg("M112 134 l2 16", null, stroke = c(0xFFE8892A))
-                    ellipse(118f, 152f, 12f, 5f, c(0xFFFF9F1C))
-                }
-                svg("M46 94 l-20 -16 l26 4 z", c(0xFFC9CFD8))
-                ellipse(96f, 106f, 50f, 32f, c(0xFFD7DCE3))
-                circle(128f, 108f, 22f, c(0xFFB5764A))
-                svg("M70 100 q26 -18 48 2 q-22 26 -48 -2 z", c(0xFFF4F6F9))
-                circle(140f, 66f, 24f, c(0xFF2F9E6E))
-                svg("M124 86 q16 8 32 0", null, sw = 6f, stroke = White)
-                svg("M160 64 q22 0 24 8 q-4 7 -24 4 z", c(0xFFFFC93C))
-                eye(147f, 60f, 4.5f, 148.5f, 58.5f, 1.6f)
-            }
-        }
+        DUCK -> duck(a, b, bob, p.wing)
         SNAIL -> {
             shadow(104f, 160f, 72f, 6f)
             rotate(a, Offset(166f, 102f)) {
@@ -572,16 +584,32 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
         CHICKEN -> {
             shadow(100f, 160f, 50f, 7f)
             translate(0f, bob) {
-                svg("M90 138 l-6 18 m0 0 l-8 0 m8 0 l8 0", null, stroke = c(0xFFE8892A), rot = a, px = 90f, py = 138f)
-                svg("M112 138 l4 18 m0 0 l-8 0 m8 0 l8 0", null, stroke = c(0xFFE8892A), rot = b, px = 112f, py = 138f)
-                svg("M58 92 q-28 -18 -22 -40 q18 6 26 20 q-4 -24 12 -32 q8 16 4 34 z", White)
-                ellipse(100f, 104f, 46f, 40f, White)
-                svg("M122 46 q2 -16 12 -8 q6 -14 14 -2 q10 -6 10 10 z", c(0xFFFF5A4A))
-                circle(138f, 68f, 26f, White)
-                svg("M162 66 l18 7 l-18 7 z", c(0xFFFFC93C))
-                ellipse(160f, 90f, 6f, 9f, c(0xFFFF5A4A))
-                eye(146f, 62f, 4.5f, 148f, 60f, 1.6f)
-                svg("M74 100 q24 -16 44 4 q-20 24 -44 -4 z", c(0xFFECE6F3), rot = p.wing, px = 96f, py = 100f)
+                val yellow = c(0xFFFFB020)
+                // 굵은 다리 + 발가락 세 개
+                fun leg(x: Float, rot: Float) = rotate(rot, Offset(x, 134f)) {
+                    svg("M$x 134 l-2 18", null, sw = 9f)
+                    svg("M$x 134 l-2 18", null, sw = 4f, stroke = yellow)
+                    svg("M${x - 2} 152 l-9 2 M${x - 2} 152 l9 2 M${x - 2} 152 l-1 5", null, sw = 6.5f)
+                    svg("M${x - 2} 152 l-9 2 M${x - 2} 152 l9 2 M${x - 2} 152 l-1 5", null, sw = 2.5f, stroke = yellow)
+                }
+                leg(90f, a); leg(114f, b)
+                // 꼬리: 채워진 둥근 깃털 세 개가 부채꼴로
+                // 꼬리: 위쪽이 물결진 부채 한 덩어리 + 깃털 줄
+                svg("M72 102 Q44 102 36 80 Q32 64 44 62 Q46 48 60 50 Q72 50 72 62 Q82 58 86 70 Q88 90 76 102 Z", White)
+                svg("M48 74 q8 12 18 22 M62 62 q4 14 8 30", null, sw = 2.5f, stroke = c(0xFFD9D0C2))
+                val body = oval(100f, 106f, 46f, 38f)
+                paint(body, White, 5f, Ink)
+                svg("M122 44 q2 -18 13 -9 q6 -16 15 -3 q11 -7 11 11 z", c(0xFFFF5A4A))
+                circle(138f, 68f, 25f, White)
+                // 목: 머리와 몸 사이 선을 흰색으로 덮어 이어지게
+                ellipse(126f, 90f, 14f, 12f, White, sw = 0f)
+                svg("M158 58 l26 11 l-26 11 z", c(0xFFFFC93C), sw = 3.5f)
+                svg("M160 69 l16 0", null, sw = 2f)
+                ellipse(158f, 90f, 6f, 9f, c(0xFFFF5A4A))
+                eye(147f, 62f, 4.5f, 148.5f, 60.5f, 1.6f)
+                // 날개: 둥근 날개 + 끝이 물결진 깃털
+                svg("M124 94 Q98 80 62 104 Q94 122 120 116 Q132 106 124 94 Z", c(0xFFF6F0E6), sw = 4f, rot = p.wing, px = 96f, py = 100f)
+                svg("M78 106 q14 6 30 4 M88 98 q14 -2 26 2", null, sw = 2.5f, stroke = c(0xFFD9D0C2), rot = p.wing, px = 96f, py = 100f)
             }
         }
         SKUNK -> {

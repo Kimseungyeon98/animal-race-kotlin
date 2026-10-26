@@ -254,7 +254,7 @@ private fun scenes(): List<Scene> {
                 }
             }
         },
-        *listOf("duo" to listOf(Animal.PIG, Animal.KANGAROO), "trio" to listOf(Animal.CHEETAH, Animal.PENGUIN, Animal.PANDA)).map { (name, list) ->
+        *listOf("duo" to listOf(Animal.PIG, Animal.KANGAROO), "trio" to listOf(Animal.CHEETAH, Animal.PENGUIN, Animal.PANDA), "birds" to listOf(Animal.DUCK, Animal.CHICKEN)).map { (name, list) ->
         Scene(name, w = 4 * 230 + 20, h = list.size * 210 + 20) {
             // 크게: 서 있기 + 달리기 자세 3개
             Column(Modifier.padding(10.dp)) {
