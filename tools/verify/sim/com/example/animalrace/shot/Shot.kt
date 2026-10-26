@@ -200,6 +200,30 @@ private fun scenes(): List<Scene> {
                 }
             }
         },
+        Scene("venue-trip", w = 170 * 4 + 24, h = 200 * 4 + 24) {
+            // 경기장별 혼자 넘어짐: 줄마다 경기장, 칸마다 시간 0.3·0.8·1.3·1.8초
+            Column(Modifier.padding(12.dp)) {
+                Venue.entries.forEach { v ->
+                    Row {
+                        listOf(0.3f, 0.8f, 1.3f, 1.8f).forEach { tm ->
+                            Box(Modifier.width(170.dp).padding(top = 40.dp, start = 20.dp)) {
+                                AnimalSprite(Animal.RABBIT, 130.dp, fx = Fx.TRIP, fxTime = tm, venue = v)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        Scene("tornado", w = 4 * 260, h = 330, snaps = listOf(1000)) {
+            // 사막 혼자 넘어짐 (회오리) 0.3·0.9·1.5·2.1초
+            Row(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFE9B979))) {
+                listOf(0.3f, 0.9f, 1.5f, 2.1f).forEach { tm ->
+                    Box(Modifier.width(260.dp).padding(start = 50.dp, top = 150.dp)) {
+                        AnimalSprite(Animal.RABBIT, 100.dp, fx = Fx.TRIP, fxTime = tm, venue = Venue.DESERT)
+                    }
+                }
+            }
+        },
         sheet("skills", Fx.SKILL),
         sheet("skills-alt", Fx.SKILL_ALT),
         Scene("race", snaps = listOf(1500, 7000, 13000, 20000, 25000, 29000)) {
