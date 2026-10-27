@@ -42,6 +42,7 @@ import com.example.animalrace.ui.race.RaceScreen
 import com.example.animalrace.ui.setup.SetupScreen
 import com.example.animalrace.ui.setup.RankSheet
 import com.example.animalrace.ui.setup.NameSheet
+import com.example.animalrace.ui.setup.HistorySheet
 import com.example.animalrace.ui.result.ShareSheet
 import com.example.animalrace.model.RankMode
 import com.example.animalrace.model.RankSetting
@@ -350,6 +351,26 @@ private fun scenes(): List<Scene> {
             val rec = RaceRecord(0L, "", 1, results(Animal.CHEETAH, Animal.DOG, Animal.MONKEY), Venue.DESERT)
             Box(Modifier.fillMaxSize()) { ResultScreen(rec, onAgain = {}, onHome = {}); ShareSheet(rec) {} }
         },
+        // ---- 4.2 우리 기록
+        *listOf("ours", "ours-empty").map { name ->
+            Scene(name) {
+                val state = AppState(FakeRepo).apply {
+                    saveGroup(listOf("민수", "지은", "현우", "서연"))
+                    if (name == "ours") {
+                        val people = listOf("민수", "지은", "현우", "서연")
+                        val animals = listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PIG)
+                        val order = listOf(listOf(1, 0, 2, 3), listOf(0, 2, 1, 3), listOf(2, 1, 0, 3), listOf(1, 3, 0, 2), listOf(0, 1, 3, 2),
+                            listOf(3, 0, 1, 2), listOf(1, 2, 3, 0), listOf(0, 3, 2, 1), listOf(2, 0, 1, 3))
+                        val now = System.currentTimeMillis()
+                        val bets = listOf("꼴찌가 커피 쏘기", "아이스크림", "설거지")
+                        history.addAll(order.mapIndexed { k, o ->
+                            RaceRecord(now - k * 3_600_000L, bets[k % 3], 1, o.mapIndexed { i, p -> RaceResult(animals[p], 30.0 + i, 0, p, people[p]) })
+                        })
+                    }
+                }
+                Box(Modifier.fillMaxSize()) { SetupScreen(state); HistorySheet(state) {} }
+            }
+        }.toTypedArray(),
         sheet("skills", Fx.SKILL),
         sheet("skills-alt", Fx.SKILL_ALT),
         Scene("race", snaps = listOf(1500, 7000, 13000, 20000, 25000, 29000)) {

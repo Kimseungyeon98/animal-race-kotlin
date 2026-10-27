@@ -263,7 +263,7 @@ class AppState(private val repo: AppRepository) {
     companion object {
         const val MIN_RACERS = 2
         const val MAX_RACERS = 10
-        const val HISTORY_SIZE = 10
+        const val HISTORY_SIZE = 200
         const val MEMBERS_SIZE = 12
         const val GROUPS_SIZE = 5
         const val NAME_MAX = 8

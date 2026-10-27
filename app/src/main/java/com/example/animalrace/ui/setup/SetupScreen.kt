@@ -185,7 +185,7 @@ fun SetupScreen(state: AppState) {
                     IconTileButton(Icons2.Book, "도감", onClick = { dexIndex = focused.ordinal })
                     IconTileButton(
                         Icons2.Trophy, "기록", onClick = { showHistory = true },
-                        badge = state.history.size.takeIf { it > 0 }?.toString(),
+                        badge = state.history.size.takeIf { it > 0 }?.let { if (it > 99) "99+" else "$it" },
                     )
                 }
 
@@ -792,7 +792,7 @@ private fun ModeCard(title: String, sub: String, selected: Boolean, modifier: Mo
 }
 
 @Composable
-private fun SmallChip(text: String, selected: Boolean, onClick: () -> Unit) {
+internal fun SmallChip(text: String, selected: Boolean, onClick: () -> Unit) {
     Text(
         text, fontSize = 13.sp, color = Pal.Ink,
         modifier = Modifier
@@ -1056,15 +1056,21 @@ private fun Sheet(onClose: () -> Unit, fill: Boolean = true, content: @Composabl
 // ---------------------------------------------------------------- 최근 경기
 
 @Composable
-private fun HistorySheet(state: AppState, onClose: () -> Unit) {
+internal fun HistorySheet(state: AppState, onClose: () -> Unit) {
     var confirmClear by remember { mutableStateOf(false) }
+    // 우리 기록 (4.2) 탭: 이름 붙인 판이 있으면 먼저 보여 준다
+    var ours by remember { mutableStateOf(state.history.any { r -> r.results.any { it.who != null } }) }
     Sheet(onClose) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("최근 경기", fontSize = 24.sp, color = Pal.Ink)
-                Text("최근 ${AppState.HISTORY_SIZE}판까지 저장돼요.", fontSize = 13.sp, color = Pal.InkSoft)
+            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Bottom) {
+                listOf(true to "우리 기록", false to "최근 경기").forEach { (tab, title) ->
+                    Text(
+                        title, fontSize = if (tab == ours) 24.sp else 18.sp, color = if (tab == ours) Pal.Ink else Pal.InkSoft,
+                        modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { ours = tab; confirmClear = false },
+                    )
+                }
             }
-            if (state.history.isNotEmpty()) {
+            if (!ours && state.history.isNotEmpty()) {
                 Text(
                     if (confirmClear) "정말 지울까요?" else "기록 지우기", fontSize = 14.sp,
                     color = if (confirmClear) Pal.TomatoText else Pal.InkSoft,
@@ -1077,7 +1083,8 @@ private fun HistorySheet(state: AppState, onClose: () -> Unit) {
             }
             SquareIcon(Icons2.Close, "기록 닫기", onClose)
         }
-        if (state.history.isEmpty()) {
+        if (ours) OurRecords(state)
+        else if (state.history.isEmpty()) {
             Column(
                 Modifier
                     .fillMaxWidth()
@@ -1093,6 +1100,7 @@ private fun HistorySheet(state: AppState, onClose: () -> Unit) {
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 8.dp)) {
+                item { Text("최근 ${AppState.HISTORY_SIZE}판까지 저장돼요.", fontSize = 13.sp, color = Pal.InkSoft) }
                 itemsIndexed(state.history, key = { _, r -> r.at }) { i, record -> HistoryCard(state.history.size - i, record) }
             }
         }
