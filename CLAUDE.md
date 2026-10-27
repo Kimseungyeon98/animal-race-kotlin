@@ -15,7 +15,7 @@ Kotlin + Jetpack Compose 안드로이드 앱. 소유자는 Java Spring 개발자
 1. **시안 먼저**: 디자인 캔버스에 보드를 만들어 보여 주고 확인받는다. "바로 수정하지 말고 시안부터"가 기본.
 2. 확인받으면 앱에 반영 → `tools/verify`로 컴파일·테스트.
 3. **버전 올리기**: `app/build.gradle.kts`의 `versionCode` +1, `versionName` 올림 (기능 = 3.x, 수정·문서 = 3.x.y).
-4. **README**: 버전 배지, 📋 전체 패치노트에 새 버전 항목(맨 위), 큰 변화면 "이렇게 자라 왔어요" 표에도 한 줄.
+4. **README**: 버전 배지, 📋 전체 패치노트에 새 버전 항목(맨 위), 큰 변화면 "이렇게 자라 왔어요" 표 **맨 아래**에도 한 줄 (표는 오래된 버전부터 순서대로).
 5. **캔버스 변경 이력 보드**(`Changelog.dc.html`)에 새 버전을 맨 위에 추가하고 직전 버전 색은 흰색으로. 반영한 시안 보드 제목에 "(앱 x.y 반영)".
 6. main에 커밋·푸시 (아래 커밋 형식). PR은 요청할 때만.
 7. 태그는 소유자가 직접 붙인다. 이렇게 안내한다:
@@ -71,6 +71,8 @@ Claude-Session: <세션 링크>
 | 경주 엔진·전개·해설 | `race/Race.kt` |
 | 앱 상태·화면 전환·랜덤 등수/미니게임 추첨 | `AppState.kt` |
 | 랜덤 등수 / 미니게임·사다리 모델 | `model/RandomRank.kt`, `model/MiniGame.kt` |
+| 사람 이름(참가자·최근 멤버·멤버 묶음) / 우리 기록 통계 | `AppState.kt`의 `names`·`members`·`groups`, `ui/setup/SetupScreen.kt`의 `NameSheet` / `model/Stats.kt`, `ui/setup/OurRecords.kt` |
+| 결과 공유 카드 (카드 / 안드로이드 공유·저장) | `ui/result/ShareCard.kt` / `data/AndroidSharer.kt` (검증 빌드에서 제외, `res/xml/share_paths.xml`) |
 | 메인 / 경주(룰렛 포함) / 결과 / 미니게임 화면 | `ui/setup/`, `ui/race/RaceScreen.kt`, `ui/result/`, `ui/minigame/` |
 | 캐릭터 그림·연출, 경기장 | `ui/art/`, `ui/race/Stadium.kt`, `ui/race/Guests.kt` |
 | 색·폰트·공통 컴포넌트 | `ui/theme/`, `ui/components/` |
@@ -78,4 +80,4 @@ Claude-Session: <세션 링크>
 
 ## 스토어 배포 전 할 일
 
-패키지명 변경(`com.example` → 스토어 배포 전 필수), targetSdk 올리기. (결과 공유 카드·신규 캐릭터·해적 룰렛·악어 이빨 시안은 3.18에서 접고 지움)
+패키지명 변경(`com.example` → 스토어 배포 전 필수), targetSdk 올리기. (신규 캐릭터·해적 룰렛·악어 이빨 시안은 3.18에서 접고 지움. 결과 공유 카드는 4.1에서 새로 만듦)
