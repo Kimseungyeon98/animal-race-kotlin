@@ -299,6 +299,65 @@ private fun DrawScope.duck(a: Float, b: Float, bob: Float, flap: Float) {
     }
 }
 
+/** 둥근 끝 가시 왕관: 타원 (cx,cy,rx,ry)의 [from]~[to]도 구간에 [n]개, 끝은 out배 바깥 */
+private fun spikeCrown(cx: Float, cy: Float, rx: Float, ry: Float, from: Float, to: Float, n: Int, out: Float): Path {
+    fun pt(deg: Float, k: Float): Offset {
+        val t = Math.toRadians(deg.toDouble())
+        return Offset(cx + rx * k * kotlin.math.cos(t).toFloat(), cy - ry * k * kotlin.math.sin(t).toFloat())
+    }
+    fun lerp(p: Offset, q: Offset, f: Float) = Offset(p.x + (q.x - p.x) * f, p.y + (q.y - p.y) * f)
+    return Path().apply {
+        val step = (to - from) / n
+        var base = pt(from, 1f)
+        moveTo(cx, cy); lineTo(base.x, base.y)
+        for (i in 0 until n) {
+            val tip = pt(from + step * (i + 0.5f), out)
+            val next = pt(from + step * (i + 1), 1f)
+            val p1 = lerp(base, tip, 0.72f); val p2 = lerp(tip, next, 0.28f)
+            lineTo(p1.x, p1.y); quadraticTo(tip.x, tip.y, p2.x, p2.y); lineTo(next.x, next.y)
+            base = next
+        }
+        close()
+    }
+}
+
+private val HogSpike = Color(0xFF7E5236)
+private val HogSpikeIn = Color(0xFFA8754C)
+private val HogFace = Color(0xFFF6DDB6)
+private val HogFeet = Color(0xFFE2B98E)
+
+/** 고슴도치 (시안 "고슴도치 더 귀엽게", 4.3): 통통한 몸 + 둥근 끝 가시 두 겹 + 큰 동그란 얼굴·눈, 짧은 다리 */
+private fun DrawScope.hedgehogCute(a: Float, b: Float, bob: Float) {
+    val sw = 4.5f
+    val U = androidx.compose.ui.graphics.PathOperation.Union
+    shadow(100f, 160f, 56f, 7f)
+    translate(0f, bob) {
+        fun leg(x: Float, fill: Color, rot: Float) = rotate(rot, Offset(x, 134f)) {
+            rrect(x - 7f, 130f, 14f, 20f, 7f, fill)
+            ellipse(x + 3f, 151f, 9f, 4.5f, HogFeet, sw = 3.5f)
+        }
+        leg(80f, c(0xFFC99A6E), b); leg(128f, c(0xFFC99A6E), a)
+        // 몸 + 바깥 가시를 한 도형으로 (윤곽선 한 번)
+        val whole = Path().apply { op(spikeCrown(94f, 112f, 54f, 40f, 200f, 32f, 9, 1.32f), oval(98f, 120f, 52f, 28f), U) }
+        drawPath(whole, HogSpike)
+        clipPath(whole) {
+            // 안쪽 가시 (밝은 갈색, 반 칸 엇갈림) + 아래 크림색 배
+            drawPath(spikeCrown(96f, 118f, 42f, 30f, 192f, 40f, 7, 1.3f), HogSpikeIn)
+            drawOval(HogFace, Offset(54f, 128f), Size(96f, 34f))
+        }
+        paint(whole, null, sw, Ink)
+        leg(66f, HogFeet, a); leg(114f, HogFeet, b)
+        // 얼굴: 크고 동그랗게 + 앞으로 살짝 나온 주둥이
+        val face = Path().apply { op(oval(148f, 110f, 27f, 26f), oval(170f, 117f, 15f, 10f), U) }
+        circle(134f, 86f, 7.5f, HogFace, sw = sw); dot(134f, 87f, 3.6f, c(0xFFE5A98F))
+        paint(face, HogFace, sw, Ink)
+        dot(185f, 115f, 5.5f); dot(183.3f, 113.2f, 1.6f, White)
+        // 큰 눈 + 반짝이 두 개
+        dot(158f, 104f, 6.5f); dot(160f, 101.5f, 2.3f, White); dot(155.8f, 106.6f, 1.1f, White)
+        svg("M171 124 q5 4 10 0", null, sw = 2.4f)
+    }
+}
+
 /** 200×170 좌표계 기준으로 동물 한 마리를 그린다. 호출하는 쪽에서 크기에 맞게 scale한다. */
 internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
     val a = p.legA; val b = p.legB; val bob = p.bob
@@ -632,23 +691,7 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
                 dot(161f, 86f, 5.5f, White); dot(161f, 86f, 3.5f, c(0xFF1E1A24)); dot(162.3f, 84.7f, 1.4f, White)
             }
         }
-        HEDGEHOG -> {
-            shadow(100f, 160f, 56f, 7f)
-            translate(0f, bob) {
-                // 몸과 색이 달라서 다리를 모두 가시 치마 아래에 숨겨 아래쪽만 보이게 한다
-                farLeg(66f, 124f, 14f, 26f, c(0xFFC9A27A), b, 73f, 128f, hind = true, Foot.PAW)
-                farLeg(104f, 124f, 14f, 26f, c(0xFFC9A27A), a, 111f, 128f, hind = false, Foot.PAW)
-                farLeg(80f, 124f, 14f, 26f, c(0xFFE6C49A), a, 87f, 128f, hind = true, Foot.PAW)
-                farLeg(124f, 124f, 14f, 26f, c(0xFFE6C49A), b, 131f, 128f, hind = false, Foot.PAW)
-                svg("M34 132 L24 114 L40 110 L28 92 L48 94 L42 74 L60 82 L62 60 L78 74 L88 54 L98 74 L112 58 L116 78 L132 68 L130 88 L146 86 L150 104 L154 132 Z", c(0xFF7A5236))
-                svg("M54 128 q4 -40 46 -46 q34 2 42 46 z", c(0xFF9C6B46), sw = 0f)
-                circle(140f, 90f, 8f, c(0xFFF0D2A8))
-                ellipse(150f, 112f, 28f, 24f, c(0xFFF0D2A8))
-                svg("M168 104 q22 4 18 16 q-8 6 -22 0 z", c(0xFFF0D2A8))
-                dot(186f, 113f, 4.5f)
-                eye(158f, 102f, 4.5f, 159.5f, 100.5f, 1.6f)
-            }
-        }
+        HEDGEHOG -> hedgehogCute(a, b, bob)
         CAPYBARA -> {
             shadow(100f, 160f, 66f, 7f)
             translate(0f, bob) {

@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-4.2-4C9A2A" alt="version 4.2">
+  <img src="https://img.shields.io/badge/version-4.3-4C9A2A" alt="version 4.3">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -99,11 +99,18 @@
 | **4.0** | **사람이 주인공** — 동물에 이름 붙이기 · 최근 멤버 · 멤버 묶음 · 이름으로 중계·결과 |
 | **4.1** | **결과 공유 카드** — 당첨자 이름·시상대를 이미지 한 장으로, 단톡방 공유·사진 저장 |
 | **4.2** | **우리 기록** — 기간·멤버 묶음별 벌칙 왕·1등 왕·연속 당첨·최근 벌칙 · 기록 200판 |
+| **4.3** | **고슴도치 다시 그리기** — 둥근 끝 가시 두 겹, 통통한 몸, 큰 얼굴·눈 |
 
 ---
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 4.3 — 고슴도치 더 귀엽게 (캔버스 "🦔 고슴도치 더 귀엽게")
+- 🦔 뾰족한 삼각 가시 → **끝이 둥근 가시 두 겹** (진한 갈색 바깥 + 밝은 갈색 안쪽), 몸과 가시를 한 윤곽으로 합쳐 통통한 밤송이 모양
+- 각진 주둥이·작은 눈 → **크고 동그란 얼굴** + 살짝 나온 주둥이, 반짝이 두 개 달린 큰 눈, 동그란 코, 작은 미소, 분홍 귀 속 · 아래 크림색 배
+- 다리는 햄스터처럼 짧고 같은 모양 네 개 (먼 쪽 진하게) · 홍조 없음
+- `shot -Pscene=hedgehog`로 확인
 
 ### 4.2 — 우리 기록 (캔버스 "🙋 4.0 사람이 주인공" ⑥)
 - 📒 메인 [기록] 창에 **우리 기록 | 최근 경기** 탭 (이름 붙인 판이 있으면 우리 기록부터)

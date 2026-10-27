@@ -283,6 +283,14 @@ private fun scenes(): List<Scene> {
                 }
             }
         },
+        Scene("hedgehog", w = 3 * 200 + 20 + 4 * 70, h = 200) {
+            // 고슴도치: 서 있기 + 달리기 2 + 실제 크기로 햄스터·카피바라·토끼와 나란히
+            Row(Modifier.padding(10.dp), verticalAlignment = Alignment.Bottom) {
+                AnimalSprite(Animal.HEDGEHOG, 190.dp, modifier = Modifier.padding(5.dp))
+                (1..2).forEach { f -> AnimalSprite(Animal.HEDGEHOG, 190.dp, frame = f, modifier = Modifier.padding(5.dp)) }
+                listOf(Animal.HEDGEHOG, Animal.HAMSTER, Animal.CAPYBARA, Animal.RABBIT).forEach { a -> AnimalSprite(a, 64.dp, modifier = Modifier.padding(3.dp)) }
+            }
+        },
         Scene("hamster", w = 3 * 200 + 20 + 3 * 70, h = 200) {
             // 햄스터: 서 있기 + 달리기 2 + 실제 크기로 토끼·돼지와 나란히
             Row(Modifier.padding(10.dp), verticalAlignment = Alignment.Bottom) {
