@@ -40,6 +40,7 @@ import com.example.animalrace.ui.result.ResultScreen
 import com.example.animalrace.ui.race.RaceScreen
 import com.example.animalrace.ui.setup.SetupScreen
 import com.example.animalrace.ui.setup.RankSheet
+import com.example.animalrace.ui.setup.NameSheet
 import com.example.animalrace.model.RankMode
 import com.example.animalrace.model.RankSetting
 import com.example.animalrace.ui.theme.AnimalRaceTheme
@@ -286,6 +287,46 @@ private fun scenes(): List<Scene> {
                 (1..2).forEach { f -> AnimalSprite(Animal.HAMSTER, 190.dp, frame = f, modifier = Modifier.padding(5.dp)) }
                 listOf(Animal.HAMSTER, Animal.RABBIT, Animal.PIG).forEach { a -> AnimalSprite(a, 64.dp, modifier = Modifier.padding(3.dp)) }
             }
+        },
+        // ---- 4.0 사람이 주인공
+        Scene("people-setup") {
+            val state = AppState(FakeRepo).apply {
+                listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PIG).forEach { toggle(it) }
+                updateNames(mapOf(Animal.HORSE to "민수", Animal.CAT to "지은", Animal.RABBIT to "현우", Animal.PIG to "서연"))
+            }
+            SetupScreen(state)
+        },
+        Scene("people-sheet") {
+            val state = AppState(FakeRepo).apply {
+                listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PIG).forEach { toggle(it) }
+                updateNames(mapOf(Animal.CAT to "하린", Animal.RABBIT to "도윤"))
+                updateNames(mapOf(Animal.HORSE to "민수", Animal.CAT to "지은", Animal.RABBIT to "현우"))
+                saveGroup(listOf("민수", "지은", "현우", "서연")); saveGroup(listOf("아빠", "엄마", "도윤"))
+            }
+            Box(Modifier.fillMaxSize()) { SetupScreen(state); NameSheet(state) {} }
+        },
+        Scene("people-race", snaps = listOf(1500, 9000)) {
+            RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PIG), "커피 쏘기", 0, { _, _ -> },
+                names = mapOf(Animal.HORSE to "민수", Animal.CAT to "지은", Animal.RABBIT to "현우", Animal.PIG to "서연"))
+        },
+        Scene("people-result") {
+            val who = listOf("지은", "민수", "현우", "서연")
+            ResultScreen(
+                RaceRecord(0L, "꼴찌가 커피 쏘기", 3, results(Animal.CAT, Animal.HORSE, Animal.RABBIT, Animal.PIG).mapIndexed { i, r -> r.copy(who = who[i]) }, Venue.MEADOW),
+                onAgain = {}, onHome = {},
+            )
+        },
+        Scene("people-picks") {
+            val who = listOf("지은", "민수", "현우", "서연", "도윤")
+            ResultScreen(
+                RaceRecord(0L, "커피 쏘기", 3, results(Animal.CAT, Animal.HORSE, Animal.RABBIT, Animal.PIG, Animal.DOG).mapIndexed { i, r -> r.copy(who = who[i]) },
+                    Venue.BEACH, listOf(2, 4)),
+                onAgain = {}, onHome = {},
+            )
+        },
+        Scene("people-lotto") {
+            val players = results(Animal.CAT, Animal.PIG, Animal.PANDA).mapIndexed { i, r -> r.copy(who = listOf("지은", "서연", "도윤")[i]) }
+            MiniGameScreen(MiniGameSession(MiniGame.LOTTO, players, Ladder.random(3), 1), "커피 쏘기", {}, {})
         },
         sheet("skills", Fx.SKILL),
         sheet("skills-alt", Fx.SKILL_ALT),

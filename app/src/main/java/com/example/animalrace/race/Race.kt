@@ -129,7 +129,13 @@ class Racer internal constructor(val lane: Int, val animal: Animal) {
 /**
  * [venue]는 "혼자 넘어짐" 해설 문구만 바꾼다(문구 수가 같아 난수 사용·결과는 경기장과 무관).
  */
-class Race(animals: List<Animal>, private val rnd: Random = Random.Default, private val venue: Venue = Venue.MEADOW) {
+/** [names]: 동물마다 달리는 사람 이름 (4.0). 중계에서 동물 대신 이름으로 부른다 (표시만, 결과와 무관) */
+class Race(
+    animals: List<Animal>,
+    private val rnd: Random = Random.Default,
+    private val venue: Venue = Venue.MEADOW,
+    private val names: Map<Animal, String> = emptyMap(),
+) {
     val racers = animals.mapIndexed { i, a -> Racer(i, a) }
 
     /** 레인별 결승 시각(초). 1등 16.8~18.4초, 이후 0.08~0.45초 간격. */
@@ -220,7 +226,7 @@ class Race(animals: List<Animal>, private val rnd: Random = Random.Default, priv
         events += RaceEvent(events.size, t, text, kind)
     }
 
-    private fun tag(r: Racer) = "${r.animal.emoji} ${r.animal.label}"
+    private fun tag(r: Racer) = "${r.animal.emoji} ${names[r.animal] ?: r.animal.label}"
 
     // ================================================================ 스토리보드
 

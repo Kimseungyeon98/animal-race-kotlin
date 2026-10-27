@@ -30,7 +30,9 @@ class PrefsRepository(context: Context) : AppRepository {
                 fixed = r.optJSONArray("fixed")?.let { a -> (0 until a.length()).map { a.getInt(it) } }.orEmpty(),
             )
         } ?: RankSetting()
-        SavedSetup(animals, json.optString("bet"), json.optBoolean("randomRank"), rank)
+        fun strings(a: JSONArray?) = a?.let { arr -> (0 until arr.length()).map { arr.getString(it) } }.orEmpty()
+        val groups = json.optJSONArray("groups")?.let { arr -> (0 until arr.length()).map { strings(arr.optJSONArray(it)) } }.orEmpty()
+        SavedSetup(animals, json.optString("bet"), json.optBoolean("randomRank"), rank, strings(json.optJSONArray("members")), groups)
     }.getOrNull()
 
     override fun saveSetup(setup: SavedSetup) {
@@ -39,6 +41,8 @@ class PrefsRepository(context: Context) : AppRepository {
             .put("bet", setup.bet)
             .put("randomRank", setup.randomRank)
             .put("rank", JSONObject().put("mode", setup.rank.mode.name).put("count", setup.rank.count).put("fixed", JSONArray(setup.rank.fixed)))
+            .put("members", JSONArray(setup.members))
+            .put("groups", JSONArray(setup.groups.map { JSONArray(it) }))
         prefs.edit().putString(KEY_SETUP, json.toString()).apply()
     }
 
@@ -61,14 +65,14 @@ class PrefsRepository(context: Context) : AppRepository {
             val res = o.getJSONArray("results")
             val results = (0 until res.length()).mapNotNull { j ->
                 val r = res.getJSONObject(j)
-                animalOf(r.getString("a"))?.let { RaceResult(it, r.getDouble("t"), r.optInt("u"), r.optInt("l", j)) }
+                animalOf(r.getString("a"))?.let { RaceResult(it, r.getDouble("t"), r.optInt("u"), r.optInt("l", j), r.optString("w").ifEmpty { null }) }
             }
             val picks = o.optJSONArray("picks")?.let { p -> (0 until p.length()).map { p.getInt(it) } }
             // 3.11 기록은 "mollbang" 키로 저장돼 있다
             val miniGame = (o.optJSONObject("miniGame") ?: o.optJSONObject("mollbang"))?.let { m ->
                 val game = MiniGame.entries.firstOrNull { it.name == m.optString("g") }
                 val loser = animalOf(m.optString("a"))
-                if (game != null && loser != null) MiniGameResult(game, loser) else null
+                if (game != null && loser != null) MiniGameResult(game, loser, m.optString("w").ifEmpty { null }) else null
             }
             if (results.isEmpty()) null
             else RaceRecord(o.getLong("at"), o.optString("bet"), o.optInt("lead"), results,
@@ -81,14 +85,14 @@ class PrefsRepository(context: Context) : AppRepository {
         history.forEach { rec ->
             val results = JSONArray()
             rec.results.forEach { r ->
-                results.put(JSONObject().put("a", r.animal.name).put("t", r.time).put("u", r.skillUses).put("l", r.lane))
+                results.put(JSONObject().put("a", r.animal.name).put("t", r.time).put("u", r.skillUses).put("l", r.lane).put("w", r.who))
             }
             arr.put(
                 JSONObject().put("at", rec.at).put("bet", rec.bet).put("lead", rec.leadChanges).put("results", results)
                     .put("venue", rec.venue?.name)
                     .put("picks", rec.picks?.let { JSONArray(it) })
                     .put("fixed", rec.picksFixed)
-                    .put("miniGame", rec.miniGame?.let { JSONObject().put("g", it.game.name).put("a", it.loser.name) }),
+                    .put("miniGame", rec.miniGame?.let { JSONObject().put("g", it.game.name).put("a", it.loser.name).put("w", it.who) }),
             )
         }
         prefs.edit().putString(KEY_HISTORY, arr.toString()).apply()

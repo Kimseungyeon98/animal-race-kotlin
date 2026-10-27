@@ -25,13 +25,22 @@ data class RaceResult(
     val skillUses: Int,
     /** 출전 번호(0부터) */
     val lane: Int = 0,
-)
+    /** 이 동물로 달린 사람 이름 (4.0, 없으면 null) */
+    val who: String? = null,
+) {
+    /** 화면에 부를 이름: 사람 이름이 있으면 사람, 없으면 동물 */
+    val name: String get() = who ?: animal.label
+}
 
 data class SavedSetup(
     val animals: List<Animal>,
     val bet: String,
     val randomRank: Boolean = false,
     val rank: RankSetting = RankSetting(),
+    /** 최근에 쓴 사람 이름 (최근 것이 앞) */
+    val members: List<String> = emptyList(),
+    /** 멤버 묶음: 자주 모이는 사람들 */
+    val groups: List<List<String>> = emptyList(),
 )
 
 /** 기록·설정 저장소. 실제 구현은 Android의 SharedPreferences([com.example.animalrace.data.PrefsRepository]). */

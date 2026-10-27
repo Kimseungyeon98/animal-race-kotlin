@@ -45,6 +45,7 @@ fun App(state: AppState) {
                 confirmExit = state.confirmExit,
                 onKeepRacing = state::keepRacing,
                 onQuit = state::goHome,
+                names = state.names.toMap(),
             )
             Screen.Result -> state.lastRecord?.let { record ->
                 ResultScreen(record, onAgain = state::startRace, onHome = state::goHome, lastGame = state.lastGame, onMiniGame = state::openMiniGame)

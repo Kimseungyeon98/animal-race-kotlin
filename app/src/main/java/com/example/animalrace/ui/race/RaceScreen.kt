@@ -43,6 +43,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -160,9 +162,30 @@ fun RaceScreen(
     confirmExit: Boolean = false,
     onKeepRacing: () -> Unit = {},
     onQuit: () -> Unit = {},
+    /** 동물마다 달리는 사람 이름 (4.0). 레인 이름표·중계·1등 카드에 동물 대신 */
+    names: Map<Animal, String> = emptyMap(),
+) = CompositionLocalProvider(LocalNames provides names) {
+    RaceScreenBody(animals, bet, raceKey, onFinished, picks, picksFixed, confirmExit, onKeepRacing, onQuit, names)
+}
+
+/** 경주 화면 안쪽 함수들이 꺼내 쓰는 사람 이름 표 */
+private val LocalNames = compositionLocalOf<Map<Animal, String>> { emptyMap() }
+
+@Composable
+private fun RaceScreenBody(
+    animals: List<Animal>,
+    bet: String,
+    raceKey: Int,
+    onFinished: (Race, Venue) -> Unit,
+    picks: List<Int>?,
+    picksFixed: Boolean,
+    confirmExit: Boolean,
+    onKeepRacing: () -> Unit,
+    onQuit: () -> Unit,
+    names: Map<Animal, String>,
 ) {
     val stadium = remember(raceKey) { Stadium.entries.random() }
-    val race = remember(raceKey) { Race(animals, venue = stadium.venue) }
+    val race = remember(raceKey) { Race(animals, venue = stadium.venue, names = names) }
     var frame by remember(raceKey) { mutableStateOf(Frame(race.view(), START_X, START_W, 0.0)) }
     var countdown by remember(raceKey) { mutableStateOf<String?>(null) }
     var roulette by remember(raceKey) { mutableStateOf<Roulette?>(null) }
@@ -297,7 +320,7 @@ fun RaceScreen(
         }
 
         Commentary(
-            withPickLines(frame.view, picks),
+            withPickLines(frame.view, picks, names),
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -512,6 +535,18 @@ private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width
                     fxTime = if (shock) sinceFinish.toFloat() else r.fxElapsed.toFloat(),
                     venue = stadium.venue,
                 )
+                // 달리는 사람 이름표: 등 위 빈자리(머리 위 왕관과 겹치지 않게 왼쪽 위)
+                LocalNames.current[r.animal]?.let { who ->
+                    Text(
+                        who, fontSize = (laneH.value * 0.2f).coerceIn(10f, 14f).sp, color = Pal.Ink, maxLines = 1,
+                        modifier = Modifier
+                            .offset(x = sprite * 0.12f, y = spriteH * 0.06f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (hit) Pal.Pink else Pal.Paper.copy(alpha = 0.92f))
+                            .border(2.dp, Pal.Ink, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 5.dp),
+                    )
+                }
                 if (r.rank == 0 && !r.finished && r.fx == Fx.NONE && view.t > 1) {
                     // 머리 꼭대기에 얹기 (동물마다 머리 위치가 달라서 상자 가운데에 두면 허공에 뜬다)
                     val head = headTop(r.animal)
@@ -618,7 +653,7 @@ private fun OffscreenTag(r: RacerView, view: RaceView, modifier: Modifier) {
         Box(Modifier.size(26.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
             AnimalSprite(r.animal, 26.dp)
         }
-        Text(r.animal.label, fontSize = 14.sp, color = Color.White)
+        Text(LocalNames.current[r.animal] ?: r.animal.label, fontSize = 14.sp, color = Color.White, maxLines = 1)
         Text("-${(front - r.x).toInt()}m", style = NumberStyle, fontSize = 14.sp, color = Color.White)
     }
 }
@@ -819,7 +854,9 @@ private fun Overlays(frame: Frame, stadium: Stadium, countdown: String?) {
                 AnimalSprite(w.animal, 150.dp, running = true)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     LaneSticker(w.lane, size = 26.dp, border = 3.dp)
-                    Text(w.animal.label, fontSize = 32.sp, color = Pal.Ink)
+                    val who = LocalNames.current[w.animal]
+                    Text(who ?: w.animal.label, fontSize = 32.sp, color = Pal.Ink, maxLines = 1)
+                    if (who != null) Text(w.animal.label, fontSize = 16.sp, color = Pal.InkSoft)
                 }
                 Text("%.2f초".format(w.finishTime ?: 0.0), style = NumberStyle, fontSize = 18.sp, color = Pal.Ink)
             }
@@ -847,10 +884,10 @@ private fun Overlays(frame: Frame, stadium: Stadium, countdown: String?) {
 private data class Roulette(val stopped: Int, val revealed: Boolean, val fixed: Boolean = false)
 
 /** 해설: 랜덤 등수 판이면 당첨 등수로 들어온 동물마다 한 줄을 더한다 (화면 표시만). */
-private fun withPickLines(view: RaceView, picks: List<Int>?): List<RaceEvent> {
+private fun withPickLines(view: RaceView, picks: List<Int>?, names: Map<Animal, String>): List<RaceEvent> {
     if (picks == null) return view.recentEvents
     val lines = view.racers.filter { it.finished && (it.rank + 1) in picks }.map {
-        RaceEvent(-1 - it.lane, it.finishTime ?: view.t, "😱 ${withSubject(it.animal.label)} ${it.rank + 1}등으로 들어왔어요! 당첨!", EventKind.FINISH)
+        RaceEvent(-1 - it.lane, it.finishTime ?: view.t, "😱 ${withSubject(names[it.animal] ?: it.animal.label)} ${it.rank + 1}등으로 들어왔어요! 당첨!", EventKind.FINISH)
     }
     return (lines + view.recentEvents).sortedByDescending { it.t }
 }

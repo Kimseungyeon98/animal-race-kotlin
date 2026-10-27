@@ -217,7 +217,7 @@ private fun PenaltyCard(bet: String, loser: RaceResult, lane: Int) {
                 Text(shortBet(bet).ifEmpty { "오늘의 꼴찌" }, fontSize = 26.sp, color = Pal.Ink, lineHeight = 30.sp)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     LaneSticker(lane, size = 22.dp)
-                    Text("${withRo(loser.animal.label)} 출전한 사람!", fontSize = 15.sp, color = Pal.Ink)
+                    WhoLine(loser, 22.sp)
                 }
             }
         }
@@ -264,7 +264,7 @@ private fun PickCard(bet: String, picks: List<Int>, losers: List<RaceResult>, mi
                     AnimalSprite(r.animal, sprite, modifier = Modifier.graphicsLayer { translationX = shake.value * density; rotationZ = shake.value })
                     Tag("${place}등", Pal.Sun, Pal.Ink, fontSize = 15.sp)
                     LaneSticker(r.lane, size = 22.dp)
-                    Text("${withRo(r.animal.label)} 출전한 사람!", fontSize = 15.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    WhoLine(r, 20.sp)
                 }
             }
             // 2명 이상 걸렸으면 몰아주기 (이미 했으면 결과)
@@ -280,7 +280,7 @@ private fun PickCard(bet: String, picks: List<Int>, losers: List<RaceResult>, mi
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text("💸 몰빵", fontSize = 16.sp, color = Color.White)
-                    Text("${miniGame.game.emoji} ${miniGame.game.title} → ${miniGame.loser.label}", fontSize = 16.sp, color = Color.White, maxLines = 1)
+                    Text("${miniGame.game.emoji} ${miniGame.game.title} → ${miniGame.name}", fontSize = 16.sp, color = Color.White, maxLines = 1)
                 }
             } else if (losers.size >= 2) {
                 CartoonButton(onClick = onMiniGame, color = Pal.Sun, modifier = Modifier.fillMaxWidth().padding(top = 2.dp), height = 52.dp, depth = 4.dp) {
@@ -327,7 +327,7 @@ private fun GamePicker(players: List<RaceResult>, lastGame: MiniGame, onDismiss:
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         LaneSticker(p.lane, size = 18.dp)
-                        Text(p.animal.label, fontSize = 14.sp, color = Pal.Ink)
+                        Text(p.name, fontSize = 14.sp, color = Pal.Ink, maxLines = 1)
                     }
                 }
             }
@@ -397,7 +397,7 @@ private fun PodiumColumn(place: Int, r: RaceResult, lane: Int, modifier: Modifie
         AnimalSprite(r.animal, if (place == 0) 108.dp else 96.dp, running = place == 0)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             LaneSticker(lane, size = 20.dp)
-            Text(r.animal.label, fontSize = if (place == 0) 19.sp else 17.sp, color = Pal.Ink, maxLines = 1)
+            Text(r.name, fontSize = if (place == 0) 19.sp else 17.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text("%.2f초".format(r.time), style = NumberStyle, fontSize = 13.sp, color = Color(0xFF3E3456))
         Spacer(Modifier.height(4.dp))
@@ -441,10 +441,10 @@ private fun RecordRow(i: Int, r: RaceResult, lane: Int, winnerTime: Double, last
         }
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(r.animal.label, fontSize = 17.sp, color = Pal.Ink)
+                Text(r.name, fontSize = 17.sp, color = Pal.Ink, maxLines = 1)
                 if (hit) Tag("당첨", Pal.Tomato, fontSize = 11.sp)
             }
-            Text("${r.animal.skill} ${r.skillUses}회", fontSize = 12.sp, color = Pal.InkSoft)
+            Text((if (r.who != null) "${r.animal.label} · " else "") + "${r.animal.skill} ${r.skillUses}회", fontSize = 12.sp, color = Pal.InkSoft, maxLines = 1)
         }
         Column(horizontalAlignment = Alignment.End) {
             Text("%.2f초".format(r.time), style = NumberStyle, fontSize = 16.sp, color = Pal.Ink)
@@ -489,6 +489,20 @@ private fun Confetti(modifier: Modifier) {
                 drawRoundRect(Pal.Ink.copy(alpha = fade), Offset(x - w / 2, y - h / 2), Size(w, h),
                     androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()), style = Stroke(2.dp.toPx()))
             }
+        }
+    }
+}
+
+/** 벌칙 당첨자 한 줄: 사람 이름이 있으면 이름을 크게 + 동물은 작게, 없으면 "말로 출전한 사람!" */
+@Composable
+private fun WhoLine(r: RaceResult, size: androidx.compose.ui.unit.TextUnit) {
+    val who = r.who
+    if (who == null) {
+        Text("${withRo(r.animal.label)} 출전한 사람!", fontSize = 15.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    } else {
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(who, fontSize = size, color = Pal.TomatoText, maxLines = 1)
+            Text(r.animal.label, fontSize = 13.sp, color = Pal.InkSoft, modifier = Modifier.padding(bottom = 2.dp))
         }
     }
 }

@@ -10,7 +10,10 @@ enum class MiniGame(val emoji: String, val title: String, val desc: String) {
 }
 
 /** 몰아주기 결과: 어떤 게임으로 누가 몰빵했는지. */
-data class MiniGameResult(val game: MiniGame, val loser: Animal)
+data class MiniGameResult(val game: MiniGame, val loser: Animal, val who: String? = null) {
+    /** 화면에 부를 이름: 사람 이름이 있으면 사람, 없으면 동물 */
+    val name: String get() = who ?: loser.label
+}
 
 /**
  * 몰아주기: 랜덤 등수로 2명 이상 걸렸을 때 그중 한 명에게 몰빵.

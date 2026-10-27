@@ -293,7 +293,7 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
         ) {
             AnimalSprite(p.animal, 56.dp, fx = if (loser != null) Fx.SCARED else Fx.NONE)
             Column {
-                Text(if (loser != null) "${withSubject(p.animal.label)} 몰빵 💸" else "${p.animal.label} 차례!", fontSize = 19.sp, color = Pal.Ink)
+                Text(if (loser != null) "${withSubject(p.name)} 몰빵 💸" else "${p.name} 차례!", fontSize = 19.sp, color = Pal.Ink)
                 Text(
                     when {
                         loser != null -> "잠시 뒤 최종 발표"

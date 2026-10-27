@@ -179,7 +179,7 @@ fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: (Int) -> Un
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         LaneSticker(p.lane, size = 18.dp)
-                        Text(p.animal.label, fontSize = 14.sp, color = if (lose) Color.White else Pal.Ink)
+                        Text(p.name, fontSize = 14.sp, color = if (lose) Color.White else Pal.Ink)
                     }
                 }
             }
@@ -431,7 +431,7 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, loser: Int
                 ) {
                     AnimalSprite(p.animal, 56.dp)
                     Column(Modifier.weight(1f)) {
-                        Text("${p.animal.label} 차례!", fontSize = 19.sp, color = Pal.Ink)
+                        Text("${p.name} 차례!", fontSize = 19.sp, color = Pal.Ink)
                         Text("점선을 탭해서 가로줄 1개", fontSize = 12.sp, color = Pal.InkSoft, maxLines = 1)
                     }
                     CartoonButton(onClick = { drawTurn++; sound.play(Sfx.CLICK) }, color = Pal.Paper, height = 42.dp, depth = 3.dp, contentPadding = PaddingValues(horizontal = 12.dp)) {
@@ -443,10 +443,10 @@ private fun LadderGame(session: MiniGameSession, revealed: List<Int>, loser: Int
                 Text("🪜 출발!", fontSize = 24.sp, color = Pal.Ink)
             }
             else -> {
-                val who = session.players.getOrNull(walking)?.animal?.label
+                val who = session.players.getOrNull(walking)?.name
                 Text(
                     when {
-                        loser != null -> "${withSubjectUi(session.players[loser].animal.label)} 몰빵 칸에 도착! 💸"
+                        loser != null -> "${withSubjectUi(session.players[loser].name)} 몰빵 칸에 도착! 💸"
                         who != null -> "${withSubjectUi(who)} 내려가는 중… 화면을 탭하면 빨리"
                         else -> "곧 출발해요!"
                     },
@@ -529,7 +529,7 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                 val who = session.players[loser ?: current ?: order.last()]
                 AnimalSprite(who.animal, 60.dp, fx = if (loser != null) Fx.SCARED else Fx.NONE)
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(if (loser != null) "${withSubjectUi(who.animal.label)} 몰빵! 💸" else "${who.animal.label} 차례!", fontSize = 20.sp, color = Pal.Ink)
+                    Text(if (loser != null) "${withSubjectUi(who.name)} 몰빵! 💸" else "${who.name} 차례!", fontSize = 20.sp, color = Pal.Ink)
                     val left = owner.count { it == null }
                     Text(
                         if (loser != null) "잠시 뒤 최종 발표" else if (left == n) "똑같이 생긴 복권 중 한 장을 골라 주세요" else "남은 복권 ${left}장 중 한 장을 골라 주세요",
@@ -567,7 +567,7 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                         }
                     }
                     Text(
-                        if (loser != null) "${withSubjectUi(session.players[loser].animal.label)} 몰빵! 💸"
+                        if (loser != null) "${withSubjectUi(session.players[loser].name)} 몰빵! 💸"
                         else if (owner.count { it == null } == 1) "마지막 한 장… 직접 긁어서 확인!"
                         else "어느 장에 몰빵이 숨어 있을까…",
                         fontSize = 16.sp, color = Pal.Ink, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp),
@@ -588,7 +588,7 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                 lose = lose,
                 revealed = out,
                 onScratched = { sound.play(Sfx.POP); onReveal(p, lose) },
-                nextLabel = if (out && !lose && loser == null && next != null) "${session.players[next].animal.label} 차례로 →" else null,
+                nextLabel = if (out && !lose && loser == null && next != null) "${session.players[next].name} 차례로 →" else null,
                 onNext = { open = null; turn++ },
             )
         }
@@ -642,7 +642,7 @@ private fun TicketFace(used: RaceResult?, lose: Boolean, modifier: Modifier, onC
                         Text(if (lose) "몰빵!" else "꽝 탈출", fontSize = 20.sp, color = if (lose) Pal.TomatoText else Color(0xFF1D8A3A))
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                             LaneSticker(used.lane, size = 16.dp)
-                            Text(used.animal.label, fontSize = 12.sp, color = Pal.Ink, maxLines = 1)
+                            Text(used.name, fontSize = 12.sp, color = Pal.Ink, maxLines = 1)
                         }
                     }
                 }
@@ -689,7 +689,7 @@ private fun BigTicket(player: RaceResult, lose: Boolean, revealed: Boolean, onSc
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         AnimalSprite(player.animal, 60.dp, fx = if (revealed && lose) Fx.SCARED else Fx.NONE)
                         LaneSticker(player.lane, size = 24.dp)
-                        Text("${player.animal.label}의 복권", fontSize = 20.sp, color = Pal.Ink)
+                        Text("${player.name}의 복권", fontSize = 20.sp, color = Pal.Ink)
                     }
                     Text("★ ★ ★ ★ ★", fontSize = 18.sp, color = Pal.TomatoText)
                     DashedLine()
@@ -888,7 +888,7 @@ private fun ScratchArea(
 @Composable
 private fun FinalCard(session: MiniGameSession, loserIndex: Int, bet: String, onClose: () -> Unit) {
     val loser = session.players[loserIndex]
-    val escaped = session.players.filterIndexed { i, _ -> i != loserIndex }.joinToString("·") { it.animal.label }
+    val escaped = session.players.filterIndexed { i, _ -> i != loserIndex }.joinToString("·") { it.name }
     Box(
         Modifier
             .fillMaxSize()
@@ -912,7 +912,7 @@ private fun FinalCard(session: MiniGameSession, loserIndex: Int, bet: String, on
                 AnimalSprite(loser.animal, 150.dp, fx = Fx.SCARED, modifier = Modifier.padding(top = 12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     LaneSticker(loser.lane, size = 26.dp, border = 3.dp)
-                    Text("${withRo(loser.animal.label)} 출전한 사람!", fontSize = 20.sp, color = Pal.Ink)
+                    Text(loser.who ?: "${withRo(loser.name)} 출전한 사람!", fontSize = 20.sp, color = Pal.Ink)
                 }
                 Text("${shortBet(bet).ifEmpty { "벌칙" }} 몰빵!", fontSize = 26.sp, color = Pal.TomatoText, textAlign = TextAlign.Center)
                 Text("${session.game.emoji} ${session.game.title} · $escaped 탈출", fontSize = 14.sp, color = Pal.InkSoft)
