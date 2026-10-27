@@ -94,6 +94,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.animalrace.AppState
+import com.example.animalrace.model.ANIMAL_ORDER
 import com.example.animalrace.model.Animal
 import com.example.animalrace.model.Fx
 import com.example.animalrace.model.RandomRank
@@ -113,7 +114,6 @@ import com.example.animalrace.ui.theme.Pal
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import kotlin.math.ceil
-import kotlin.math.max
 
 private val BetPresets = listOf("꼴찌가 커피 쏘기", "꼴찌가 점심 쏘기", "꼴찌가 간식 사기", "꼴찌가 회의록 쓰기")
 
@@ -124,7 +124,7 @@ fun SetupScreen(state: AppState) {
     val sound = LocalSound.current
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    var focused by remember { mutableStateOf(state.selected.lastOrNull() ?: Animal.CHEETAH) }
+    var focused by remember { mutableStateOf(state.selected.lastOrNull() ?: ANIMAL_ORDER.first()) }
     var dexIndex by remember { mutableStateOf<Int?>(null) }
     var showHistory by remember { mutableStateOf(false) }
     var editBet by remember { mutableStateOf(false) }
@@ -182,7 +182,8 @@ fun SetupScreen(state: AppState) {
                             }
                         }
                     }
-                    IconTileButton(Icons2.Book, "도감", onClick = { dexIndex = focused.ordinal })
+                    // 도감은 늘 첫 번째 동물부터
+                    IconTileButton(Icons2.Book, "도감", onClick = { dexIndex = 0 })
                     IconTileButton(
                         Icons2.Trophy, "기록", onClick = { showHistory = true },
                         badge = state.history.size.takeIf { it > 0 }?.let { if (it > 99) "99+" else "$it" },
@@ -219,7 +220,6 @@ fun SetupScreen(state: AppState) {
                         },
                         fontSize = 19.sp, color = Pal.Ink, modifier = Modifier.weight(1f),
                     )
-                    SmallButton("랜덤", Icons2.Shuffle) { state.pickRandom(max(state.selected.size, 4)) }
                     SmallButton("비우기", null) { state.clearSelection() }
                 }
             }
@@ -306,7 +306,7 @@ private fun SmallButton(label: String, icon: List<String>?, onClick: () -> Unit)
 private fun AnimalGrid(state: AppState, modifier: Modifier, onTap: (Animal) -> Unit) {
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val cols = if (maxWidth > 560.dp) 5 else 3
-        val animals = Animal.entries
+        val animals = ANIMAL_ORDER
         val rows = ceil(animals.size / cols.toDouble()).toInt()
         val gap = 10.dp
         val stickerRoom = 10.dp // 첫 줄 번호 스티커가 위로 튀어나올 자리
@@ -858,18 +858,18 @@ private fun BottomPanel(state: AppState, focused: Animal, onFixRanks: () -> Unit
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Dex(state: AppState, index: Int, onIndex: (Int) -> Unit, onToggle: (Animal) -> Unit, onClose: () -> Unit) {
-    val animal = Animal.entries[index]
+    val animal = ANIMAL_ORDER[index]
     val lane = state.selected.indexOf(animal)
     val full = lane < 0 && state.selected.size >= AppState.MAX_RACERS
     Sheet(onClose, fill = false) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("동물 도감", fontSize = 24.sp, color = Pal.Ink, modifier = Modifier.weight(1f))
-            Text("${index + 1} / ${Animal.entries.size}", style = NumberStyle, fontSize = 15.sp, color = Pal.InkSoft)
+            Text("${index + 1} / ${ANIMAL_ORDER.size}", style = NumberStyle, fontSize = 15.sp, color = Pal.InkSoft)
             Spacer(Modifier.width(10.dp))
             SquareIcon(Icons2.Close, "도감 닫기", onClose)
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SquareIcon(Icons2.Left, "이전 동물", { onIndex((index + Animal.entries.size - 1) % Animal.entries.size) }, tall = true)
+            SquareIcon(Icons2.Left, "이전 동물", { onIndex((index + ANIMAL_ORDER.size - 1) % ANIMAL_ORDER.size) }, tall = true)
             Box(
                 Modifier
                     .weight(1f)
@@ -903,7 +903,7 @@ private fun Dex(state: AppState, index: Int, onIndex: (Int) -> Unit, onToggle: (
                     }
                 }
             }
-            SquareIcon(Icons2.Right, "다음 동물", { onIndex((index + 1) % Animal.entries.size) }, tall = true)
+            SquareIcon(Icons2.Right, "다음 동물", { onIndex((index + 1) % ANIMAL_ORDER.size) }, tall = true)
         }
         Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -934,19 +934,25 @@ private fun Dex(state: AppState, index: Int, onIndex: (Int) -> Unit, onToggle: (
             InkIcon(Icons2.Scale, size = 20.dp)
             Text("스킬은 경기를 재밌게 만드는 연출이에요. 어떤 동물을 골라도 1등 확률은 똑같아요.", fontSize = 14.sp, color = Pal.Ink, lineHeight = 19.sp)
         }
-        FlowRow(maxItemsInEachRow = 7, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Animal.entries.forEach { a ->
-                val current = a.ordinal == index
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .height(46.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (current) Pal.Sun else if (a in state.selected) Pal.Cream else Pal.Paper)
-                        .border(if (current) 3.dp else 2.dp, if (current) Pal.Ink else Pal.Disabled, RoundedCornerShape(12.dp))
-                        .clickable { onIndex(a.ordinal) },
-                    contentAlignment = Alignment.Center,
-                ) { AnimalSprite(a, 40.dp) }
+        // 7칸씩 줄을 맞춰서, 마지막 줄이 모자라도 칸 크기는 같게 (빈칸으로 채움)
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            ANIMAL_ORDER.withIndex().chunked(7).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    row.forEach { (i, a) ->
+                        val current = i == index
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (current) Pal.Sun else if (a in state.selected) Pal.Cream else Pal.Paper)
+                                .border(if (current) 3.dp else 2.dp, if (current) Pal.Ink else Pal.Disabled, RoundedCornerShape(12.dp))
+                                .clickable { onIndex(i) },
+                            contentAlignment = Alignment.Center,
+                        ) { AnimalSprite(a, 40.dp) }
+                    }
+                    repeat(7 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
             }
         }
         Spacer(Modifier.height(4.dp))

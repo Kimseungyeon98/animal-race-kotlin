@@ -54,3 +54,17 @@ enum class Animal(
     PANDA("🐼", "판다", "장대높이뛰기", "대나무 장대로 훌쩍 뛰어넘는다",
         "대나무 장대를 짚고 훌쩍 뛰어넘어요. 가끔 그 대나무를 먹느라 멈춰요.", 0xFF2E2838),
 }
+
+/**
+ * 메인 화면·도감에 보여 주는 순서 (4.5). 귀여운 동물이 앞쪽에 오도록 섞었다.
+ * 보여 주는 순서일 뿐이라 경주·확률과는 상관없다 (enum 순서는 그대로).
+ */
+val ANIMAL_ORDER: List<Animal> = listOf(
+    Animal.RABBIT, Animal.HAMSTER, Animal.PANDA,
+    Animal.CAT, Animal.DOG, Animal.CAPYBARA,
+    Animal.PENGUIN, Animal.PIG, Animal.HEDGEHOG,
+    Animal.DUCK, Animal.HORSE, Animal.SLOTH,
+    Animal.CHICKEN, Animal.CHEETAH, Animal.TURTLE,
+    Animal.ELEPHANT, Animal.KANGAROO, Animal.MONKEY,
+    Animal.SNAIL, Animal.SKUNK,
+)
