@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-4.3-4C9A2A" alt="version 4.3">
+  <img src="https://img.shields.io/badge/version-4.4-4C9A2A" alt="version 4.4">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -100,11 +100,18 @@
 | **4.1** | **결과 공유 카드** — 당첨자 이름·시상대를 이미지 한 장으로, 단톡방 공유·사진 저장 |
 | **4.2** | **우리 기록** — 기간·멤버 묶음별 벌칙 왕·1등 왕·연속 당첨·최근 벌칙 · 기록 200판 |
 | **4.3** | **고슴도치 다시 그리기** — 둥근 끝 가시 두 겹, 통통한 몸, 큰 얼굴·눈 |
+| **4.4** | **판다·나무늘보 옆얼굴** — 정면 얼굴 → 다른 동물처럼 오른쪽을 보는 옆모습 |
 
 ---
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 4.4 — 판다·나무늘보 옆얼굴 (캔버스 "🐼🦥 판다 · 나무늘보 옆모습")
+- 몸은 오른쪽으로 달리는데 얼굴만 정면이라 튀던 두 동물 → 다른 동물처럼 **오른쪽을 보는 옆얼굴** (몸·다리는 그대로)
+- 🐼 판다: 흰 머리 + 앞으로 나온 주둥이 끝 코 · 귀 둘(먼 쪽은 뒤에 살짝) · 짙은 회색 눈 패치 하나 + 어두운 눈동자
+- 🦥 나무늘보: 둥근 머리 + 주둥이 · 앞쪽 크림색 얼굴 · 눈에서 뒤로 이어지는 갈색 줄무늬 + 감은 눈 · 코 · 미소
+- `shot -Pscene=faces`로 확인
 
 ### 4.3 — 고슴도치 더 귀엽게 (캔버스 "🦔 고슴도치 더 귀엽게")
 - 🦔 뾰족한 삼각 가시 → **끝이 둥근 가시 두 겹** (진한 갈색 바깥 + 밝은 갈색 안쪽), 몸과 가시를 한 윤곽으로 합쳐 통통한 밤송이 모양

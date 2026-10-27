@@ -358,6 +358,32 @@ private fun DrawScope.hedgehogCute(a: Float, b: Float, bob: Float) {
     }
 }
 
+/** 판다 옆얼굴 (4.4, 다른 동물처럼 오른쪽을 본다): 흰 머리 + 앞으로 나온 주둥이, 귀 둘(먼 쪽은 뒤에 살짝), 눈 패치 하나 */
+private fun DrawScope.pandaFace() {
+    val black = c(0xFF2E2838)
+    circle(150f, 56f, 11f, c(0xFF1E1A28))
+    circle(128f, 60f, 13f, black)
+    val head = Path().apply { op(oval(148f, 84f, 31f, 29f), oval(174f, 94f, 15f, 12f), androidx.compose.ui.graphics.PathOperation.Union) }
+    paint(head, White, 5f, Ink)
+    ellipse(160f, 82f, 12f, 9.5f, c(0xFF5B5566), rot = 22f, sw = 0f)
+    eye(162f, 81f, 4.6f, 163.6f, 79.3f, 1.6f)
+    svg("M181 88 q6 -2 7 3 q-1 5 -6 5 q-3 -3 -1 -8 z", Ink, sw = 2f)
+    svg("M172 103 q6 4 12 -1", null, sw = 3f)
+}
+
+/** 나무늘보 옆얼굴 (4.4): 둥근 머리 + 앞으로 나온 주둥이, 크림색 얼굴, 눈에서 뒤로 이어지는 갈색 줄무늬 하나 */
+private fun DrawScope.slothFace() {
+    val fur = c(0xFFA89088)
+    val head = Path().apply { op(oval(150f, 80f, 29f, 28f), oval(174f, 90f, 13f, 11f), androidx.compose.ui.graphics.PathOperation.Union) }
+    drawPath(head, fur)
+    clipPath(head) { svg("M140 80 q4 -20 26 -18 q22 4 22 26 q-4 16 -22 16 q-22 -2 -26 -24 z", c(0xFFF1EBE8), sw = 0f) }
+    paint(head, null, 5f, Ink)
+    ellipse(160f, 82f, 13f, 5.5f, c(0xFF6D4C41), rot = 12f, sw = 0f)
+    svg("M159 82 q4 -4.5 8 0", null, sw = 2.6f, stroke = c(0xFF1E1A24))
+    svg("M180 85 h7 q2 0 1 3 l-3 4 q-1 1 -2 0 l-4 -4 q-1 -3 1 -3 z", c(0xFF1E1A24), sw = 0f)
+    svg("M169 98 q7 5 14 -1", null, sw = 3f, stroke = c(0xFF1E1A24))
+}
+
 /** 200×170 좌표계 기준으로 동물 한 마리를 그린다. 호출하는 쪽에서 크기에 맞게 scale한다. */
 internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
     val a = p.legA; val b = p.legB; val bob = p.bob
@@ -720,14 +746,7 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
                 svg("M52 112 l-6 10 l10 -2 l-2 10 l8 -6", null, sw = 3f)
                 nearLeg(76f, 110f, 14f, 44f, c(0xFFA89088), a, 83f, 114f, hind = true, body, Foot.PAW)
                 nearLeg(122f, 110f, 14f, 44f, c(0xFFA89088), b, 129f, 114f, hind = false, body, Foot.PAW, claws = true)
-                circle(152f, 80f, 30f, c(0xFFA89088))
-                svg("M129 80 q2 -21 25 -21 q25 0 25 21 q0 19 -25 23 q-23 -4 -25 -23 z", c(0xFFF1EBE8))
-                ellipse(141f, 85f, 10f, 5.5f, c(0xFF6D4C41), rot = -28f, sw = 0f)
-                ellipse(167f, 85f, 10f, 5.5f, c(0xFF6D4C41), rot = 28f, sw = 0f)
-                svg("M137 84 q4 -4.5 8 0", null, sw = 2.6f, stroke = c(0xFF1E1A24))
-                svg("M163 84 q4 -4.5 8 0", null, sw = 2.6f, stroke = c(0xFF1E1A24))
-                svg("M148 89 h12 q2 0 0 3 l-5 5 q-1 1 -2 0 l-5 -5 q-2 -3 0 -3 z", c(0xFF1E1A24), sw = 0f)
-                svg("M143 99 q11 7 22 0", null, sw = 3f, stroke = c(0xFF1E1A24))
+                slothFace()
             }
         }
         HAMSTER -> hamsterSide(a, b, bob)
@@ -749,17 +768,7 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
                 clipPath(bodyPath) { svg("M100 66 Q116 104 108 150", null, sw = 4f) }
                 roundLeg(74f, 116f, 18f, 34f, black, a, 83f, 120f, hind = true)
                 roundLeg(120f, 116f, 18f, 34f, black, b, 129f, 120f, hind = false)
-                circle(125f, 56f, 13f, black); circle(177f, 56f, 13f, black)
-                ellipse(151f, 84f, 36f, 31f, White)
-                // 눈 패치는 짙은 회색, 눈동자는 그 위에 어둡게 + 작은 반짝이 (흰 눈은 무서워 보여서)
-                val patch = c(0xFF5B5566)
-                ellipse(138f, 84f, 12f, 9.5f, patch, rot = -25f, sw = 0f)
-                ellipse(164f, 84f, 12f, 9.5f, patch, rot = 25f, sw = 0f)
-                eye(140f, 82f, 4.6f, 141.6f, 80.3f, 1.6f)
-                eye(162f, 82f, 4.6f, 163.6f, 80.3f, 1.6f)
-                svg("M146 94 q5 -3 10 0 q-1 5 -5 6 q-4 -1 -5 -6 z", Ink, sw = 2f)
-                svg("M143 103 q8 7 16 0", null, sw = 3f)
-                svg("M148 106 q3 8 6 0 z", c(0xFFE5484D), sw = 2f)
+                pandaFace()
             }
         }
     }
