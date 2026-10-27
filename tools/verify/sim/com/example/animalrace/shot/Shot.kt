@@ -27,6 +27,7 @@ import com.example.animalrace.model.AppRepository
 import com.example.animalrace.model.Fx
 import com.example.animalrace.model.Ladder
 import com.example.animalrace.model.MiniGame
+import com.example.animalrace.model.MiniGameResult
 import com.example.animalrace.model.RaceRecord
 import com.example.animalrace.model.RaceResult
 import com.example.animalrace.model.SavedSetup
@@ -41,6 +42,7 @@ import com.example.animalrace.ui.race.RaceScreen
 import com.example.animalrace.ui.setup.SetupScreen
 import com.example.animalrace.ui.setup.RankSheet
 import com.example.animalrace.ui.setup.NameSheet
+import com.example.animalrace.ui.result.ShareSheet
 import com.example.animalrace.model.RankMode
 import com.example.animalrace.model.RankSetting
 import com.example.animalrace.ui.theme.AnimalRaceTheme
@@ -327,6 +329,26 @@ private fun scenes(): List<Scene> {
         Scene("people-lotto") {
             val players = results(Animal.CAT, Animal.PIG, Animal.PANDA).mapIndexed { i, r -> r.copy(who = listOf("지은", "서연", "도윤")[i]) }
             MiniGameScreen(MiniGameSession(MiniGame.LOTTO, players, Ladder.random(3), 1), "커피 쏘기", {}, {})
+        },
+        // ---- 4.1 결과 공유 카드
+        Scene("share-penalty") {
+            val who = listOf("지은", "민수", "현우", "서연")
+            val rec = RaceRecord(0L, "꼴찌가 커피 쏘기", 3, results(Animal.CAT, Animal.HORSE, Animal.RABBIT, Animal.PIG).mapIndexed { i, r -> r.copy(who = who[i]) }, Venue.MEADOW)
+            Box(Modifier.fillMaxSize()) { ResultScreen(rec, onAgain = {}, onHome = {}); ShareSheet(rec) {} }
+        },
+        Scene("share-mini") {
+            val who = listOf("지은", "민수", "현우", "서연", "도윤")
+            val rs = results(Animal.CAT, Animal.HORSE, Animal.RABBIT, Animal.PIG, Animal.DOG).mapIndexed { i, r -> r.copy(who = who[i]) }
+            val rec = RaceRecord(0L, "치킨 사기", 2, rs, Venue.BEACH, listOf(2, 4), MiniGameResult(MiniGame.LOTTO, Animal.PIG, "서연"))
+            Box(Modifier.fillMaxSize()) { ResultScreen(rec, onAgain = {}, onHome = {}); ShareSheet(rec) {} }
+        },
+        Scene("share-picks") {
+            val rec = RaceRecord(0L, "설거지", 1, results(Animal.PENGUIN, Animal.CAT, Animal.RABBIT, Animal.TURTLE), Venue.SNOW, listOf(1, 3))
+            Box(Modifier.fillMaxSize()) { ResultScreen(rec, onAgain = {}, onHome = {}); ShareSheet(rec) {} }
+        },
+        Scene("share-desert") {
+            val rec = RaceRecord(0L, "", 1, results(Animal.CHEETAH, Animal.DOG, Animal.MONKEY), Venue.DESERT)
+            Box(Modifier.fillMaxSize()) { ResultScreen(rec, onAgain = {}, onHome = {}); ShareSheet(rec) {} }
         },
         sheet("skills", Fx.SKILL),
         sheet("skills-alt", Fx.SKILL_ALT),

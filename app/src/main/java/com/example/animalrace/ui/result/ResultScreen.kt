@@ -92,6 +92,7 @@ fun ResultScreen(
     onMiniGame: (MiniGame?) -> Unit = {},
 ) {
     var picker by remember { mutableStateOf(false) }
+    var share by remember { mutableStateOf(false) }
     val results = record.results
     val winner = results.first()
     val loser = results.last()
@@ -111,9 +112,20 @@ fun ResultScreen(
         ) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedText("경기 결과", 30.sp)
                         record.venue?.let { Tag(it.label, Pal.Paper, Pal.Ink, fontSize = 13.sp) }
+                        Spacer(Modifier.weight(1f))
+                        // 📤 결과 카드 (4.1): 단톡방에 보낼 이미지 한 장
+                        Text(
+                            "📤 결과 카드", fontSize = 15.sp, color = Pal.Ink,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Pal.Sun)
+                                .border(2.5.dp, Pal.Ink, RoundedCornerShape(14.dp))
+                                .clickable { share = true }
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                        )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         StatChip("역전 ", "${record.leadChanges}", "회")
@@ -170,6 +182,9 @@ fun ResultScreen(
 
         AnimatedVisibility(picker, enter = fadeIn(), exit = fadeOut()) {
             GamePicker(record.losers, lastGame, onDismiss = { picker = false }) { picker = false; onMiniGame(it) }
+        }
+        AnimatedVisibility(share, enter = fadeIn(), exit = fadeOut()) {
+            ShareSheet(record) { share = false }
         }
     }
 }

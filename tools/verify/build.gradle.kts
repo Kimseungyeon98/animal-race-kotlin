@@ -11,7 +11,7 @@ sourceSets {
     }
     main {
         kotlin.setSrcDirs(listOf(src, "stub", "sim"))
-        kotlin.exclude("**/MainActivity.kt", "**/data/PrefsRepository.kt", "**/data/AndroidSound.kt", "**/ui/theme/Fonts.kt")
+        kotlin.exclude("**/MainActivity.kt", "**/data/PrefsRepository.kt", "**/data/AndroidSound.kt", "**/data/AndroidSharer.kt", "**/ui/theme/Fonts.kt")
     }
 }
 kotlin { jvmToolchain(21) }
