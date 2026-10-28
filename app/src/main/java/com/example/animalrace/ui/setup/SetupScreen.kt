@@ -528,7 +528,8 @@ private fun PeopleRow(state: AppState, modifier: Modifier, onOpen: () -> Unit) {
 
 /**
  * 이름 붙이기 창 (시안: "4.0 사람이 주인공" ②). 출전 동물마다 달릴 사람 이름을 적는다.
- * 최근 멤버 칩을 누르면 지금 고른 칸(없으면 빈 칸)에 들어가고, 멤버 묶음은 한 번에 불러온다. [확인]해야 반영.
+ * 최근 멤버 칩을 누르면 지금 고른 칸(없으면 빈 칸)에 들어가고, 멤버 묶음은 한 번에 불러온다.
+ * 창을 어떻게 닫든(완료·✕·아래로 내리기·바깥 누르기) 적은 이름이 그대로 반영된다 (4.6).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -543,13 +544,15 @@ internal fun NameSheet(state: AppState, onClose: () -> Unit) {
         draft[target] = who
         focus = nextEmpty()
     }
-    Sheet(onClose, fill = false) {
+    // 적은 이름은 닫을 때 한 번에 반영 (글자마다 반영하면 "민"·"민수"가 모두 최근 멤버에 쌓여서)
+    fun done() { state.updateNames(draft); onClose() }
+    Sheet(::done, fill = false) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("🙋 누가 달려요?", fontSize = 24.sp, color = Pal.Ink)
                 Text("이름을 붙이면 중계·결과에 이름으로 나와요 · 비워 두면 동물 이름", fontSize = 13.sp, color = Pal.InkSoft)
             }
-            SquareIcon(Icons2.Close, "이름 창 닫기", onClose)
+            SquareIcon(Icons2.Close, "이름 창 닫기", ::done)
         }
         if (state.selected.isEmpty()) {
             Text(
@@ -613,13 +616,8 @@ internal fun NameSheet(state: AppState, onClose: () -> Unit) {
             if (draft.isNotEmpty()) SmallChip("모두 지우기", false) { draft.clear(); focus = state.selected.firstOrNull() }
         }
         if (state.groups.isEmpty() && named.size < 2) Text("두 명 이상 적으면 멤버 묶음으로 저장해 다음에 한 번에 불러올 수 있어요", fontSize = 13.sp, color = Pal.InkSoft)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            CartoonButton(onClick = onClose, color = Pal.Paper, modifier = Modifier.weight(1f), height = 52.dp, depth = 4.dp) {
-                Text("취소", fontSize = 18.sp, color = Pal.Ink)
-            }
-            CartoonButton(onClick = { state.updateNames(draft); onClose() }, color = Pal.Sun, modifier = Modifier.weight(1.4f), height = 52.dp, depth = 4.dp) {
-                Text("확인", fontSize = 19.sp, color = Pal.Ink)
-            }
+        CartoonButton(onClick = ::done, color = Pal.Sun, modifier = Modifier.fillMaxWidth(), height = 52.dp, depth = 4.dp) {
+            Text("완료", fontSize = 19.sp, color = Pal.Ink)
         }
     }
 }

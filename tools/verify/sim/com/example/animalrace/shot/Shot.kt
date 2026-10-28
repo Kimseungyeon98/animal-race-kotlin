@@ -396,6 +396,12 @@ private fun scenes(): List<Scene> {
         Scene("race", snaps = listOf(1500, 7000, 13000, 20000, 25000, 29000)) {
             RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.TURTLE, Animal.PIG), "커피 쏘기", 0, { _, _ -> })
         },
+        // 랜덤 등수 판: 당첨 등수 자리를 따라가는 카메라 + "N등 당첨!" 카드 (기기 속도에 따라 경기 시간이 달라서 촘촘히 찍음)
+        Scene("pick-focus", snaps = (6..40).map { it * 1000L }) {
+            RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG), "커피 쏘기", 0, { _, _ -> },
+                picks = listOf(3, 5), picksFixed = true,
+                names = mapOf(Animal.HORSE to "민수", Animal.CAT to "지은", Animal.RABBIT to "현우", Animal.PANDA to "서연", Animal.DOG to "도윤", Animal.PIG to "하린"))
+        },
         Scene("roulette", snaps = listOf(900, 2600, 4200)) {
             RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG), "커피 쏘기", 0, { _, _ -> }, picks = listOf(2, 5))
         },

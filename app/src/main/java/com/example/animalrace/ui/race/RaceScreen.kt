@@ -120,11 +120,21 @@ private const val START_W = 130.0
 private const val START_LEFT = 0.32
 private const val START_X = -START_LEFT * START_W
 
-/** 아직 달리는 앞쪽 4마리가 들어오게 확대/축소하고, 선두를 화면 70% 지점에 둔다. */
-private fun cameraTarget(v: RaceView): Pair<Double, Double> {
+/**
+ * 아직 달리는 앞쪽 4마리가 들어오게 확대/축소하고, 선두를 화면 70% 지점에 둔다.
+ * 랜덤 등수 판([picks])은 1등 대신 지금 당첨 등수 자리에서 달리는 동물들이 들어오게 잡는다 (4.6).
+ */
+private fun cameraTarget(v: RaceView, picks: List<Int>? = null): Pair<Double, Double> {
     val running = v.racers.filter { !it.finished }.sortedByDescending { it.x }
     // 모두 들어오면 결승선을 화면 가운데쯤 두어 결승선을 지난 동물과 등수 태그가 다 보이게
     if (running.isEmpty()) return (TRACK - 0.45 * 170.0) to 170.0
+    val hot = if (!picks.isNullOrEmpty()) running.filter { (it.rank + 1) in picks } else emptyList()
+    if (hot.isNotEmpty()) {
+        val front = hot.maxOf { it.x }
+        val w = ((front - hot.minOf { it.x }) * 1.35 + 110).coerceIn(START_W, 420.0)
+        val x = (front - 0.70 * w).coerceIn(-START_LEFT * w, TRACK + 0.2 * w - w)
+        return x to w
+    }
     val front = running.firstOrNull()?.x ?: TRACK
     val pack = running.take(4)
     val spread = front - (pack.lastOrNull()?.x ?: front)
@@ -278,7 +288,7 @@ private fun RaceScreenBody(
             // 시뮬레이션은 1/60초 단위로만 진행되므로, 120Hz 화면에서는 두 상태 사이를 보간해서 그린다.
             // (보간 없이 그리면 동물은 두 프레임에 한 번, 카메라는 매 프레임 움직여 겹쳐 보인다)
             val v = if (race.done) cur else interpolate(prev, cur, acc / DT)
-            val (tx, tw) = cameraTarget(v)
+            val (tx, tw) = cameraTarget(v, picks)
             camX += (tx - camX) * (1 - exp(-step * 3.5))
             camW += (tw - camW) * (1 - exp(-step * 1.8))
             v.recentEvents.firstOrNull()?.let { ev ->
@@ -327,7 +337,7 @@ private fun RaceScreenBody(
                 .height(bottomH),
         )
 
-        Overlays(frame, stadium, countdown)
+        Overlays(frame, stadium, countdown, shown)
 
         roulette?.let { RouletteOverlay(it, picks.orEmpty(), n, bet) { skip = true } }
 
@@ -785,13 +795,16 @@ private fun ExitDialog(view: RaceView, onKeep: () -> Unit, onQuit: () -> Unit, t
 // ---------------------------------------------------------------- 오버레이
 
 @Composable
-private fun Overlays(frame: Frame, stadium: Stadium, countdown: String?) {
+private fun Overlays(frame: Frame, stadium: Stadium, countdown: String?, picks: List<Int>? = null) {
     val view = frame.view
-    val winner = view.racers.firstOrNull { it.finished && it.rank == 0 }
-    val showWinner = winner != null && frame.time - (winner.finishTime ?: 0.0) < 2.2
+    // 꼴찌 판: 1등 골인 카드. 랜덤 등수 판: 1등은 그냥 지나가고, 당첨 등수로 들어온 동물마다 "N등 당첨!" 카드
+    val pickMode = !picks.isNullOrEmpty()
+    val winner = if (pickMode) view.racers.filter { it.finished && (it.rank + 1) in picks!! }.maxByOrNull { it.finishTime ?: 0.0 }
+        else view.racers.firstOrNull { it.finished && it.rank == 0 }
+    val showWinner = winner != null && frame.time - (winner.finishTime ?: 0.0) < (if (pickMode) 1.8 else 2.2)
     val sound = LocalSound.current
-    LaunchedEffect(showWinner) {
-        if (showWinner) sound.play(Sfx.FANFARE)
+    LaunchedEffect(showWinner, winner?.lane) {
+        if (showWinner) sound.play(if (pickMode) Sfx.BUST else Sfx.FANFARE)
         sound.duck(showWinner)
     }
 
@@ -845,12 +858,13 @@ private fun Overlays(frame: Frame, stadium: Stadium, countdown: String?) {
                     .rotate(-3f)
                     .padding(horizontal = 50.dp)
                     .clip(RoundedCornerShape(28.dp))
-                    .background(Pal.Sun)
+                    .background(if (pickMode) Pal.Pink else Pal.Sun)
                     .border(4.dp, Pal.Ink, RoundedCornerShape(28.dp))
                     .padding(horizontal = 18.dp, vertical = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("1등 골인!", fontSize = 22.sp, color = Pal.Ink)
+                if (pickMode) Tag("🎯 ${w.rank + 1}등 당첨!", Pal.Tomato, fontSize = 22.sp)
+                else Text("1등 골인!", fontSize = 22.sp, color = Pal.Ink)
                 AnimalSprite(w.animal, 150.dp, running = true)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     LaneSticker(w.lane, size = 26.dp, border = 3.dp)
