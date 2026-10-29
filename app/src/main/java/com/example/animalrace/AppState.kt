@@ -26,19 +26,19 @@ enum class Screen { Setup, Race, Result, MiniGame }
 /**
  * 진행 중인 몰아주기 한 판. [bomb]은 몰빵이 숨은 자리로 시작할 때 고르게 뽑아 둔다.
  * 사다리: [ladder]는 처음 깔린 사다리, [bomb]은 몰빵 칸(아래 칸 위치). 사람들이 줄을 더 그은 뒤 그 칸에 도착한 사람이 몰빵.
- * 복권: [lottoBomb]은 똑같은 복권 [MiniGameDraw.lottoTickets]장 중 몰빵이 숨은 장의 위치. 그 장을 고른 사람이 몰빵.
- * 가챠: [bomb]번째(0부터)로 나오는 캡슐이 몰빵.
+ * 복권: [roundBomb]은 똑같은 복권 [MiniGameDraw.slots]장 중 몰빵이 숨은 장의 위치. 그 장을 고른 사람이 몰빵.
+ * 가챠: [roundBomb]번째(0부터)로 나오는 캡슐이 몰빵 (캡슐 [MiniGameDraw.slots]개, 출전 번호 순으로 돌아가며 뽑음).
  */
 data class MiniGameSession(
     val game: MiniGame,
     val players: List<RaceResult>,
     val ladder: Ladder,
     val bomb: Int,
-    val lottoBomb: Int = bomb,
+    val roundBomb: Int = bomb,
 )
 
 /** 한 판의 숨긴 결과 (같은 판에서 다시 열어도 그대로) */
-private data class MiniGameDrawn(val at: Long, val bomb: Int, val ladder: Ladder, val lottoBomb: Int)
+private data class MiniGameDrawn(val at: Long, val bomb: Int, val ladder: Ladder, val roundBomb: Int)
 
 /**
  * 앱 전체 상태. 화면 전환도 이 상태값([screen])으로 처리한다.
@@ -222,10 +222,10 @@ class AppState(private val repo: AppRepository) {
         if (game != null) lastGame = game
         val d = draw?.takeIf { it.at == record.at } ?: MiniGameDrawn(
             record.at, MiniGameDraw.bomb(players.size), Ladder.random(players.size),
-            MiniGameDraw.bomb(MiniGameDraw.lottoTickets(players.size)),
+            MiniGameDraw.bomb(MiniGameDraw.slots(players.size)),
         )
         draw = d
-        miniGame = MiniGameSession(chosen, players, d.ladder, d.bomb, d.lottoBomb)
+        miniGame = MiniGameSession(chosen, players, d.ladder, d.bomb, d.roundBomb)
         screen = Screen.MiniGame
     }
 

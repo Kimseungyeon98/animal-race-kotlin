@@ -102,15 +102,15 @@ class MiniGameTest {
     }
 
     @Test
-    fun lottoRoundsKeepEveryoneEqual() {
+    fun roundsKeepEveryoneEqual() {
         // 4.7: 사람 수 × 바퀴 수(4명까지 3바퀴, 5명부터 2바퀴). 몰빵이 나올 때까지 출전 번호 순으로 돌아가며 고른다
-        assertEquals(6, MiniGameDraw.lottoTickets(2))
-        assertEquals(12, MiniGameDraw.lottoTickets(4))
-        assertEquals(10, MiniGameDraw.lottoTickets(5))
-        assertEquals(18, MiniGameDraw.lottoTickets(9))
+        assertEquals(6, MiniGameDraw.slots(2))
+        assertEquals(12, MiniGameDraw.slots(4))
+        assertEquals(10, MiniGameDraw.slots(5))
+        assertEquals(18, MiniGameDraw.slots(9))
         val rnd = Random(20261029)
         for (players in listOf(2, 3, 5)) for (strategy in 0..1) {
-            val tickets = MiniGameDraw.lottoTickets(players)
+            val tickets = MiniGameDraw.slots(players)
             val draws = 30_000
             val counts = IntArray(players)
             repeat(draws) {
@@ -127,6 +127,15 @@ class MiniGameTest {
             // 자유도 n-1, 유의수준 0.001
             val limit = mapOf(2 to 10.8, 3 to 13.8, 5 to 18.5).getValue(players)
             assertTrue("${players}명 전략${strategy} χ² = $chi, counts = ${counts.toList()}", chi < limit)
+        }
+    }
+
+    @Test
+    fun gachaRoundsGiveEveryoneTheSameCapsules() {
+        // 4.8: 캡슐 k번째는 출전 번호 순으로 돌아가며 → 사람마다 바퀴 수만큼, 몰빵 순번이 균등하면 사람도 균등
+        for (n in 2..9) {
+            val owners = (0 until MiniGameDraw.slots(n)).map { MiniGameDraw.turn(it, n) }
+            assertEquals(List(n) { MiniGameDraw.rounds(n) }, (0 until n).map { p -> owners.count { it == p } })
         }
     }
 

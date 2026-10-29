@@ -501,7 +501,7 @@ private fun withSubjectUi(word: String) = com.example.animalrace.race.withSubjec
  * 복권 긁기 v2 (시안: "복권 긁기 v2", 4.7 "3바퀴 + 4칸 격자").
  * 똑같이 생긴 복권을 사람 수 × 바퀴 수만큼 놓고, 몰빵이 나올 때까지 출전 번호 순으로 돌아가며 한 장씩 고른다.
  * 고른 복권은 화면 가득 펼쳐서 긁고(공개 조건은 [ScratchArea]), 꽝이면 다음 사람이 남은 장에서 고른다.
- * 몰빵은 [MiniGameSession.lottoBomb] 자리의 복권에 숨어 있다.
+ * 몰빵은 [MiniGameSession.roundBomb] 자리의 복권에 숨어 있다.
  */
 @Composable
 private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?, onReveal: (Int, Boolean) -> Unit) {
@@ -509,9 +509,9 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
     val n = session.players.size
     // 복권은 사람 수 × 바퀴 수(4명까지 3바퀴, 5명부터 2바퀴): 몰빵이 나올 때까지 출전 번호 순으로 돌아가며 고른다
     // (누구나 최대 같은 장수라 걸릴 확률은 모두 1/n)
-    val rounds = MiniGameDraw.lottoRounds(n)
-    val tickets = MiniGameDraw.lottoTickets(n)
-    val bomb = session.lottoBomb
+    val rounds = MiniGameDraw.rounds(n)
+    val tickets = MiniGameDraw.slots(n)
+    val bomb = session.roundBomb
     val order = remember(session) { session.players.indices.sortedBy { session.players[it].lane } }
     // 복권 자리마다 고른 사람 (아직 안 골랐으면 null)
     val owner = remember(session) { mutableStateListOf<Int?>().apply { repeat(tickets) { add(null) } } }

@@ -90,12 +90,15 @@ private val DomePile = listOf(
 
 /**
  * 가챠 캡슐 (시안: "가챠 캡슐").
- * 출전 번호 순으로 레버를 한 바퀴 돌려 캡슐을 뽑고, 세 번 톡톡 두드려 깬다.
- * [MiniGameSession.bomb]번째로 뽑힌 캡슐이 몰빵. 캡슐 색은 장식일 뿐 결과와 무관.
+ * 출전 번호 순으로 레버를 한 바퀴 돌려 캡슐을 뽑고, 세 번 톡톡 두드려 깬다. 몰빵이 나올 때까지 돌아가며 (4.8 "가챠 캡슐 · 3바퀴").
+ * [MiniGameSession.roundBomb]번째로 뽑힌 캡슐이 몰빵. 캡슐 색은 장식일 뿐 결과와 무관.
  */
 @Composable
 internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Boolean) -> Unit) {
     val n = session.players.size
+    // 캡슐은 복권과 같이 사람 수 × 바퀴 수(4명까지 3바퀴, 5명부터 2바퀴): 몰빵이 나올 때까지 출전 번호 순으로 돌아가며 뽑는다
+    val capsules = MiniGameDraw.slots(n)
+    val bombAt = session.roundBomb
     val order = remember(session) { session.players.indices.sortedBy { session.players[it].lane } }
     var k by remember(session) { mutableIntStateOf(0) }
     var phase by remember(session) { mutableStateOf(Gacha.LEVER) }
@@ -116,9 +119,9 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
     }
     // 레버를 돌리는 동안 1로 올라가 캡슐이 떠올라 섞이고, 손을 떼면 0으로 가라앉는다
     val shake = remember(session) { Animatable(0f) }
-    val colors = remember(session) { List(n) { CapsuleColors[rnd.nextInt(CapsuleColors.size)] } }
-    val current = order[MiniGameDraw.turn(k.coerceAtMost(n - 1), n)]
-    val bust = k == session.bomb
+    val colors = remember(session) { List(capsules) { CapsuleColors[rnd.nextInt(CapsuleColors.size)] } }
+    val current = order[MiniGameDraw.turn(k.coerceAtMost(capsules - 1), n)]
+    val bust = k == bombAt
 
     fun pulled() {
         phase = Gacha.DROPPED
@@ -144,7 +147,8 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
             if (bust) {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onReveal(current, true)
-            } else onReveal(current, false)
+            } else if (k >= capsules - n) onReveal(current, false) // 마지막 바퀴의 꽝이어야 정말 탈출
+            else sound.play(Sfx.SAFE)
         }
     }
     fun next() {
@@ -165,7 +169,8 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
             val hPx = constraints.maxHeight.toFloat()
             // 기계(시안 390×480)를 칸에 맞춰
             // 기계는 10% 크게, 칸 아래쪽에 붙여 레버에 손이 닿기 쉽게. 위쪽은 남은 캡슐 줄 자리
-            val topRoom = with(LocalDensity.current) { 104.dp.toPx() }
+            val twoRows = capsules > 9
+            val topRoom = with(LocalDensity.current) { (if (twoRows) 136.dp else 104.dp).toPx() }
             val s = minOf(wPx / 390f * 1.1f, (hPx - topRoom) / 470f)
             val dx = (wPx - 390f * s) / 2
             val dy = hPx - 488f * s
@@ -241,7 +246,9 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                         capsule(Offset(x, y), 22f, colors[k], t * 540f, 3.5f)
                     }
                     // 쓴 캡슐 쌓기
-                    for (j in 0 until k) capsule(Offset(345f, 445f - j * 30f), 14f, colors[j], 0f, 2.5f, alpha = 0.6f)
+                    // 쓴 캡슐 쌓기 (많으면 최근 8개만)
+                    val first = maxOf(0, k - 8)
+                    for (j in first until k) capsule(Offset(345f, 445f - (j - first) * 30f), 14f, colors[j], 0f, 2.5f, alpha = 0.6f)
                 }
             }
             with(density) {
@@ -255,11 +262,14 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text("남은 캡슐", fontSize = 14.sp, color = Pal.InkSoft)
-                Row(horizontalArrangement = Arrangement.spacedBy(if (n > 7) 2.dp else 6.dp)) {
-                    for (j in 0 until n) {
-                        Canvas(Modifier.size(if (n > 7) 26.dp else 32.dp)) {
-                            val r = size.minDimension * 0.42f
-                            capsule(Offset(size.width / 2, size.height / 2), r, colors[j], -20f, 2.dp.toPx(), alpha = if (j < k) 0.25f else 1f)
+                // 9개까지 한 줄, 더 많으면 두 줄
+                (0 until capsules).chunked(if (twoRows) (capsules + 1) / 2 else capsules).forEach { line ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(if (capsules > 7) 2.dp else 6.dp)) {
+                        for (j in line) {
+                            Canvas(Modifier.size(if (capsules > 7) 26.dp else 32.dp)) {
+                                val r = size.minDimension * 0.42f
+                                capsule(Offset(size.width / 2, size.height / 2), r, colors[j], -20f, 2.dp.toPx(), alpha = if (j < k) 0.25f else 1f)
+                            }
                         }
                     }
                 }
@@ -297,9 +307,11 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                 Text(
                     when {
                         loser != null -> "잠시 뒤 최종 발표"
-                        phase == Gacha.OPENED -> "꽝 탈출! 🎉"
+                        phase == Gacha.OPENED -> if (k >= capsules - n) "꽝 탈출! 🎉" else "꽝! 다음 바퀴에 또 와요"
                         phase == Gacha.OPENING -> "캡슐을 톡톡 두드려 깨요"
-                        n - k == 1 -> "마지막 캡슐… 그래도 열어 봐야죠"
+                        capsules - k == 1 -> "마지막 캡슐… 그래도 열어 봐야죠"
+                        k >= n * 2 -> "세 번째 바퀴 · 레버를 드르륵 돌려 주세요"
+                        k >= n -> "두 번째 바퀴 · 레버를 드르륵 돌려 주세요"
                         else -> "레버를 드르륵 돌려 주세요"
                     },
                     fontSize = 12.sp, color = Pal.InkSoft, maxLines = 1,
