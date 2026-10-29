@@ -347,6 +347,15 @@ private fun scenes(): List<Scene> {
                 onAgain = {}, onHome = {},
             )
         },
+        // 복권 3바퀴 (5명부터 2바퀴): 사람 수에 따라 두 칸 / 세 칸 / 네 칸 작은 복권
+        *listOf(2, 3, 4, 5, 8).map { k ->
+            Scene("lotto-$k") {
+                val names = listOf("지은", "서연", "도윤", "민수", "현우", "하린", "재석", "준하")
+                val players = results(Animal.CAT, Animal.PIG, Animal.PANDA, Animal.HORSE, Animal.RABBIT, Animal.DOG, Animal.HAMSTER, Animal.DUCK)
+                    .take(k).mapIndexed { i, r -> r.copy(who = names[i], lane = i) }
+                MiniGameScreen(MiniGameSession(MiniGame.LOTTO, players, Ladder.random(k), k - 1, 0), "커피 쏘기", {}, {})
+            }
+        }.toTypedArray(),
         Scene("people-lotto") {
             val players = results(Animal.CAT, Animal.PIG, Animal.PANDA).mapIndexed { i, r -> r.copy(who = listOf("지은", "서연", "도윤")[i]) }
             MiniGameScreen(MiniGameSession(MiniGame.LOTTO, players, Ladder.random(3), 1), "커피 쏘기", {}, {})

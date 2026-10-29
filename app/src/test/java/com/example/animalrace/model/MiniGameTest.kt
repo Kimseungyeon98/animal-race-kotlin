@@ -102,6 +102,35 @@ class MiniGameTest {
     }
 
     @Test
+    fun lottoRoundsKeepEveryoneEqual() {
+        // 4.7: 사람 수 × 바퀴 수(4명까지 3바퀴, 5명부터 2바퀴). 몰빵이 나올 때까지 출전 번호 순으로 돌아가며 고른다
+        assertEquals(6, MiniGameDraw.lottoTickets(2))
+        assertEquals(12, MiniGameDraw.lottoTickets(4))
+        assertEquals(10, MiniGameDraw.lottoTickets(5))
+        assertEquals(18, MiniGameDraw.lottoTickets(9))
+        val rnd = Random(20261029)
+        for (players in listOf(2, 3, 5)) for (strategy in 0..1) {
+            val tickets = MiniGameDraw.lottoTickets(players)
+            val draws = 30_000
+            val counts = IntArray(players)
+            repeat(draws) {
+                val bomb = MiniGameDraw.bomb(tickets, rnd)
+                val left = (0 until tickets).toMutableList()
+                for (k in 0 until tickets) {
+                    val pick = if (strategy == 0) left.first() else left.random(rnd)
+                    left.remove(pick)
+                    if (pick == bomb) { counts[MiniGameDraw.turn(k, players)]++; break }
+                }
+            }
+            val expected = draws.toDouble() / players
+            val chi = counts.sumOf { (it - expected) * (it - expected) / expected }
+            // 자유도 n-1, 유의수준 0.001
+            val limit = mapOf(2 to 10.8, 3 to 13.8, 5 to 18.5).getValue(players)
+            assertTrue("${players}명 전략${strategy} χ² = $chi, counts = ${counts.toList()}", chi < limit)
+        }
+    }
+
+    @Test
     fun gachaGivesEveryoneOneCapsule() {
         // k번째 캡슐은 k번째 차례 사람의 것 → 몰빵 캡슐 위치가 균등하면 사람도 균등
         for (n in 2..8) {

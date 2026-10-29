@@ -92,6 +92,7 @@ import androidx.compose.ui.unit.sp
 import com.example.animalrace.MiniGameSession
 import com.example.animalrace.model.Fx
 import com.example.animalrace.model.MiniGame
+import com.example.animalrace.model.MiniGameDraw
 import com.example.animalrace.ui.art.AnimalSprite
 import com.example.animalrace.ui.components.CartoonButton
 import com.example.animalrace.ui.components.LaneSticker
@@ -497,22 +498,29 @@ private fun withSubjectUi(word: String) = com.example.animalrace.race.withSubjec
 // ---------------------------------------------------------------- 복권
 
 /**
- * 복권 긁기 v2 (시안: "복권 긁기 v2").
- * 똑같이 생긴 복권을 인원수만큼 나란히 놓고, 출전 번호 순으로 한 장씩 고른다.
+ * 복권 긁기 v2 (시안: "복권 긁기 v2", 4.7 "3바퀴 + 4칸 격자").
+ * 똑같이 생긴 복권을 사람 수 × 바퀴 수만큼 놓고, 몰빵이 나올 때까지 출전 번호 순으로 돌아가며 한 장씩 고른다.
  * 고른 복권은 화면 가득 펼쳐서 긁고(공개 조건은 [ScratchArea]), 꽝이면 다음 사람이 남은 장에서 고른다.
- * 몰빵은 [MiniGameSession.bomb] 자리의 복권에 숨어 있다.
+ * 몰빵은 [MiniGameSession.lottoBomb] 자리의 복권에 숨어 있다.
  */
 @Composable
 private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?, onReveal: (Int, Boolean) -> Unit) {
     val sound = LocalSound.current
     val n = session.players.size
+    // 복권은 사람 수 × 바퀴 수(4명까지 3바퀴, 5명부터 2바퀴): 몰빵이 나올 때까지 출전 번호 순으로 돌아가며 고른다
+    // (누구나 최대 같은 장수라 걸릴 확률은 모두 1/n)
+    val rounds = MiniGameDraw.lottoRounds(n)
+    val tickets = MiniGameDraw.lottoTickets(n)
+    val bomb = session.lottoBomb
     val order = remember(session) { session.players.indices.sortedBy { session.players[it].lane } }
     // 복권 자리마다 고른 사람 (아직 안 골랐으면 null)
-    val owner = remember(session) { mutableStateListOf<Int?>().apply { repeat(n) { add(null) } } }
+    val owner = remember(session) { mutableStateListOf<Int?>().apply { repeat(tickets) { add(null) } } }
+    // 긁은 복권 자리. 사람은 자기 복권을 다 긁어야(2장) 탈출로 표시된다
+    val scratched = remember(session) { mutableStateListOf<Int>() }
     var turn by remember(session) { mutableIntStateOf(0) }
     var open by remember(session) { mutableStateOf<Int?>(null) }
     var shown by remember(session) { mutableStateOf(0) }
-    val current = order.getOrNull(turn)?.takeIf { loser == null }
+    val current = order.getOrNull(turn % n)?.takeIf { loser == null }
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -531,8 +539,9 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(if (loser != null) "${withSubjectUi(who.name)} 몰빵! 💸" else "${who.name} 차례!", fontSize = 20.sp, color = Pal.Ink)
                     val left = owner.count { it == null }
+                    val round = if (loser != null || turn < n) "" else if (turn < n * 2) "두 번째 바퀴 · " else "세 번째 바퀴 · "
                     Text(
-                        if (loser != null) "잠시 뒤 최종 발표" else if (left == n) "똑같이 생긴 복권 중 한 장을 골라 주세요" else "남은 복권 ${left}장 중 한 장을 골라 주세요",
+                        if (loser != null) "잠시 뒤 최종 발표" else if (left == tickets) "똑같이 생긴 복권 ${tickets}장 중 한 장을 골라 주세요" else "${round}남은 복권 ${left}장 중 한 장을 골라 주세요",
                         fontSize = 13.sp, color = Pal.InkSoft,
                     )
                 }
@@ -540,25 +549,33 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
             // 똑같이 생긴 복권들: 두 칸 격자, 출전 번호 순 (시안: "화면 다듬기" ②)
             // 2~3장은 크게, 4장 이상은 남은 높이에 맞춰 납작하게
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                val cols = if (n == 1) 1 else 2
-                val rows = (n + cols - 1) / cols
+                // 6·8·10장은 두 칸, 9·12장은 세 칸 (마지막 줄에 한 장만 남지 않게), 그보다 많으면 네 칸에 긁기 칸만 있는 작은 복권
+                val cols = when {
+                    tickets == 1 -> 1
+                    tickets % 3 == 0 && tickets in 9..12 -> 3
+                    tickets <= 10 -> 2
+                    else -> 4
+                }
+                val rows = (tickets + cols - 1) / cols
                 val gap = 14.dp
                 val footer = 44.dp
                 val cardW = ((maxWidth - gap * (cols - 1)) / cols).coerceAtMost(175.dp)
                 val tallH = cardW / 0.76f
                 val cardH = minOf(tallH, (maxHeight - footer - gap * (rows - 1)) / rows)
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(gap)) {
-                    (0 until n).chunked(cols).forEach { line ->
+                    (0 until tickets).chunked(cols).forEach { line ->
                         Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                             line.forEach { t ->
                                 val who = owner[t]
                                 TicketFace(
                                     used = who?.let { session.players[it] },
                                     lose = who != null && who == loser,
-                                    compact = cardH < tallH * 0.85f,
+                                    compact = cardH < tallH * 0.85f || cols >= 3,
+                                    narrow = cols == 3,
+                                    mini = cols == 4,
                                     modifier = Modifier
                                         .size(cardW, cardH)
-                                        .rotate(if (n <= 3) (if (t % 2 == 0) -1.5f else 1.5f) else 0f),
+                                        .rotate(if (tickets <= 3) (if (t % 2 == 0) -1.5f else 1.5f) else 0f),
                                     onClick = if (who == null && current != null && open == null) {
                                         { owner[t] = current; shown = t; open = t }
                                     } else null,
@@ -580,14 +597,19 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
         AnimatedVisibility(open != null, enter = fadeIn() + scaleIn(spring(dampingRatio = 0.7f), initialScale = 0.6f), exit = fadeOut()) {
             val t = shown
             val p = owner[t] ?: return@AnimatedVisibility
-            val lose = t == session.bomb
-            val out = p in revealed
-            val next = order.getOrNull(turn + 1)
+            val lose = t == bomb
+            val out = t in scratched
+            val next = order.getOrNull((turn + 1) % n)
             BigTicket(
                 player = session.players[p],
                 lose = lose,
                 revealed = out,
-                onScratched = { sound.play(Sfx.POP); onReveal(p, lose) },
+                onScratched = {
+                    sound.play(Sfx.POP)
+                    if (t !in scratched) scratched += t
+                    // 몰빵이면 바로, 꽝이면 자기 복권을 다 긁었을 때만 탈출
+                    if (lose || owner.count { it == p } >= rounds) onReveal(p, lose) else sound.play(Sfx.SAFE)
+                },
                 nextLabel = if (out && !lose && loser == null && next != null) "${session.players[next].name} 차례로 →" else null,
                 onNext = { open = null; turn++ },
             )
@@ -597,7 +619,7 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
 
 /** 고르기 화면의 복권 한 장. 아직 안 고른 장은 모두 똑같이 생겼고, 긁은 장은 결과와 주인이 남는다. */
 @Composable
-private fun TicketFace(used: RaceResult?, lose: Boolean, modifier: Modifier, onClick: (() -> Unit)?, compact: Boolean = false) {
+private fun TicketFace(used: RaceResult?, lose: Boolean, modifier: Modifier, onClick: (() -> Unit)?, compact: Boolean = false, narrow: Boolean = false, mini: Boolean = false) {
     Box(modifier.graphicsLayer { alpha = if (used != null && !lose) 0.55f else 1f }) {
         Box(Modifier.matchParentSize().offset(y = 4.dp).clip(RoundedCornerShape(16.dp)).background(Pal.Ink))
         Column(
@@ -607,16 +629,17 @@ private fun TicketFace(used: RaceResult?, lose: Boolean, modifier: Modifier, onC
                 .background(Pal.Cream)
                 .border(3.dp, Pal.Ink, RoundedCornerShape(16.dp))
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(8.dp),
+                .padding(if (mini) 5.dp else 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            Text("🎫 몰아주기 복권", fontSize = if (compact) 13.sp else 15.sp, color = Pal.Ink, maxLines = 1)
+            // 네 칸 작은 복권은 긁기 칸만
+            if (!mini) Text(if (narrow) "🎫 복권" else "🎫 몰아주기 복권", fontSize = if (compact) 13.sp else 15.sp, color = Pal.Ink, maxLines = 1)
             if (!compact) {
                 Text("긁어서 확인하세요", fontSize = 12.sp, color = Pal.InkSoft, maxLines = 1)
                 Text("★ ★ ★", fontSize = 14.sp, color = Pal.TomatoText)
             }
-            DashedLine()
+            if (!mini) DashedLine()
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -636,10 +659,10 @@ private fun TicketFace(used: RaceResult?, lose: Boolean, modifier: Modifier, onC
                             }
                         }
                     }
-                    Text("? ? ?", fontSize = 20.sp, color = Color(0xFF6A7684))
+                    Text("? ? ?", fontSize = if (mini) 15.sp else 20.sp, color = Color(0xFF6A7684))
                 } else {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(if (lose) "몰빵!" else "꽝 탈출", fontSize = 20.sp, color = if (lose) Pal.TomatoText else Color(0xFF1D8A3A))
+                        Text(if (lose) "몰빵!" else if (mini) "꽝" else "꽝 탈출", fontSize = if (mini) 16.sp else 20.sp, color = if (lose) Pal.TomatoText else Color(0xFF1D8A3A))
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                             LaneSticker(used.lane, size = 16.dp)
                             Text(used.name, fontSize = 12.sp, color = Pal.Ink, maxLines = 1)

@@ -25,6 +25,12 @@ object MiniGameDraw {
     /** 몰빵이 숨은 자리 (사다리 아래 칸 / 복권 / 가챠 몇 번째 캡슐) */
     fun bomb(places: Int, rnd: Random = Random.Default): Int = rnd.nextInt(places)
 
+    /** 복권 바퀴 수 (4.7): 4명까지 3바퀴, 5명부터 2바퀴 (사람이 많으면 너무 길어져서) */
+    fun lottoRounds(players: Int): Int = if (players >= 5) 2 else 3
+
+    /** 복권 장수 = 사람 수 × 바퀴 수. 누구나 같은 장수를 고를 수 있어서 걸릴 확률은 모두 같다 */
+    fun lottoTickets(players: Int): Int = players * lottoRounds(players)
+
     /** [pressed]번째 캡슐은 출전 순서상 몇 번째 사람 차례인지 */
     fun turn(pressed: Int, players: Int): Int = pressed % players
 
