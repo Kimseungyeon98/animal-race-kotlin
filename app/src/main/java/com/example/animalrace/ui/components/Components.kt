@@ -165,6 +165,7 @@ object Icons2 {
     val MusicOn = listOf("M9 17V5l10-2v12", "M3 17a3 3 0 1 0 6 0a3 3 0 1 0 -6 0", "M13 15a3 3 0 1 0 6 0a3 3 0 1 0 -6 0")
     val MusicOff = listOf("M9 17V5l10-2v12", "M3 17a3 3 0 1 0 6 0a3 3 0 1 0 -6 0", "M13 15a3 3 0 1 0 6 0a3 3 0 1 0 -6 0", "M3 3l18 18")
     val SoundOff = listOf("M4 9h4l5-4v14l-5-4H4z", "M17 9.5l5 5", "M22 9.5l-5 5")
+    val Trash = listOf("M4 7h16", "M9 7V4h6v3", "M6 7l1 13h10l1-13", "M10 11v6", "M14 11v6")
     val Crown = listOf("M3 19 L5 5 L11 12 L15 3 L19 12 L25 5 L27 19 Z")
 }
 

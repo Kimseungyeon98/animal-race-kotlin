@@ -247,6 +247,21 @@ class AppState(private val repo: AppRepository) {
 
     fun clearHistory() { history.clear(); repo.saveHistory(emptyList()) }
 
+    /** 기록 한 판 지우기 (4.10). 되돌릴 때 쓰도록 있던 자리를 돌려준다 (없으면 -1) */
+    fun deleteRecord(record: RaceRecord): Int {
+        val i = history.indexOfFirst { it.at == record.at }
+        if (i >= 0) { history.removeAt(i); repo.saveHistory(history.toList()) }
+        return i
+    }
+
+    /** 지운 판 되돌리기: 원래 자리에 다시 넣는다 */
+    fun restoreRecord(index: Int, record: RaceRecord) {
+        if (history.any { it.at == record.at }) return
+        history.add(index.coerceIn(0, history.size), record)
+        while (history.size > HISTORY_SIZE) history.removeAt(history.lastIndex)
+        repo.saveHistory(history.toList())
+    }
+
     fun goHome() { confirmExit = false; miniGame = null; screen = Screen.Setup }
 
     /** 뒤로 가기: 경주 중이면 확인창을 열고(이미 열려 있으면 닫고 계속), 미니게임이면 결과 화면으로, 결과 화면이면 바로 메인으로 */

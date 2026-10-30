@@ -62,6 +62,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -112,6 +113,7 @@ import com.example.animalrace.ui.theme.Jua
 import com.example.animalrace.ui.theme.NumberStyle
 import com.example.animalrace.ui.theme.Pal
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import java.util.Calendar
 import kotlin.math.ceil
 
@@ -1062,28 +1064,20 @@ private fun Sheet(onClose: () -> Unit, fill: Boolean = true, content: @Composabl
 @Composable
 internal fun HistorySheet(state: AppState, onClose: () -> Unit) {
     var confirmClear by remember { mutableStateOf(false) }
-    // 우리 기록 (4.2) 탭: 이름 붙인 판이 있으면 먼저 보여 준다
-    var ours by remember { mutableStateOf(state.history.any { r -> r.results.any { it.who != null } }) }
+    // 탭: 최근 경기가 먼저 (4.10), 우리 기록 (4.2)은 두 번째
+    var ours by remember { mutableStateOf(false) }
+    // 방금 지운 판: 몇 초 동안 [되돌리기]
+    var undo by remember { mutableStateOf<Triple<Int, Int, RaceRecord>?>(null) }
+    LaunchedEffect(undo) { if (undo != null) { delay(4000); undo = null } }
     Sheet(onClose) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Bottom) {
-                listOf(true to "우리 기록", false to "최근 경기").forEach { (tab, title) ->
+                listOf(false to "최근 경기", true to "우리 기록").forEach { (tab, title) ->
                     Text(
                         title, fontSize = if (tab == ours) 24.sp else 18.sp, color = if (tab == ours) Pal.Ink else Pal.InkSoft,
                         modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { ours = tab; confirmClear = false },
                     )
                 }
-            }
-            if (!ours && state.history.isNotEmpty()) {
-                Text(
-                    if (confirmClear) "정말 지울까요?" else "기록 지우기", fontSize = 14.sp,
-                    color = if (confirmClear) Pal.TomatoText else Pal.InkSoft,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable { if (confirmClear) { state.clearHistory(); confirmClear = false } else confirmClear = true }
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                )
-                Spacer(Modifier.width(8.dp))
             }
             SquareIcon(Icons2.Close, "기록 닫기", onClose)
         }
@@ -1103,9 +1097,42 @@ internal fun HistorySheet(state: AppState, onClose: () -> Unit) {
                 Text("동물을 고르고 출발!을 누르면 여기에 쌓여요.", fontSize = 13.sp, color = Pal.InkSoft)
             }
         } else {
+            undo?.let { (number, index, record) ->
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Pal.Ink).padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("#$number 기록을 지웠어요", fontSize = 15.sp, color = Color.White, modifier = Modifier.weight(1f))
+                    Text(
+                        "되돌리기", fontSize = 15.sp, color = Pal.Sun,
+                        modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable { state.restoreRecord(index, record); undo = null }
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
+            }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 8.dp)) {
-                item { Text("최근 ${AppState.HISTORY_SIZE}판까지 저장돼요.", fontSize = 13.sp, color = Pal.InkSoft) }
-                itemsIndexed(state.history, key = { _, r -> r.at }) { i, record -> HistoryCard(state.history.size - i, record) }
+                item { Text("최근 ${AppState.HISTORY_SIZE}판까지 저장돼요 · 🗑로 한 판씩 지울 수 있어요", fontSize = 13.sp, color = Pal.InkSoft) }
+                itemsIndexed(state.history, key = { _, r -> r.at }) { i, record ->
+                    val number = state.history.size - i
+                    HistoryCard(number, record) {
+                        val at = state.deleteRecord(record)
+                        if (at >= 0) undo = Triple(number, at, record)
+                        confirmClear = false
+                    }
+                }
+                // 전체 지우기는 맨 아래에 작게, 한 번 더 물어보고
+                item {
+                    Box(Modifier.fillMaxWidth().padding(top = 6.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            if (confirmClear) "정말 ${state.history.size}판을 모두 지울까요? 한 번 더 누르면 지워져요" else "기록 모두 지우기", fontSize = 14.sp,
+                            color = if (confirmClear) Pal.TomatoText else Pal.InkSoft,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { if (confirmClear) { state.clearHistory(); confirmClear = false; undo = null } else confirmClear = true }
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                        )
+                    }
+                }
             }
         }
     }
@@ -1113,7 +1140,7 @@ internal fun HistorySheet(state: AppState, onClose: () -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun HistoryCard(number: Int, record: RaceRecord) {
+private fun HistoryCard(number: Int, record: RaceRecord, onDelete: () -> Unit) {
     val picks = record.picks
     Column(
         Modifier
@@ -1127,7 +1154,12 @@ private fun HistoryCard(number: Int, record: RaceRecord) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Tag("#$number", Pal.Cream, Pal.Ink, number = true)
             val venue = record.venue?.let { "${it.emoji} ${it.title} · " }.orEmpty()
-            Text("${formatTime(record.at)} · $venue${record.results.size}마리 · 역전 ${record.leadChanges}회", fontSize = 13.sp, color = Pal.InkSoft)
+            Text("${formatTime(record.at)} · $venue${record.results.size}마리 · 역전 ${record.leadChanges}회", fontSize = 13.sp, color = Pal.InkSoft, modifier = Modifier.weight(1f))
+            // 이 판 지우기 (4.10)
+            Box(
+                Modifier.size(30.dp).clip(CircleShape).clickable(onClick = onDelete),
+                contentAlignment = Alignment.Center,
+            ) { InkIcon(Icons2.Trash, size = 18.dp, stroke = 2.4f, color = Pal.InkSoft) }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             if (picks != null) Tag(if (record.picksFixed) "🎯 지정" else "🎯 랜덤", Pal.Sun, Pal.Ink, fontSize = 12.sp)

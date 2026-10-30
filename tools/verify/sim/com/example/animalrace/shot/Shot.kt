@@ -397,11 +397,15 @@ private fun scenes(): List<Scene> {
             Box(Modifier.fillMaxSize()) { ResultScreen(rec, onAgain = {}, onHome = {}); ShareSheet(rec) {} }
         },
         // ---- 4.2 우리 기록
-        *listOf("ours", "ours-empty").map { name ->
-            Scene(name) {
+        *listOf("ours", "ours-empty", "t-delete").map { name ->
+            Scene(name, script = if (name != "t-delete") null else ({
+                // 4.10: #8 카드의 🗑 → "지웠어요 · 되돌리기" → 되돌리기
+                pause(900); tap(346f, 379f); pause(500); snap("1-deleted")
+                tap(337f, 204f); pause(500); snap("2-undone")
+            })) {
                 val state = AppState(FakeRepo).apply {
                     saveGroup(listOf("민수", "지은", "현우", "서연"))
-                    if (name == "ours") {
+                    if (name != "ours-empty") {
                         val people = listOf("민수", "지은", "현우", "서연")
                         val animals = listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PIG)
                         val order = listOf(listOf(1, 0, 2, 3), listOf(0, 2, 1, 3), listOf(2, 1, 0, 3), listOf(1, 3, 0, 2), listOf(0, 1, 3, 2),
