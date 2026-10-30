@@ -641,9 +641,11 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                         Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                             line.forEach { t ->
                                 val who = owner[t]
+                                // 결과 면(꽝 탈출·몰빵)은 실제로 긁은 뒤에만. 고르기만 한 장은 아직 똑같은 복권
+                                val out = t in scratched
                                 TicketFace(
-                                    used = who?.let { session.players[it] },
-                                    lose = who != null && who == loser,
+                                    used = who?.takeIf { out }?.let { session.players[it] },
+                                    lose = out && who == loser,
                                     compact = cardH < tallH * 0.85f || cols >= 3,
                                     narrow = cols == 3,
                                     mini = cols == 4,

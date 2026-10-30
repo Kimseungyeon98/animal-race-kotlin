@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-4.9-4C9A2A" alt="version 4.9">
+  <img src="https://img.shields.io/badge/version-4.9.1-4C9A2A" alt="version 4.9.1">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -106,11 +106,16 @@
 | **4.7** | **복권 3바퀴** — 복권을 사람 수 × 3장으로(5명부터 × 2), 몰빵이 나올 때까지 돌아가며 · 많으면 네 칸 작은 복권 |
 | **4.8** | **캡슐도 3바퀴** — 캡슐을 사람 수 × 3개로(5명부터 × 2), 몰빵이 나올 때까지 돌아가며 |
 | **4.9** | **미니게임 순서는 자유** — 복권·캡슐은 자기 이름을 누르고 하기, 기록은 실제로 한 사람에게 |
+| **4.9.1** | 복권을 누르자마자 "꽝 탈출"이 비치던 것 → 긁은 뒤에만 결과 표시 |
 
 ---
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 4.9.1 — 복권 결과는 긁은 뒤에만
+- 🎫 복권을 누르는 순간 그 장이 바로 결과 면("꽝 탈출 + 이름")으로 바뀌어, 큰 복권이 펼쳐지는 사이로 비치던 버그 (몰빵 복권도 긁기 전엔 "꽝 탈출"로 보였음) → 결과 면은 **실제로 긁은 뒤에만**, 고르기만 한 장은 그대로 똑같은 복권
+- `shot -Pscene=t-lotto`의 `3-opening`(펼쳐지는 중)으로 확인
 
 ### 4.9 — 미니게임 순서는 자유, 이름 누르고 하기 (캔버스 "🙋 미니게임 · 순서는 자유, 이름 누르고 하기")
 - 실제로는 손에 잡히는 사람이 먼저 긁거나 뽑아서, 앱이 정한 "○○ 차례"와 달라 **몰빵 기록이 엉뚱한 사람에게 남던 문제** →

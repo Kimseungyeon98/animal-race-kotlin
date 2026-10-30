@@ -47,7 +47,7 @@ internal fun touchScenes(): List<Scene> {
             // 이름 없이 복권부터 누르면 "먼저 이름을" → 이름 누르고 다시 → 크게 펼침
             pause(800); tap(80f, 445f); pause(600); snap("1-nudge")
             tap(70f, 143f); pause(600); snap("2-picked")
-            tap(80f, 445f); pause(900); snap("3-big")
+            tap(80f, 445f); pause(120); snap("3-opening"); pause(780); snap("4-big")
         }) { MiniGameScreen(session(MiniGame.LOTTO), "커피 쏘기", {}, {}) },
         Scene("t-gacha-who", script = {
             // 캡슐: 이름 없이 레버부터 → 빨간 안내, 이름 누르면 "○○ 차례!"
