@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-4.13.1-4C9A2A" alt="version 4.13.1">
+  <img src="https://img.shields.io/badge/version-4.13.2-4C9A2A" alt="version 4.13.2">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -112,11 +112,15 @@
 | **4.12** | **속도감** — 바닥 무늬 두 배·흐름 자국, 카메라 최대 250m, 빠르기 따라 흙먼지·스퍼트 바람 줄 |
 | **4.13** | **탄력 있는 달리기** — 착지 때 납작·뜰 때 길게, 귀·갈기·꼬리가 한 박자 늦게 크게 출렁 |
 | **4.13.1** | 몸통 눌림·꼬리 흔들림 1.8배 → 1.4배 (느릴 때도 너무 역동적이던 것) |
+| **4.13.2** | 메인 동물 칸 이름표 글자가 위아래로 잘리던 것 수정 |
 
 ---
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 4.13.2 — 이름표 잘림 수정
+- 메인 동물 칸의 사람 이름표: 줄 높이를 글자보다 낮게 잡아 폰에서 글자 위아래가 테두리에 잘리던 것 → 기본 줄 높이 + 위아래 여백, 이름이 붙은 칸은 동물 그림을 조금 줄여 이름표가 칸 안에 다 들어가게
 
 ### 4.13.1 — 흔들림 조금 줄이기
 - 몸통 눌림·늘어남과 귀·갈기·꼬리 흔들림 세기 1.8배 → **1.4배** (느리게 달릴 때도 너무 역동적으로 보이던 순간) · `ui/art/Gait.kt`의 `FOLLOW_AMP`

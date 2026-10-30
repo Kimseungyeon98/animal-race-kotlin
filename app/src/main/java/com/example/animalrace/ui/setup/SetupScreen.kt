@@ -390,15 +390,18 @@ private fun AnimalTile(animal: Animal, lane: Int, who: String?, tileW: Dp, tileH
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            AnimalSprite(animal, sprite, running = selected)
+            // 이름표는 동물 이름보다 키가 커서, 이름이 붙으면 그림을 조금 줄여 칸 안에 들어가게
+            AnimalSprite(animal, if (selected && who != null) sprite - 10.dp else sprite, running = selected)
             // 달릴 사람이 있으면 동물 이름 자리에 사람 이름표 (4.0): 동물은 그림으로 보인다
             if (selected && who != null) Text(
-                who, fontSize = 14.sp, color = Pal.Ink, lineHeight = 16.sp, maxLines = 1,
+                // 줄 높이를 글자보다 낮게 잡으면 폰에서 글자 위아래가 테두리에 잘려서(4.13.2) 기본 줄 높이 + 위아래 여백
+                who, fontSize = 14.sp, color = Pal.Ink, maxLines = 1,
                 modifier = Modifier
+                    .padding(top = 2.dp)
                     .clip(RoundedCornerShape(9.dp))
                     .background(Pal.Paper)
                     .border(2.dp, Pal.Ink, RoundedCornerShape(9.dp))
-                    .padding(horizontal = 7.dp),
+                    .padding(horizontal = 8.dp, vertical = 1.dp),
             ) else Text(animal.label, fontSize = 15.sp, color = Pal.Ink, lineHeight = 16.sp)
         }
         AnimatedVisibility(
