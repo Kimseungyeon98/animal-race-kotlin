@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-4.12-4C9A2A" alt="version 4.12">
+  <img src="https://img.shields.io/badge/version-4.13-4C9A2A" alt="version 4.13">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -110,11 +110,17 @@
 | **4.10** | **기록 한 판씩 지우기** — 카드마다 🗑 + 되돌리기, 기록 창은 최근 경기 탭 먼저 |
 | **4.11** | **걸음별 달리기** — 질주·깡충·뒤뚱·종종·느릿 5가지 걸음, 빠르기에 맞춘 다리 박자 |
 | **4.12** | **속도감** — 바닥 무늬 두 배·흐름 자국, 카메라 최대 250m, 빠르기 따라 흙먼지·스퍼트 바람 줄 |
+| **4.13** | **탄력 있는 달리기** — 착지 때 납작·뜰 때 길게, 귀·갈기·꼬리가 한 박자 늦게 크게 출렁 |
 
 ---
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 4.13 — 몸통 눌림 · 따라오는 움직임 (캔버스 "🐰 몸통 눌림 · 따라오는 움직임" 크게)
+- 🐰 **몸통 눌림·늘어남**: 발이 땅에 닿는 순간 몸이 납작·넓게, 뜰 때 살짝 길게 (20종 모두 · 토끼·캥거루가 가장 크게, 느릿 걸음은 약하게)
+- 🎐 **따라오는 움직임**: 몸 출렁임보다 한 박자 늦게 크게 흔들림 — 말 꼬리·갈기, 토끼 귀(뛸 때 뒤로 젖혀졌다 착지 때 앞으로), 강아지 꼬리·귀, 고양이·치타 꼬리
+- 시안 "크게"(1.8배) 세기 · 화면 표시만, 결과·확률 무관 · `ui/art/Gait.kt`, `shot -Pscene=gaits`
 
 ### 4.12 — 속도감 (캔버스 "💨 속도감 개선")
 - 카메라가 선두를 따라가서 동물은 화면에 거의 멈춰 있고, 빠르기는 바닥이 흐르는 속도로만 느껴지는데 그 바닥이 1초에 화면의 14~45%밖에 안 흘러 느려 보이던 것 →

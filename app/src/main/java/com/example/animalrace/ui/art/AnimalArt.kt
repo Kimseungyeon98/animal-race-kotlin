@@ -36,6 +36,8 @@ internal data class Pose(
     val legA: Float, val legB: Float, val bob: Float, val wing: Float,
     /** 몸 기울기(도, +는 앞으로 숙임) · 가로·세로 눌림 (4.11 걸음별 달리기) */
     val tilt: Float = 0f, val sx: Float = 1f, val sy: Float = 1f,
+    /** 몸보다 늦게 따라 흔들리는 끝부분(귀·갈기·꼬리) 각도(도) */
+    val sway: Float = 0f,
 )
 
 internal val POSES = listOf(
@@ -378,7 +380,7 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
         HORSE -> {
             shadow(100f, 160f, 64f, 7f)
             translate(0f, bob) {
-                svg("M40 84 q-28 6 -24 44 q14 -10 22 -26 z", c(0xFF6B3E22))
+                svg("M40 84 q-28 6 -24 44 q14 -10 22 -26 z", c(0xFF6B3E22), rot = p.sway, px = 40f, py = 86f)
                 val hindLeg = svgPath("M58 96 C56 108 62 116 66 122 C68 130 66 140 66 146 L78 146 C78 138 80 128 78 120 C77 110 82 102 80 96 Z")
                 val frontLeg = svgPath("M128 98 C128 110 134 120 134 130 C134 136 133 142 132 146 L144 146 C145 140 146 134 145 126 C146 116 150 108 150 98 Z")
                 val hoof = c(0xFF4A2E1A)
@@ -393,7 +395,7 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
                 paint(torso, c(0xFFC98A52), 5f, Ink)
                 nearLegOf(hindLeg, c(0xFFC98A52), a, 70f, 104f, listOf(torso), hindHoof)
                 nearLegOf(frontLeg, c(0xFFC98A52), b, 138f, 104f, listOf(torso), frontHoof)
-                svg("M144 30 C134 42 124 56 104 66 L112 72 C128 64 140 52 152 38 Z", c(0xFF6B3E22))
+                svg("M144 30 C134 42 124 56 104 66 L112 72 C128 64 140 52 152 38 Z", c(0xFF6B3E22), rot = p.sway * 0.35f, px = 150f, py = 36f)
                 svg("M140 36 l4 -18 l12 16 z", c(0xFFC98A52))
                 ellipse(160f, 52f, 28f, 17f, c(0xFFC98A52), rot = 24f)
                 ellipse(180f, 66f, 12f, 10f, c(0xFFE8B98A))
@@ -410,10 +412,12 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
                 val body = listOf(oval(94f, 98f, 60f, 25f))
                 // 긴 꼬리: 끝으로 갈수록 진한 고리 무늬 + 흰 끝
                 val tail = "M38 94 q-28 2 -30 -30"
-                svg(tail, null, sw = 12f)
-                svg(tail, null, sw = 5f, stroke = gold)
-                dot(18f, 82f, 3f, spot); dot(11f, 72f, 3f, spot)
-                circle(8f, 63f, 3.5f, spot, sw = 3f)
+                rotate(p.sway, Offset(38f, 94f)) {
+                    svg(tail, null, sw = 12f)
+                    svg(tail, null, sw = 5f, stroke = gold)
+                    dot(18f, 82f, 3f, spot); dot(11f, 72f, 3f, spot)
+                    circle(8f, 63f, 3.5f, spot, sw = 3f)
+                }
                 farLeg(56f, 104f, 14f, 46f, c(0xFFDDA437), b, 63f, 108f, hind = true, Foot.PAW)
                 farLeg(120f, 104f, 14f, 46f, c(0xFFDDA437), a, 127f, 108f, hind = false, Foot.PAW)
                 ellipse(94f, 98f, 60f, 25f, gold)
@@ -442,11 +446,11 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
             translate(0f, bob) {
                 ellipse(58f, 140f, 24f, 12f, c(0xFFF4EEF2), a, 70f, 136f)
                 circle(34f, 100f, 14f, White)
-                ellipse(128f, 34f, 11f, 32f, c(0xFFF4EEF2), rot = -18f)
-                ellipse(128f, 36f, 4f, 20f, c(0xFFFFB3C7), rot = -18f, sw = 0f)
+                ellipse(128f, 34f, 11f, 32f, c(0xFFF4EEF2), rot = -18f + p.sway, px = 136f, py = 62f)
+                ellipse(128f, 36f, 4f, 20f, c(0xFFFFB3C7), rot = -18f + p.sway, px = 136f, py = 62f, sw = 0f)
                 ellipse(88f, 106f, 52f, 38f, c(0xFFF4EEF2))
                 ellipse(122f, 142f, 18f, 10f, c(0xFFF4EEF2), b, 114f, 136f)
-                ellipse(152f, 36f, 11f, 30f, c(0xFFF4EEF2), rot = 14f)
+                ellipse(152f, 36f, 11f, 30f, c(0xFFF4EEF2), rot = 14f + p.sway * 0.8f, px = 146f, py = 62f)
                 circle(146f, 82f, 34f, c(0xFFF4EEF2))
                 eye(158f, 76f, 5f, 160f, 74f, 1.8f)
                 ellipse(160f, 95f, 8f, 5f, c(0xFFFFB3C7), sw = 0f)
@@ -473,8 +477,8 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
             shadow(100f, 160f, 62f, 7f)
             translate(0f, bob) {
                 val body = listOf(oval(92f, 100f, 54f, 32f))
-                svg("M42 86 q-20 -18 -8 -36", null, sw = 12f)
-                svg("M42 86 q-20 -18 -8 -36", null, sw = 5f, stroke = c(0xFFE2A86A))
+                svg("M42 86 q-20 -18 -8 -36", null, sw = 12f, rot = p.sway * 1.3f, px = 42f, py = 86f)
+                svg("M42 86 q-20 -18 -8 -36", null, sw = 5f, stroke = c(0xFFE2A86A), rot = p.sway * 1.3f, px = 42f, py = 86f)
                 farLeg(58f, 108f, 16f, 42f, c(0xFFC98E52), b, 66f, 112f, hind = true, Foot.PAW)
                 farLeg(116f, 108f, 16f, 42f, c(0xFFC98E52), a, 124f, 112f, hind = false, Foot.PAW)
                 ellipse(92f, 100f, 54f, 32f, c(0xFFE2A86A))
@@ -484,7 +488,7 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
                 ellipse(176f, 84f, 16f, 12f, c(0xFFF6D2A6))
                 svg("M174 94 q2 16 10 12 q1 -8 -2 -14", c(0xFFFF8FA3), sw = 3f)
                 ellipse(190f, 79f, 6f, 5f, Ink, sw = 0f)
-                svg("M132 50 q-18 6 -14 36 q14 0 20 -16 z", c(0xFF8A5A34))
+                svg("M132 50 q-18 6 -14 36 q14 0 20 -16 z", c(0xFF8A5A34), rot = p.sway * 0.7f, px = 134f, py = 52f)
                 eye(157f, 66f, 5f, 158.5f, 64.5f, 1.8f)
             }
         }
@@ -492,8 +496,8 @@ internal fun DrawScope.drawAnimal(animal: Animal, p: Pose) {
             shadow(100f, 160f, 62f, 7f)
             translate(0f, bob) {
                 val body = listOf(oval(92f, 102f, 54f, 28f))
-                svg("M40 94 q-28 -14 -14 -48", null, sw = 12f)
-                svg("M40 94 q-28 -14 -14 -48", null, sw = 5f, stroke = c(0xFFF4A340))
+                svg("M40 94 q-28 -14 -14 -48", null, sw = 12f, rot = p.sway, px = 40f, py = 94f)
+                svg("M40 94 q-28 -14 -14 -48", null, sw = 5f, stroke = c(0xFFF4A340), rot = p.sway, px = 40f, py = 94f)
                 farLeg(58f, 108f, 14f, 42f, c(0xFFD98A2E), b, 65f, 112f, hind = true, Foot.PAW)
                 farLeg(116f, 108f, 14f, 42f, c(0xFFD98A2E), a, 123f, 112f, hind = false, Foot.PAW)
                 ellipse(92f, 102f, 54f, 28f, c(0xFFF4A340))

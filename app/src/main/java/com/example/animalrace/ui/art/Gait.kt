@@ -41,8 +41,38 @@ internal fun gaitOf(animal: Animal): Gait = when (animal) {
 /** 빠르기([pace], 1 = 보통, 스퍼트 ≈ 2, 멈춤 0)에 따라 다리 박자를 빠르게/느리게. 너무 극단적이지 않게 눌러 준다 */
 internal fun gaitRate(pace: Float): Float = if (pace <= 0f) 0f else (0.45f + 0.55f * pace).coerceIn(0.55f, 1.7f)
 
+/** 몸통 눌림·늘어남과 귀·갈기·꼬리 흔들림의 크기 (4.13, 시안 "크게" = 1.8배) */
+private const val FOLLOW_AMP = 1.8f
+
 /** [phase]는 걸음 수(1 = 한 주기). 소수 부분만 쓴다 */
 internal fun gaitPose(gait: Gait, phase: Float): Pose {
+    val pose = basePose(gait, phase)
+    val p = phase - kotlin.math.floor(phase)
+    val w = 2f * PI.toFloat() * p
+    // 눌림·늘어남: 뜰수록(bob이 클수록) 세로로 살짝 길게, 땅에 닿는 순간 납작하게
+    val air = (-pose.bob / 8f).coerceIn(0f, 1f)
+    val (land, sq) = when (gait) {
+        Gait.GALLOP -> (1f - air) to 0.07f
+        Gait.HOP -> (if (p >= 0.6f) sin(PI.toFloat() * (p - 0.6f) / 0.4f) else 0f) to 0.12f
+        Gait.WADDLE -> (1f - air) to 0.05f
+        Gait.SCURRY -> (1f - air) to 0.05f
+        Gait.PLOD -> (1f - air) to 0.04f
+    }
+    val q = sq * FOLLOW_AMP
+    val sy = 1f - q * land + q * 0.6f * air
+    val sx = 1f + q * 0.7f * land - q * 0.3f * air
+    // 따라오는 움직임: 몸 출렁임보다 한 박자 늦게
+    val sway = when (gait) {
+        Gait.GALLOP -> 14f * sin(w - 1.3f)
+        Gait.HOP -> if (p < 0.6f) -14f * sin(PI.toFloat() * p / 0.6f) else 16f * sin(PI.toFloat() * (p - 0.6f) / 0.4f)
+        Gait.WADDLE -> 8f * sin(w - 1f)
+        Gait.SCURRY -> 7f * sin(w - 1f)
+        Gait.PLOD -> 6f * sin(w - 1.2f)
+    }
+    return pose.copy(sx = sx, sy = sy, sway = sway * FOLLOW_AMP)
+}
+
+private fun basePose(gait: Gait, phase: Float): Pose {
     val p = phase - kotlin.math.floor(phase)
     val w = 2f * PI.toFloat() * p
     return when (gait) {
