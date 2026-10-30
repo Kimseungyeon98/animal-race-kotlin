@@ -305,10 +305,13 @@ internal fun DrawScope.ground(st: Stadium, lane: Int, laneTop: Float, lh: Float,
     val s = (lh / 79.dp.toPx()).coerceIn(0.55f, 1.2f) * density
     val ink = Pal.Ink
     val items = st.ground[lane % st.ground.size]
-    var base = floor(camX / GROUND_PERIOD) * GROUND_PERIOD
+    // 촘촘히(속도감, 4.12): 같은 무늬를 반 간격으로 두 번 깔아 흘러가는 게 잘 보이게
+    val period = GROUND_PERIOD / 2
+    val k = 0.5
+    var base = floor(camX / period) * period
     while (base < camX + camW) {
         for (g in items) {
-            val x = ((base + g.x - camX) * pxPerM).toFloat()
+            val x = ((base + g.x * k - camX) * pxPerM).toFloat()
             if (x < -36 * s || x > size.width) continue
             val y = laneTop + g.y * lh
             when (g.kind) {
@@ -331,6 +334,6 @@ internal fun DrawScope.ground(st: Stadium, lane: Int, laneTop: Float, lh: Float,
                 Ground.DECO -> deco(g.deco!!, x, y, s)
             }
         }
-        base += GROUND_PERIOD
+        base += period
     }
 }

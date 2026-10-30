@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-4.11-4C9A2A" alt="version 4.11">
+  <img src="https://img.shields.io/badge/version-4.12-4C9A2A" alt="version 4.12">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -109,11 +109,19 @@
 | **4.9.1** | 복권을 누르자마자 "꽝 탈출"이 비치던 것 → 긁은 뒤에만 결과 표시 |
 | **4.10** | **기록 한 판씩 지우기** — 카드마다 🗑 + 되돌리기, 기록 창은 최근 경기 탭 먼저 |
 | **4.11** | **걸음별 달리기** — 질주·깡충·뒤뚱·종종·느릿 5가지 걸음, 빠르기에 맞춘 다리 박자 |
+| **4.12** | **속도감** — 바닥 무늬 두 배·흐름 자국, 카메라 최대 250m, 빠르기 따라 흙먼지·스퍼트 바람 줄 |
 
 ---
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 4.12 — 속도감 (캔버스 "💨 속도감 개선")
+- 카메라가 선두를 따라가서 동물은 화면에 거의 멈춰 있고, 빠르기는 바닥이 흐르는 속도로만 느껴지는데 그 바닥이 1초에 화면의 14~45%밖에 안 흘러 느려 보이던 것 →
+  - 🟫 **바닥 촘촘히**: 돌·풀·알갱이 두 배 + 레인마다 흐름 자국 두 줄 (트랙에 붙어 바닥과 같이 흐름)
+  - 🎥 **덜 멀리 비추기**: 한 화면 최대 420m → **250m** · 뒤처진 동물은 화면 밖 "◀ -149m" 표시
+  - 💨 **빠르기 따라**: 흙먼지가 빠를수록 크고 빠르게 뒤로 · 스퍼트 중엔 꼬리 뒤 하얀 바람 줄
+- 화면 연출만 바뀌고 경주 결과·확률은 그대로 · `shot -Pscene=speed`로 확인
 
 ### 4.11 — 걸음별 달리기 (캔버스 "🏃 달리기 모션")
 - 🏃 20종이 모두 같던 다리 흔들기 → **다섯 가지 걸음**
@@ -709,7 +717,7 @@ app/src/main/java/com/example/animalrace/
 - 중반 선두가 이기는 판의 비율: `race/Race.kt` 의 `LEADER_WINS_2`(2마리, 50%) / `LEADER_WINS_N`(3마리 이상, 40%)
 - 색상: `ui/theme/Theme.kt` 의 `Pal`
 - 캐릭터 그림: `ui/art/AnimalArt.kt` / 연출: `ui/art/AnimalSprite.kt` 의 `fxFrame()`
-- 카메라: `ui/race/RaceScreen.kt` 의 `cameraTarget()` (확대 범위 130~420m, 선두 위치 70%)
+- 카메라: `ui/race/RaceScreen.kt` 의 `cameraTarget()` (확대 범위 130~250m, 선두 위치 70%)
 </details>
 
 <details>

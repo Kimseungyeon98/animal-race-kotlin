@@ -120,6 +120,9 @@ private const val START_W = 130.0
 private const val START_LEFT = 0.32
 private const val START_X = -START_LEFT * START_W
 
+/** 카메라가 한 화면에 담는 최대 거리(m). 넓게 비출수록 바닥이 느리게 흘러 속도감이 줄어든다 (4.12: 420 → 250) */
+private const val MAX_CAM_W = 250.0
+
 /**
  * 아직 달리는 앞쪽 4마리가 들어오게 확대/축소하고, 선두를 화면 70% 지점에 둔다.
  * 랜덤 등수 판([picks])은 1등 대신 지금 당첨 등수 자리에서 달리는 동물들이 들어오게 잡는다 (4.6).
@@ -131,14 +134,14 @@ private fun cameraTarget(v: RaceView, picks: List<Int>? = null): Pair<Double, Do
     val hot = if (!picks.isNullOrEmpty()) running.filter { (it.rank + 1) in picks } else emptyList()
     if (hot.isNotEmpty()) {
         val front = hot.maxOf { it.x }
-        val w = ((front - hot.minOf { it.x }) * 1.35 + 110).coerceIn(START_W, 420.0)
+        val w = ((front - hot.minOf { it.x }) * 1.35 + 110).coerceIn(START_W, MAX_CAM_W)
         val x = (front - 0.70 * w).coerceIn(-START_LEFT * w, TRACK + 0.2 * w - w)
         return x to w
     }
     val front = running.firstOrNull()?.x ?: TRACK
     val pack = running.take(4)
     val spread = front - (pack.lastOrNull()?.x ?: front)
-    val w = (spread * 1.35 + 110).coerceIn(START_W, 420.0)
+    val w = (spread * 1.35 + 110).coerceIn(START_W, MAX_CAM_W)
     val x = (front - 0.70 * w).coerceIn(-START_LEFT * w, TRACK + 0.2 * w - w)
     return x to w
 }
@@ -464,6 +467,7 @@ private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width
         for (i in 0 until n) {
             drawRect(if (i % 2 == 0) stadium.dirt else stadium.dirtAlt, Offset(0f, top + i * lh), Size(size.width, lh))
             dashes(stadium.line, top + (i + 1) * lh - 4.dp.toPx(), frame.camX, frame.camW, pxPerM)
+            streaks(stadium.line, i, top + i * lh, lh, frame.camX, frame.camW, pxPerM)
             ground(stadium, i, top + i * lh, lh, frame.camX, frame.camW, pxPerM)
         }
         drawLine(Pal.Ink, Offset(0f, top), Offset(size.width, top), 3.dp.toPx())
@@ -537,7 +541,7 @@ private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width
             Box(Modifier.offset(x = nose - sprite * 0.92f, y = y)) {
                 // 출발 전(카운트다운·룰렛)엔 출발 칸에 서서 기다린다
                 val moving = view.t > 0 && !r.finished && !r.stopped
-                if (moving) Dust(stadium.dust, r.lane, frame.time, Modifier.size(sprite, spriteH))
+                if (moving) Dust(stadium.dust, r.lane, frame.time, r.pace.toFloat(), Modifier.size(sprite, spriteH))
                 AnimalSprite(
                     r.animal, sprite,
                     running = moving,
@@ -627,19 +631,47 @@ private fun DrawScope.dashes(color: Color, y: Float, camX: Double, camW: Double,
     }
 }
 
+/** 레인 바닥의 흐름 자국 (속도감): 트랙에 붙어 있어 바닥과 같은 속도로 흘러간다 */
+private fun DrawScope.streaks(color: Color, lane: Int, top: Float, lh: Float, camX: Double, camW: Double, pxPerM: Float) {
+    val period = 9.0
+    for (row in 0 until 2) {
+        val off = (lane * 3.7 + row * 4.3) % period
+        var m = floor((camX - off) / period) * period + off
+        val y = top + lh * (0.32f + row * 0.36f)
+        while (m < camX + camW) {
+            val x = ((m - camX) * pxPerM).toFloat()
+            drawRect(color.copy(alpha = 0.55f), Offset(x, y), Size((2.6 * pxPerM).toFloat(), 2.5.dp.toPx()))
+            m += period
+        }
+    }
+}
+
 /** 점선 간격·길이(m). 기본 화면 폭(130m)에서 예전 30dp·18dp 정도 */
 private const val DASH_PERIOD = 10.0
 private const val DASH_LEN = 6.0
 
 /** 달리는 동물 꼬리 쪽에서 피어올라 뒤로 흩어지는 흙먼지. 크기는 90×77 스프라이트 기준. */
 @Composable
-private fun Dust(color: Color, lane: Int, time: Double, modifier: Modifier) {
+private fun Dust(color: Color, lane: Int, time: Double, pace: Float, modifier: Modifier) {
     Canvas(modifier) {
         val u = size.width / 90f
+        // 빠를수록 먼지가 더 크고 빠르게 뒤로 날린다
+        val speed = (0.6f + 0.6f * pace).coerceIn(0.6f, 1.9f)
+        val reach = 34 * speed
+        if (pace > 1.15f) {
+            // 스퍼트: 꼬리 뒤 바람 줄
+            for (k in 0 until 3) {
+                val ph = (((time * 30 + k * 7 + lane * 3) % 21) / 21).toFloat()
+                val x = (20 - ph * 60) * u
+                val y = (24 + k * 14) * u
+                drawLine(Color.White.copy(alpha = 0.85f * (1 - ph)), Offset(x, y), Offset(x + (18 - k * 3) * u, y), 3.5f * u,
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round)
+            }
+        }
         for (k in 0 until 3) {
-            val ph = (((time * 15 + k * 6 + lane * 4) % 18) / 18).toFloat()
-            val d = (8 + ph * 12) * u
-            val o = Offset((14 - ph * 34) * u, (58 - ph * 10) * u)
+            val ph = (((time * 15 * speed + k * 6 + lane * 4) % 18) / 18).toFloat()
+            val d = (8 + ph * 12) * u * (0.8f + 0.25f * speed)
+            val o = Offset((14 - ph * reach) * u, (58 - ph * 10) * u)
             val a = (1 - ph) * 0.9f
             drawOval(color, o, Size(d, d), alpha = a)
             drawOval(Pal.Ink, o, Size(d, d), alpha = a, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
