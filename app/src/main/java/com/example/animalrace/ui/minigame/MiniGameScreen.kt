@@ -498,6 +498,72 @@ private fun withSubjectUi(word: String) = com.example.animalrace.race.withSubjec
 // ---------------------------------------------------------------- 복권
 
 /**
+ * 복권·캡슐 차례 (4.9): 순서는 자유, 대신 할 사람이 자기 이름을 누르고 한다.
+ * 한 바퀴에 한 사람이 한 번씩만 할 수 있어서, 어떤 순서로 하든 걸릴 확률은 모두 같다
+ * (바퀴마다 몰빵이 그 바퀴의 어느 자리에 있을지는 순서와 상관없이 고르게 정해져 있으므로).
+ */
+internal class FreeTurns(private val order: List<Int>) {
+    /** 이번 바퀴에 이미 한 사람 */
+    val done = mutableStateListOf<Int>()
+    /** 몇 번째 바퀴 (0부터) */
+    var round by mutableIntStateOf(0)
+    /** 이름을 누른 사람 */
+    var picked by mutableStateOf<Int?>(null)
+    /** 이번 바퀴에 아직 안 한 사람 (출전 번호 순) */
+    val left: List<Int> get() = order.filter { it !in done }
+    /** 지금 할 사람: 이름을 누른 사람, 아니면 한 명만 남았을 때 그 사람 */
+    val current: Int? get() = picked ?: left.singleOrNull()
+    fun finish(p: Int) {
+        done += p; picked = null
+        if (done.size == order.size) { done.clear(); round++ }
+    }
+}
+
+/** "누가 할래요?" 이번 바퀴에 아직 안 한 사람들의 이름 칩. [nudge]면 먼저 이름을 누르라고 빨갛게 */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun WhoPicker(session: MiniGameSession, turns: FreeTurns, what: String, nudge: Boolean, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(Pal.Ivory, RoundedCornerShape(20.dp))
+            .border(3.dp, if (nudge) Pal.Tomato else Pal.Ink, RoundedCornerShape(20.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("누가 $what?", fontSize = 20.sp, color = Pal.Ink)
+            Text(
+                if (nudge) "먼저 자기 이름을 눌러 주세요!" else roundLabel(turns.round) + "자기 이름을 누르고 시작",
+                fontSize = 13.sp, color = if (nudge) Pal.TomatoText else Pal.InkSoft,
+            )
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            turns.left.forEach { i ->
+                val p = session.players[i]
+                Row(
+                    Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Pal.Sun)
+                        .border(2.5.dp, Pal.Ink, RoundedCornerShape(14.dp))
+                        .clickable { turns.picked = i }
+                        .padding(start = 4.dp, end = 10.dp, top = 2.dp, bottom = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    LaneSticker(p.lane, size = 18.dp)
+                    AnimalSprite(p.animal, 30.dp)
+                    Text(p.name, fontSize = 16.sp, color = Pal.Ink, maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+/** 두 바퀴째부터 앞에 붙이는 말 */
+internal fun roundLabel(round: Int) = when (round) { 0 -> ""; 1 -> "두 번째 바퀴 · "; else -> "세 번째 바퀴 · " }
+
+/**
  * 복권 긁기 v2 (시안: "복권 긁기 v2", 4.7 "3바퀴 + 4칸 격자").
  * 똑같이 생긴 복권을 사람 수 × 바퀴 수만큼 놓고, 몰빵이 나올 때까지 출전 번호 순으로 돌아가며 한 장씩 고른다.
  * 고른 복권은 화면 가득 펼쳐서 긁고(공개 조건은 [ScratchArea]), 꽝이면 다음 사람이 남은 장에서 고른다.
@@ -507,7 +573,7 @@ private fun withSubjectUi(word: String) = com.example.animalrace.race.withSubjec
 private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?, onReveal: (Int, Boolean) -> Unit) {
     val sound = LocalSound.current
     val n = session.players.size
-    // 복권은 사람 수 × 바퀴 수(4명까지 3바퀴, 5명부터 2바퀴): 몰빵이 나올 때까지 출전 번호 순으로 돌아가며 고른다
+    // 복권은 사람 수 × 바퀴 수(4명까지 3바퀴, 5명부터 2바퀴): 몰빵이 나올 때까지 바퀴마다 한 사람 한 장씩, 순서는 자유
     // (누구나 최대 같은 장수라 걸릴 확률은 모두 1/n)
     val rounds = MiniGameDraw.rounds(n)
     val tickets = MiniGameDraw.slots(n)
@@ -517,15 +583,18 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
     val owner = remember(session) { mutableStateListOf<Int?>().apply { repeat(tickets) { add(null) } } }
     // 긁은 복권 자리. 사람은 자기 복권을 다 긁어야(2장) 탈출로 표시된다
     val scratched = remember(session) { mutableStateListOf<Int>() }
-    var turn by remember(session) { mutableIntStateOf(0) }
+    val turns = remember(session) { FreeTurns(order) }
+    var nudge by remember(session) { mutableStateOf(false) }
     var open by remember(session) { mutableStateOf<Int?>(null) }
     var shown by remember(session) { mutableStateOf(0) }
-    val current = order.getOrNull(turn % n)?.takeIf { loser == null }
+    val current = turns.current?.takeIf { loser == null }
+    LaunchedEffect(current) { if (current != null) nudge = false }
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            // 지금 차례
-            Row(
+            // 지금 차례: 이름을 아직 안 눌렀으면 "누가 고를래요?"
+            if (loser == null && current == null) WhoPicker(session, turns, "고를래요", nudge)
+            else Row(
                 Modifier
                     .fillMaxWidth()
                     .background(Pal.Ivory, RoundedCornerShape(20.dp)) // 깜짝! 말풍선이 위로 삐져나와도 잘리지 않게 clip 없이
@@ -536,15 +605,20 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
             ) {
                 val who = session.players[loser ?: current ?: order.last()]
                 AnimalSprite(who.animal, 60.dp, fx = if (loser != null) Fx.SCARED else Fx.NONE)
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(if (loser != null) "${withSubjectUi(who.name)} 몰빵! 💸" else "${who.name} 차례!", fontSize = 20.sp, color = Pal.Ink)
                     val left = owner.count { it == null }
-                    val round = if (loser != null || turn < n) "" else if (turn < n * 2) "두 번째 바퀴 · " else "세 번째 바퀴 · "
                     Text(
-                        if (loser != null) "잠시 뒤 최종 발표" else if (left == tickets) "똑같이 생긴 복권 ${tickets}장 중 한 장을 골라 주세요" else "${round}남은 복권 ${left}장 중 한 장을 골라 주세요",
+                        if (loser != null) "잠시 뒤 최종 발표" else if (left == tickets) "똑같이 생긴 복권 ${tickets}장 중 한 장을 골라 주세요" else "${roundLabel(turns.round)}남은 복권 ${left}장 중 한 장을 골라 주세요",
                         fontSize = 13.sp, color = Pal.InkSoft,
                     )
                 }
+                // 이름을 잘못 눌렀으면 다시 고르기
+                if (loser == null && turns.picked != null && turns.left.size > 1) Text(
+                    "바꾸기", fontSize = 14.sp, color = Pal.Ink,
+                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).border(2.dp, Pal.Ink, RoundedCornerShape(10.dp))
+                        .clickable { turns.picked = null }.padding(horizontal = 8.dp, vertical = 2.dp),
+                )
             }
             // 똑같이 생긴 복권들: 두 칸 격자, 출전 번호 순 (시안: "화면 다듬기" ②)
             // 2~3장은 크게, 4장 이상은 남은 높이에 맞춰 납작하게
@@ -576,8 +650,8 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                                     modifier = Modifier
                                         .size(cardW, cardH)
                                         .rotate(if (tickets <= 3) (if (t % 2 == 0) -1.5f else 1.5f) else 0f),
-                                    onClick = if (who == null && current != null && open == null) {
-                                        { owner[t] = current; shown = t; open = t }
+                                    onClick = if (who == null && loser == null && open == null) {
+                                        { if (current != null) { owner[t] = current; shown = t; open = t; nudge = false } else nudge = true }
                                     } else null,
                                 )
                             }
@@ -599,7 +673,6 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
             val p = owner[t] ?: return@AnimatedVisibility
             val lose = t == bomb
             val out = t in scratched
-            val next = order.getOrNull((turn + 1) % n)
             BigTicket(
                 player = session.players[p],
                 lose = lose,
@@ -610,8 +683,8 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                     // 몰빵이면 바로, 꽝이면 자기 복권을 다 긁었을 때만 탈출
                     if (lose || owner.count { it == p } >= rounds) onReveal(p, lose) else sound.play(Sfx.SAFE)
                 },
-                nextLabel = if (out && !lose && loser == null && next != null) "${session.players[next].name} 차례로 →" else null,
-                onNext = { open = null; turn++ },
+                nextLabel = if (out && !lose && loser == null) "다음 사람 →" else null,
+                onNext = { open = null; turns.finish(p) },
             )
         }
     }

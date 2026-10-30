@@ -365,6 +365,13 @@ private fun scenes(): List<Scene> {
                 MiniGameScreen(MiniGameSession(MiniGame.GACHA, players, Ladder.random(k), k - 1, 0), "커피 쏘기", {}, {})
             }
         }.toTypedArray(),
+        // 순서는 자유, 이름 누르고 하기 (4.9): 처음 화면 "누가 고를래요? / 돌릴래요?" (이름 누르기는 t-lotto·t-gacha-who)
+        *listOf("free-lotto", "free-gacha").map { name ->
+            Scene(name) {
+                val players = results(Animal.CAT, Animal.PIG, Animal.PANDA).mapIndexed { i, r -> r.copy(who = listOf("지은", "서연", "도윤")[i], lane = i) }
+                MiniGameScreen(MiniGameSession(if (name == "free-lotto") MiniGame.LOTTO else MiniGame.GACHA, players, Ladder.random(3), 2, 0), "커피 쏘기", {}, {})
+            }
+        }.toTypedArray(),
         Scene("people-lotto") {
             val players = results(Animal.CAT, Animal.PIG, Animal.PANDA).mapIndexed { i, r -> r.copy(who = listOf("지은", "서연", "도윤")[i]) }
             MiniGameScreen(MiniGameSession(MiniGame.LOTTO, players, Ladder.random(3), 1), "커피 쏘기", {}, {})

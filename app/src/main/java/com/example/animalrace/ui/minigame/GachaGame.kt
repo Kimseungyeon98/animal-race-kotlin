@@ -120,7 +120,11 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
     // 레버를 돌리는 동안 1로 올라가 캡슐이 떠올라 섞이고, 손을 떼면 0으로 가라앉는다
     val shake = remember(session) { Animatable(0f) }
     val colors = remember(session) { List(capsules) { CapsuleColors[rnd.nextInt(CapsuleColors.size)] } }
-    val current = order[MiniGameDraw.turn(k.coerceAtMost(capsules - 1), n)]
+    // 순서는 자유: 할 사람이 자기 이름을 누르고 레버를 돌린다 (4.9, [FreeTurns])
+    val turns = remember(session) { FreeTurns(order) }
+    var nudge by remember(session) { mutableStateOf(false) }
+    val current = turns.current?.takeIf { loser == null }
+    LaunchedEffect(current) { if (current != null) nudge = false }
     val bust = k == bombAt
 
     fun pulled() {
@@ -146,12 +150,13 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
             scope.launch { lid.animateTo(1f, tween(500)) }
             if (bust) {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onReveal(current, true)
-            } else if (k >= capsules - n) onReveal(current, false) // 마지막 바퀴의 꽝이어야 정말 탈출
+                onReveal(current ?: return, true)
+            } else if (k >= capsules - n) onReveal(current ?: return, false) // 마지막 바퀴의 꽝이어야 정말 탈출
             else sound.play(Sfx.SAFE)
         }
     }
     fun next() {
+        current?.let { turns.finish(it) }
         k++; taps = 0; lever = 0f; phase = Gacha.LEVER
         scope.launch { lid.snapTo(0f); drop.snapTo(0f) }
     }
@@ -179,8 +184,10 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
             Canvas(
                 Modifier
                     .fillMaxSize()
-                    .pointerInput(phase, k) {
+                    .pointerInput(phase, k, current) {
                         if (phase != Gacha.LEVER || loser != null) return@pointerInput
+                        // 이름을 안 누르고 레버부터 잡으면 "먼저 이름을"
+                        if (current == null) { detectDragGestures(onDragStart = { nudge = true }) { _, _ -> }; return@pointerInput }
                         val c = Offset(dx + 195f * s, dy + 352f * s)
                         var last = 0f
                         var tick = 0
@@ -285,12 +292,16 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
             }
             if (phase == Gacha.OPENED && !bust && loser == null) {
                 Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp).clickable { sound.play(Sfx.CLICK); next() }) {
-                    Tag("다음 차례로 →", Pal.Ink, fontSize = 17.sp, modifier = Modifier.padding(4.dp))
+                    Tag("다음 사람 →", Pal.Ink, fontSize = 17.sp, modifier = Modifier.padding(4.dp))
                 }
             }
         }
 
-        val p = session.players[loser ?: current]
+        if (loser == null && current == null) {
+            WhoPicker(session, turns, "돌릴래요", nudge)
+            return@Column
+        }
+        val p = session.players[loser ?: current ?: order.first()]
         Row(
             Modifier
                 .fillMaxWidth()
@@ -302,7 +313,7 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             AnimalSprite(p.animal, 56.dp, fx = if (loser != null) Fx.SCARED else Fx.NONE)
-            Column {
+            Column(Modifier.weight(1f)) {
                 Text(if (loser != null) "${withSubject(p.name)} 몰빵 💸" else "${p.name} 차례!", fontSize = 19.sp, color = Pal.Ink)
                 Text(
                     when {
@@ -310,13 +321,17 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                         phase == Gacha.OPENED -> if (k >= capsules - n) "꽝 탈출! 🎉" else "꽝! 다음 바퀴에 또 와요"
                         phase == Gacha.OPENING -> "캡슐을 톡톡 두드려 깨요"
                         capsules - k == 1 -> "마지막 캡슐… 그래도 열어 봐야죠"
-                        k >= n * 2 -> "세 번째 바퀴 · 레버를 드르륵 돌려 주세요"
-                        k >= n -> "두 번째 바퀴 · 레버를 드르륵 돌려 주세요"
-                        else -> "레버를 드르륵 돌려 주세요"
+                        else -> roundLabel(turns.round) + "레버를 드르륵 돌려 주세요"
                     },
                     fontSize = 12.sp, color = Pal.InkSoft, maxLines = 1,
                 )
             }
+            // 이름을 잘못 눌렀으면 레버 돌리기 전까지 다시 고르기
+            if (loser == null && phase == Gacha.LEVER && turns.picked != null && turns.left.size > 1) Text(
+                "바꾸기", fontSize = 14.sp, color = Pal.Ink,
+                modifier = Modifier.clip(RoundedCornerShape(10.dp)).border(2.dp, Pal.Ink, RoundedCornerShape(10.dp))
+                    .clickable { turns.picked = null }.padding(horizontal = 8.dp, vertical = 2.dp),
+            )
         }
     }
 }

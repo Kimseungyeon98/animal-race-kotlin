@@ -44,9 +44,16 @@ internal fun touchScenes(): List<Scene> {
             pause(2000); snap("7-final")
         }) { MiniGameScreen(session(MiniGame.GACHA), "커피 쏘기", {}, {}) },
         Scene("t-lotto", script = {
-            pause(800); tap(80f, 445f); pause(900); snap("1-big")
-            snap("1b")
+            // 이름 없이 복권부터 누르면 "먼저 이름을" → 이름 누르고 다시 → 크게 펼침
+            pause(800); tap(80f, 445f); pause(600); snap("1-nudge")
+            tap(70f, 143f); pause(600); snap("2-picked")
+            tap(80f, 445f); pause(900); snap("3-big")
         }) { MiniGameScreen(session(MiniGame.LOTTO), "커피 쏘기", {}, {}) },
+        Scene("t-gacha-who", script = {
+            // 캡슐: 이름 없이 레버부터 → 빨간 안내, 이름 누르면 "○○ 차례!"
+            pause(800); drag(listOf(195f to 470f, 215f to 495f, 235f to 520f), 300); pause(600); snap("1-nudge")
+            tap(70f, 795f); pause(600); snap("2-picked")
+        }) { MiniGameScreen(session(MiniGame.GACHA), "커피 쏘기", {}, {}) },
         Scene("lotto6", snaps = listOf(1000)) {
             MiniGameScreen(MiniGameSession(MiniGame.LOTTO, results(Animal.CAT, Animal.PIG, Animal.PANDA, Animal.DOG, Animal.DUCK, Animal.HORSE), Ladder.random(6), 2), "커피 쏘기", {}, {})
         },
