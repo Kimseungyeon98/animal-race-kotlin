@@ -41,8 +41,8 @@ internal fun gaitOf(animal: Animal): Gait = when (animal) {
 /** 빠르기([pace], 1 = 보통, 스퍼트 ≈ 2, 멈춤 0)에 따라 다리 박자를 빠르게/느리게. 너무 극단적이지 않게 눌러 준다 */
 internal fun gaitRate(pace: Float): Float = if (pace <= 0f) 0f else (0.45f + 0.55f * pace).coerceIn(0.55f, 1.7f)
 
-/** 몸통 눌림·늘어남과 귀·갈기·꼬리 흔들림의 크기 (4.13, 시안 "크게" = 1.8배) */
-private const val FOLLOW_AMP = 1.8f
+/** 몸통 눌림·늘어남과 귀·갈기·꼬리 흔들림의 크기 (4.13 시안 "크게" 1.8배 → 4.13.1 느릴 때도 너무 출렁여서 1.4배) */
+private const val FOLLOW_AMP = 1.4f
 
 /** [phase]는 걸음 수(1 = 한 주기). 소수 부분만 쓴다 */
 internal fun gaitPose(gait: Gait, phase: Float): Pose {
