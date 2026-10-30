@@ -60,6 +60,8 @@ data class RacerView(
     val boosted: Boolean,
     val finished: Boolean,
     val finishTime: Double?,
+    /** 지금 빠르기 배수 (1 = 보통, 0 = 멈춤). 화면의 다리 박자에만 쓴다 */
+    val pace: Double = 1.0,
 )
 
 data class RaceView(
@@ -213,7 +215,7 @@ class Race(
                 RacerView(
                     lane = r.lane, animal = r.animal, x = r.x, rank = order.indexOf(r),
                     fx = r.fx, fxElapsed = t - r.fxFrom, stopped = !r.finished && r.mult == 0.0,
-                    boosted = !r.finished && r.mult > 1.05, finished = r.finished, finishTime = r.finish,
+                    boosted = !r.finished && r.mult > 1.05, finished = r.finished, finishTime = r.finish, pace = r.mult,
                 )
             },
             recentEvents = events.takeLast(5).reversed(),

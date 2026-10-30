@@ -16,12 +16,15 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.use
 import com.example.animalrace.AppState
 import com.example.animalrace.MiniGameSession
+import com.example.animalrace.model.ANIMAL_ORDER
 import com.example.animalrace.model.Animal
 import com.example.animalrace.model.AppRepository
 import com.example.animalrace.model.Fx
@@ -291,6 +294,27 @@ private fun scenes(): List<Scene> {
                         AnimalSprite(a, 190.dp, modifier = Modifier.padding(5.dp))
                         (1..2).forEach { f -> AnimalSprite(a, 190.dp, frame = f, modifier = Modifier.padding(5.dp)) }
                         listOf(a, Animal.CAPYBARA, Animal.HEDGEHOG, Animal.DOG).forEach { o -> AnimalSprite(o, 64.dp, modifier = Modifier.padding(3.dp)) }
+                    }
+                }
+            }
+        },
+        // 걸음별 달리기 (4.11): 20종 × 걸음 네 장면 (0 · 1/4 · 1/2 · 3/4)
+        Scene("gaits", w = 4 * 4 * 92 + 3 * 16 + 20, h = 5 * 82 + 20) {
+            Column(Modifier.padding(10.dp)) {
+                ANIMAL_ORDER.chunked(4).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        row.forEach { a ->
+                            Row {
+                                listOf(0f, 0.25f, 0.5f, 0.75f).forEach { ph ->
+                                    androidx.compose.foundation.Canvas(Modifier.width(92.dp).height(78.dp)) {
+                                        val k = this.size.width / 200f
+                                        withTransform({ scale(k, k, androidx.compose.ui.geometry.Offset.Zero) }) {
+                                            with(com.example.animalrace.ui.art.GaitDraw) { draw(a, com.example.animalrace.ui.art.gaitAt(a, ph)) }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

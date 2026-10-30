@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -520,15 +521,24 @@ fun AnimalSprite(
     fx: Fx = Fx.NONE,
     fxTime: Float? = null,
     venue: Venue = Venue.MEADOW,
+    /** 지금 빠르기 (1 = 보통, 스퍼트는 더 크게): 다리 박자에만 쓴다 (4.11) */
+    pace: Float = 1f,
 ) {
     val animated = running || (fx != Fx.NONE && fxTime == null)
     val clock = if (animated) rememberClock() else 0f
+    // 걸음 진행: 빠르기에 맞춰 박자를 쌓아 간다 (빠르기가 바뀌어도 다리가 튀지 않게 누적)
+    val stride = remember { FloatArray(2) } // [걸음 수, 지난 시각]
+    if (animated) {
+        val dt = (clock - stride[1]).coerceIn(0f, 0.1f)
+        stride[0] += dt * gaitRate(pace) / gaitOf(animal).period
+        stride[1] = clock
+    }
     val effect = if (fx != Fx.NONE) fxFrame(animal, fx, (fxTime ?: clock) / 0.06f, loop = fxTime == null, venue = venue)
     else FxFrame(pose = if (running) 1 + (clock / 0.18f).toInt() % 2 else frame)
     // 연출 중이어도 달리는 중이면 다리는 계속 굴린다 (연출이 멈춤 자세를 고른 경우 제외)
     val pose = when {
         effect.pose == 0 -> POSES[0]
-        animated -> gait(clock + animal.ordinal * 0.05f) // 동물마다 발 구르는 박자를 살짝 엇갈리게
+        animated -> gaitPose(gaitOf(animal), stride[0] + animal.ordinal * 0.13f) // 걸음별 달리기 (4.11), 동물마다 박자를 살짝 엇갈리게
         else -> POSES[effect.pose.coerceIn(0, 2)]
     }
     val s = size.value / 200f
@@ -556,10 +566,10 @@ fun AnimalSprite(
                     withTransform({
                         translate(effect.dx * k, effect.dy * k)
                         rotate(effect.rot, Offset(100f * k, this@Canvas.size.height * effect.pivotY))
-                    }) { scale(k, pivot = Offset.Zero) { drawAnimal(animal, pose) } }
+                    }) { scale(k, pivot = Offset.Zero) { drawPosed(animal, pose) } }
                 }
             } else {
-                scale(k, pivot = Offset.Zero) { drawAnimal(animal, pose) }
+                scale(k, pivot = Offset.Zero) { drawPosed(animal, pose) }
             }
         }
         effect.front.forEach { FxPartView(it, s) }

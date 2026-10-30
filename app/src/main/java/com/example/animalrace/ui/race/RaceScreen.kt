@@ -544,6 +544,7 @@ private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width
                     fx = if (shock) Fx.SCARED else r.fx,
                     fxTime = if (shock) sinceFinish.toFloat() else r.fxElapsed.toFloat(),
                     venue = stadium.venue,
+                    pace = r.pace.toFloat(),
                 )
                 // 달리는 사람 이름표: 등 위 빈자리(머리 위 왕관과 겹치지 않게 왼쪽 위)
                 LocalNames.current[r.animal]?.let { who ->

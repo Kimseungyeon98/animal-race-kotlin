@@ -32,30 +32,17 @@ internal val Ink = Color(0xFF2B2140)
 private val White = Color.White
 
 /** 달리기 프레임: 0 = 기본, 1·2 = 다리 교차 */
-internal data class Pose(val legA: Float, val legB: Float, val bob: Float, val wing: Float)
+internal data class Pose(
+    val legA: Float, val legB: Float, val bob: Float, val wing: Float,
+    /** 몸 기울기(도, +는 앞으로 숙임) · 가로·세로 눌림 (4.11 걸음별 달리기) */
+    val tilt: Float = 0f, val sx: Float = 1f, val sy: Float = 1f,
+)
 
 internal val POSES = listOf(
     Pose(0f, 0f, 0f, 0f),
     Pose(26f, -26f, -5f, -14f),
     Pose(-22f, 22f, 0f, 8f),
 )
-
-/**
- * 달리는 자세를 시간에 따라 연속으로 계산한다. 두 교차 자세를 번갈아 끊어 보여 주면
- * 움직이는 화면에서 깜빡이듯 번져 보여서, 사인 곡선으로 부드럽게 이어 준다.
- */
-internal fun gait(seconds: Float, period: Float = 0.34f): Pose {
-    val w = 2f * PI.toFloat() * seconds / period
-    val k = (1f - cos(w)) / 2f
-    val a = POSES[1]
-    val b = POSES[2]
-    return Pose(
-        legA = a.legA + (b.legA - a.legA) * k,
-        legB = a.legB + (b.legB - a.legB) * k,
-        bob = -3.5f * abs(sin(w)),
-        wing = a.wing + (b.wing - a.wing) * k,
-    )
-}
 
 /** 머리 꼭대기 (200×170 좌표): 1등 왕관 같은 것을 얹는 자리 */
 internal fun headTop(animal: Animal): Offset = when (animal) {
