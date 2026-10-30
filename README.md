@@ -2,11 +2,11 @@
   <img src="docs/media/hero.gif" width="300" alt="초원 경기장: 이름표를 단 고슴도치·카피바라·코끼리·캥거루가 달리다 넘어지고, 코끼리가 1등으로 골인">
 </p>
 
-<h1 align="center">🏁 복불복 동물 레이스</h1>
+<h1 align="center">🏁 동물 레이스</h1>
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-4.13.2-4C9A2A" alt="version 4.13.2">
+  <img src="https://img.shields.io/badge/version-5.0-4C9A2A" alt="version 5.0">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -113,11 +113,20 @@
 | **4.13** | **탄력 있는 달리기** — 착지 때 납작·뜰 때 길게, 귀·갈기·꼬리가 한 박자 늦게 크게 출렁 |
 | **4.13.1** | 몸통 눌림·꼬리 흔들림 1.8배 → 1.4배 (느릴 때도 너무 역동적이던 것) |
 | **4.13.2** | 메인 동물 칸 이름표 글자가 위아래로 잘리던 것 수정 |
+| **5.0** | **구글 플레이 출시 준비** — 이름 "동물 레이스"로 통일, 앱 ID `com.animalrace.android`, 출시 서명·개인정보처리방침 |
 
 ---
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 5.0 — 구글 플레이 출시 준비
+- 이름을 **동물 레이스**로 통일: 메인 화면 제목 "동물 레이스!", 결과 카드·공유 글 "🏁 동물 레이스 · …" (스토어 제목은 "동물 레이스: 복불복 내기 게임")
+- 앱 ID `com.example.animalrace.kt` → **`com.animalrace.android`** (플레이는 `com.example` 거부). 코드 패키지는 그대로
+  - ⚠️ 다른 앱으로 설치되므로 예전 버전의 기록·멤버·설정은 새 앱으로 넘어오지 않음
+- targetSdk·compileSdk 34 → **36** (플레이 새 앱 기준)
+- 출시 서명: 저장소 밖 키를 `keystore.properties`(커밋 안 함)로 연결, 없으면 디버그 키 · `.gitignore`에 키 파일 추가
+- [개인정보처리방침](docs/privacy.md) · [스토어 등록 정보 초안](docs/store/listing.md)
 
 ### 4.13.2 — 이름표 잘림 수정
 - 메인 동물 칸의 사람 이름표: 줄 높이를 글자보다 낮게 잡아 폰에서 글자 위아래가 테두리에 잘리던 것 → 기본 줄 높이 + 위아래 여백, 이름이 붙은 칸은 동물 그림을 조금 줄여 이름표가 칸 안에 다 들어가게

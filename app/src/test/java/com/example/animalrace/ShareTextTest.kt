@@ -16,21 +16,21 @@ class ShareTextTest {
     @Test
     fun lastPlaceByName() {
         val r = RaceRecord(0L, "꼴찌가 커피 쏘기", 1, rs(Animal.CAT to "지은", Animal.PIG to "서연"))
-        assertEquals("🏁 동물 대소동 레이스 · 커피 쏘기 → 서연 당첨!", shareText(r))
+        assertEquals("🏁 동물 레이스 · 커피 쏘기 → 서연 당첨!", shareText(r))
     }
 
     @Test
     fun animalNameWhenNobodyNamedAndDefaultBet() {
         val r = RaceRecord(0L, "", 1, rs(Animal.CAT to null, Animal.PIG to null))
-        assertEquals("🏁 동물 대소동 레이스 · 오늘의 꼴찌 → 돼지 당첨!", shareText(r))
+        assertEquals("🏁 동물 레이스 · 오늘의 꼴찌 → 돼지 당첨!", shareText(r))
     }
 
     @Test
     fun picksAndMiniGame() {
         val results = rs(Animal.CAT to "지은", Animal.HORSE to "민수", Animal.PIG to "서연")
         val picked = RaceRecord(0L, "치킨", 1, results, picks = listOf(1, 3))
-        assertEquals("🏁 동물 대소동 레이스 · 치킨 → 지은·서연 당첨!", shareText(picked))
+        assertEquals("🏁 동물 레이스 · 치킨 → 지은·서연 당첨!", shareText(picked))
         val mini = picked.copy(miniGame = MiniGameResult(MiniGame.LOTTO, Animal.CAT, "지은"))
-        assertEquals("🏁 동물 대소동 레이스 · 치킨 → 지은 당첨!", shareText(mini))
+        assertEquals("🏁 동물 레이스 · 치킨 → 지은 당첨!", shareText(mini))
     }
 }

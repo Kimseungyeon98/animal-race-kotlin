@@ -157,7 +157,7 @@ fun SetupScreen(state: AppState) {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        OutlinedText("동물 대소동 레이스!", 26.sp)
+                        OutlinedText("동물 레이스!", 26.sp)
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             // 효과음 · 배경음악 켜기/끄기 (진동과 별개)
                             ToggleDot(state.soundOn, if (state.soundOn) Icons2.SoundOn else Icons2.SoundOff) {

@@ -3,3 +3,8 @@ build/
 local.properties
 .idea/
 *.iml
+
+# 출시 서명 키 (저장소에 절대 올리지 않음)
+keystore.properties
+*.jks
+*.keystore

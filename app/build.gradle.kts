@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -6,24 +7,39 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// 출시 서명 키: 저장소 밖에 두고 keystore.properties(커밋 안 함)로만 알려 준다.
+// 파일이 없으면 release도 디버그 키로 서명 (내 폰 설치용, 스토어 업로드 불가)
+val keystoreProps = Properties().apply {
+    rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+
 android {
+    // 코드 패키지는 그대로, 스토어용 앱 ID만 바꿈 (5.0)
     namespace = "com.example.animalrace"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
-        // WebView 버전과 같은 폰에 함께 설치할 수 있도록 ID를 다르게 둠
-        applicationId = "com.example.animalrace.kt"
+        // 구글 플레이 앱 ID: 출시 후에는 절대 바꿀 수 없음
+        applicationId = "com.animalrace.android"
         minSdk = 24
-        targetSdk = 34
-        versionCode = 86
-        versionName = "4.13.2"
+        targetSdk = 36
+        versionCode = 87
+        versionName = "5.0"
+    }
+
+    signingConfigs {
+        if (keystoreProps.isNotEmpty()) create("release") {
+            storeFile = file(keystoreProps.getProperty("storeFile"))
+            storePassword = keystoreProps.getProperty("storePassword")
+            keyAlias = keystoreProps.getProperty("keyAlias")
+            keyPassword = keystoreProps.getProperty("keyPassword")
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            // 사내용이라 별도 키 없이 디버그 키로 서명
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 

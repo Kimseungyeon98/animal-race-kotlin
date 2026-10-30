@@ -99,7 +99,7 @@ private fun count(record: RaceRecord) = "${record.results.size}" + if (record.re
 fun shareText(record: RaceRecord): String {
     val v = verdict(record)
     val bet = shortBet(record.bet).ifEmpty { "오늘의 꼴찌" }
-    return "🏁 동물 대소동 레이스 · $bet → ${v.headline}"
+    return "🏁 동물 레이스 · $bet → ${v.headline}"
 }
 
 /**
@@ -228,7 +228,7 @@ fun ShareCard(record: RaceRecord) {
         Box(
             Modifier.fillMaxWidth().height(42.dp).background(Pal.Ink),
             contentAlignment = Alignment.Center,
-        ) { Text("🏁 동물 대소동 레이스", fontSize = 16.sp, color = Color.White) }
+        ) { Text("🏁 동물 레이스", fontSize = 16.sp, color = Color.White) }
     }
 }
 
