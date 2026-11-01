@@ -142,7 +142,8 @@ fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: (Int) -> Un
         // 게임마다의 콱!/펑!/팡! 뒤에 몰빵 뿌우우
         delay(350)
         sound.play(Sfx.BUST)
-        delay(1050)
+        // 룰렛은 바늘이 멈춘 칸을 볼 수 있게 조금 더 (멈춘 뒤 2초)
+        delay(if (session.game == MiniGame.ROULETTE) 1650 else 1050)
         done = true
     }
 
@@ -189,6 +190,7 @@ fun MiniGameScreen(session: MiniGameSession, bet: String, onDecided: (Int) -> Un
                     MiniGame.LADDER -> LadderGame(session, revealed, loser, ::reveal)
                     MiniGame.LOTTO -> LottoGame(session, revealed, loser, ::reveal)
                     MiniGame.GACHA -> GachaGame(session, loser, ::reveal)
+                    MiniGame.ROULETTE -> RouletteGame(session, loser, ::reveal)
                 }
             }
         }

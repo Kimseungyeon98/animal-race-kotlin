@@ -7,6 +7,7 @@ enum class MiniGame(val emoji: String, val title: String, val desc: String) {
     LADDER("🪜", "사다리 타기", "동물들이 직접 타고 내려가요"),
     LOTTO("🎫", "복권 긁기", "돌려 가며 손가락으로 슥슥"),
     GACHA("🎰", "가챠 캡슐", "레버 돌리고 톡톡 깨기"),
+    ROULETTE("🎡", "룰렛 돌리기", "꾹 눌러 힘 모으고 휙"),
 }
 
 /** 몰아주기 결과: 어떤 게임으로 누가 몰빵했는지. */

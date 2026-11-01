@@ -91,6 +91,8 @@ internal class Act(private val sc: ImageComposeScene, private val out: File, pri
         sc.sendPointerEvent(PointerEventType.Press, at(x, y)); frame(); frame()
         sc.sendPointerEvent(PointerEventType.Release, at(x, y)); pause(120)
     }
+    fun press(x: Float, y: Float) { sc.sendPointerEvent(PointerEventType.Press, at(x, y)); frame() }
+    fun release(x: Float, y: Float) { sc.sendPointerEvent(PointerEventType.Release, at(x, y)); frame() }
     fun hold(x: Float, y: Float, ms: Long) {
         sc.sendPointerEvent(PointerEventType.Press, at(x, y)); pause(ms)
         sc.sendPointerEvent(PointerEventType.Release, at(x, y)); pause(120)

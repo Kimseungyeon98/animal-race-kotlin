@@ -43,6 +43,28 @@ internal fun touchScenes(): List<Scene> {
             repeat(3) { tap(195f, 430f); pause(250) }; pause(900); snap("6-bust")
             pause(2000); snap("7-final")
         }) { MiniGameScreen(session(MiniGame.GACHA), "커피 쏘기", {}, {}) },
+        // 룰렛 (시안): 꾹 누르면 게이지 왕복 → 떼면 그 힘으로 빙글빙글 → 몰빵 칸에서 멈춤
+        *listOf(4, 6, 9).map { k ->
+            Scene("t-roulette$k", script = {
+                pause(800); snap("0-ready")
+                press(195f, 795f); pause(380); snap("1-charge"); pause(mapOf(4 to 330L, 6 to 700L, 9 to 250L).getValue(k)); snap("2-charge")
+                release(195f, 795f)
+                for (t in 1..14) { pause(600); snap("s%02d".format(t)) }
+            }) {
+                val names = listOf("지은", "서연", "도윤", "민수", "현우", "하린", "재석", "준하", "세호")
+                val ps = results(Animal.CAT, Animal.PIG, Animal.PANDA, Animal.HORSE, Animal.RABBIT, Animal.DOG, Animal.HAMSTER, Animal.DUCK, Animal.CAPYBARA)
+                    .take(k).mapIndexed { i, r -> r.copy(who = names[i], lane = i) }
+                MiniGameScreen(MiniGameSession(MiniGame.ROULETTE, ps, Ladder.random(k), 1), "커피 쏘기", {}, {})
+            }
+        }.toTypedArray(),
+        Scene("t-picker", script = { pause(1000); tap(195f, 318f); pause(900); snap("1-games") }) {
+            val who = listOf("지은", "민수", "현우", "서연", "도윤")
+            ResultScreen(
+                RaceRecord(0L, "커피 쏘기", 3, results(Animal.CAT, Animal.HORSE, Animal.RABBIT, Animal.PIG, Animal.DOG).mapIndexed { i, r -> r.copy(who = who[i]) },
+                    Venue.BEACH, listOf(2, 4)),
+                onAgain = {}, onHome = {},
+            )
+        },
         Scene("t-lotto", script = {
             // 이름 없이 복권부터 누르면 "먼저 이름을" → 이름 누르고 다시 → 크게 펼침
             pause(800); tap(80f, 445f); pause(600); snap("1-nudge")
