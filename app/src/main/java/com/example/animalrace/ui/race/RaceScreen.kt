@@ -103,6 +103,7 @@ import com.example.animalrace.ui.theme.Pal
 import com.example.animalrace.ui.theme.LaneCloth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.floor
 import kotlin.math.min
@@ -126,6 +127,7 @@ private const val MAX_CAM_W = 250.0
 /**
  * 아직 달리는 앞쪽 4마리가 들어오게 확대/축소하고, 선두를 화면 70% 지점에 둔다.
  * 랜덤 등수 판([picks])은 1등 대신 지금 당첨 등수 자리에서 달리는 동물들이 들어오게 잡는다 (4.6).
+ * 5.2: 당첨 등수 바로 앞뒤 등수까지 함께 (꼴찌 당첨이어도 한 마리만 덩그러니 보이지 않게).
  */
 private fun cameraTarget(v: RaceView, picks: List<Int>? = null): Pair<Double, Double> {
     val running = v.racers.filter { !it.finished }.sortedByDescending { it.x }
@@ -133,9 +135,15 @@ private fun cameraTarget(v: RaceView, picks: List<Int>? = null): Pair<Double, Do
     if (running.isEmpty()) return (TRACK - 0.45 * 170.0) to 170.0
     val hot = if (!picks.isNullOrEmpty()) running.filter { (it.rank + 1) in picks } else emptyList()
     if (hot.isNotEmpty()) {
-        val front = hot.maxOf { it.x }
-        val w = ((front - hot.minOf { it.x }) * 1.35 + 110).coerceIn(START_W, MAX_CAM_W)
-        val x = (front - 0.70 * w).coerceIn(-START_LEFT * w, TRACK + 0.2 * w - w)
+        // 당첨 등수 바로 앞뒤 등수까지 함께 (뒤쪽 등수면 "탈출 경쟁" 상대가 보이게). 결승선을 지난 동물도 포함
+        val pickSet = picks!!.toSet()
+        fun around(d: Int) = v.racers.filter { r -> pickSet.any { abs(r.rank + 1 - it) <= d } }
+        val group = around(1).takeIf { it.size >= 3 } ?: around(2)
+        val back = hot.minOf { it.x }
+        val w = ((group.maxOf { it.x } - group.minOf { it.x }) * 1.3 + 100).coerceIn(START_W, MAX_CAM_W)
+        // 앞 동물이 너무 멀면 당첨 동물이 화면에서 빠지지 않는 데까지만
+        val front = minOf(group.maxOf { it.x }, back + 0.62 * w)
+        val x = (front - 0.74 * w).coerceIn(-START_LEFT * w, TRACK + 0.2 * w - w)
         return x to w
     }
     val front = running.firstOrNull()?.x ?: TRACK

@@ -457,6 +457,12 @@ private fun scenes(): List<Scene> {
                 picks = listOf(3, 5), picksFixed = true,
                 names = mapOf(Animal.HORSE to "민수", Animal.CAT to "지은", Animal.RABBIT to "현우", Animal.PANDA to "서연", Animal.DOG to "도윤", Animal.PIG to "하린"))
         },
+        // 뒤쪽 당첨 등수 카메라 (5.2): 꼴찌 당첨이어도 앞뒤 등수까지 함께
+        Scene("cam-last", snaps = (8..40 step 2).map { it * 1000L }) {
+            RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG), "커피 쏘기", 0, { _, _ -> },
+                picks = listOf(6), picksFixed = true,
+                names = mapOf(Animal.HORSE to "민수", Animal.CAT to "지은", Animal.RABBIT to "현우", Animal.PANDA to "서연", Animal.DOG to "도윤", Animal.PIG to "하린"))
+        },
         // 속도감 (4.12): 경기 중반 3초를 0.1초마다
         Scene("speed", snaps = (90..120 step 5).map { it * 100L }) {
             RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.TURTLE, Animal.PIG), "커피 쏘기", 0, { _, _ -> })

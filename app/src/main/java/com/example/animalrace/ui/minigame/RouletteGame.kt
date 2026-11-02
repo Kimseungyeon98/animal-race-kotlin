@@ -1,7 +1,8 @@
 package com.example.animalrace.ui.minigame
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -59,6 +60,7 @@ import com.example.animalrace.ui.theme.Pal
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.floor
+import kotlin.math.pow
 import kotlin.random.Random
 
 private val SliceColors = listOf(Color(0xFFFFC93C), Color(0xFF7FD9BE), Color(0xFF8CC4FF), Color(0xFFCFA8FF), Color(0xFFFF9FBD), Color(0xFFFFB27A))
@@ -76,6 +78,10 @@ internal fun gaugeAt(seconds: Float): Float {
 /** 힘에 따라 바퀴 수·도는 시간만 달라진다. 멈출 칸은 [MiniGameSession.bomb]으로 이미 정해져 있다 */
 internal fun spinTurns(power: Float): Int = 2 + (power * 6).toInt()
 internal fun spinMillis(power: Float): Int = (2600 + power * 3400).toInt()
+
+/** 멈추기 직전 슬로우 모션: 마지막 [slowDegrees]도를 [SLOW_MILLIS] 동안 아주 천천히 (5.2) */
+internal const val SLOW_MILLIS = 2600
+internal fun slowDegrees(players: Int): Float = minOf(360f / players * 1.7f, 110f)
 
 /**
  * 지금 [from]도에서 몇 도까지 돌릴지. 바늘(맨 위)이 [bomb]번 칸의 [inside](0~1) 지점에 오도록 맞춘다.
@@ -115,6 +121,9 @@ internal fun RouletteGame(session: MiniGameSession, loser: Int?, onReveal: (Int,
     var state by remember(session) { mutableStateOf(Spin.READY) }
     var power by remember(session) { mutableFloatStateOf(0f) }
     val angle = remember(session) { Animatable(0f) }
+    var slow by remember(session) { mutableStateOf(false) }
+    // 슬로우 모션 동안 바늘 쪽으로 살짝 다가가기
+    val zoom by animateFloatAsState(if (slow && state == Spin.SPINNING) 1.14f else 1f, tween(700), label = "zoom")
     val slice = 360f / n
 
     // 꾹 누르는 동안 게이지 왕복
@@ -138,10 +147,21 @@ internal fun RouletteGame(session: MiniGameSession, loser: Int?, onReveal: (Int,
         val p = power
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         sound.play(Sfx.RATCHET)
-        // 바늘(맨 위)이 몰빵 칸 안쪽 아무 데나 오도록: 칸 경계에 딱 걸치지 않게 15~85% 사이
-        val target = spinTarget(angle.value, session.bomb, n, p, 0.15f + Random.nextFloat() * 0.7f)
+        // 바늘(맨 위)이 몰빵 칸 안쪽에 오도록 (칸 경계에 딱 걸치지 않게). 슬로우 모션 중에 칸 경계를 넘어 들어가 멈춘다
+        val from = angle.value
+        val target = spinTarget(from, session.bomb, n, p, 0.15f + Random.nextFloat() * 0.75f)
+        val d2 = slowDegrees(n)
+        val d1 = target - from - d2
+        val t1 = spinMillis(p)
+        // 빠르게 돌다 → 슬로우 모션으로 이어질 때 속도가 끊기지 않게: 앞 구간 끝 속도 = 뒤 구간(1-(1-u)^4) 시작 속도
+        val endSlope = (4f * d2 * t1 / (d1 * SLOW_MILLIS)).coerceIn(0f, 1f)
+        val fast = Easing { u -> endSlope * u + (1 - endSlope) * (1 - (1 - u) * (1 - u)) }
+        val crawl = Easing { u -> 1 - (1 - u).pow(4) }
         scope.launch {
-            angle.animateTo(target, tween(spinMillis(p), easing = CubicBezierEasing(0.12f, 0.75f, 0.2f, 1f)))
+            angle.animateTo(from + d1, tween(t1, easing = fast))
+            slow = true
+            sound.play(Sfx.DRUM)
+            angle.animateTo(target, tween(SLOW_MILLIS, easing = crawl))
             state = Spin.STOPPED
             reveal(session.bomb, true)
         }
@@ -165,7 +185,13 @@ internal fun RouletteGame(session: MiniGameSession, loser: Int?, onReveal: (Int,
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     // 누르는 동안 힘만큼 바퀴가 부르르
                     val shake = if (state == Spin.CHARGING) (if ((power * 40).toInt() % 2 == 0) 1 else -1) * power * 2.5f else 0f
-                    Box(Modifier.size(d + 24.dp), contentAlignment = Alignment.Center) {
+                    Box(
+                        Modifier.size(d + 24.dp).graphicsLayer {
+                            scaleX = zoom; scaleY = zoom
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.05f)
+                        },
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Stand(Modifier.align(Alignment.Center).offset(y = (d + standH) / 2).size(d * 0.62f, standH + 12.dp))
                         Wheel(session, angle.value + shake, slice, d, loser)
                         Pointer(Modifier.align(Alignment.TopCenter))
@@ -179,7 +205,7 @@ internal fun RouletteGame(session: MiniGameSession, loser: Int?, onReveal: (Int,
             when (state) {
                 Spin.READY -> "아무나 버튼을 꾹 누르고, 원하는 힘에서 떼세요"
                 Spin.CHARGING -> "${powerLabel(power)} · 떼면 돌아가요!"
-                Spin.SPINNING -> "빙글빙글… ${powerLabel(power)} 돌렸어요"
+                Spin.SPINNING -> if (slow) "두근두근… 어디서 멈출까?" else "빙글빙글… ${powerLabel(power)} 돌렸어요"
                 Spin.STOPPED -> loser?.let { "${session.players[it].name} 당첨!" } ?: ""
             },
             Modifier.fillMaxWidth(), fontSize = 16.sp, color = if (state == Spin.STOPPED) Pal.TomatoText else Pal.InkSoft, textAlign = TextAlign.Center,

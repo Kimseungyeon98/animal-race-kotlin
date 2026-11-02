@@ -80,13 +80,15 @@ internal fun touchScenes(): List<Scene> {
             MiniGameScreen(MiniGameSession(MiniGame.LOTTO, results(Animal.CAT, Animal.PIG, Animal.PANDA, Animal.DOG, Animal.DUCK, Animal.HORSE), Ladder.random(6), 2), "커피 쏘기", {}, {})
         },
         Scene("t-ladder", script = {
-            // 고양이: 빈 높이에 한 줄 (사다리 칸 위 202dp ~ 아래 700dp, 높이 13칸), 돼지·판다: 넘기기 → 출발
-            val free = (0 until Ladder.LEVELS).first { lv -> ladder.canAdd(Rung(lv, 0)) }
-            pause(800); tap(135f, 202f + 498f * (free + 1) / (Ladder.LEVELS + 1)); pause(500); snap("1-rung")
-            tap(333f, 791f); pause(300); tap(333f, 791f); pause(500); snap("2-ready")
-            tap(195f, 790f); pause(2000); snap("3-walking")
-            pause(9000); snap("4-done")
-            pause(1800); snap("5-final")
+            // 출발 전까지 아무나 자유롭게: 빈 자리 세 곳에 긋고, 하나는 다시 탭해서 지우기
+            val spots = (0 until Ladder.LEVELS).flatMap { lv -> listOf(Rung(lv, 0), Rung(lv, 1)) }.filter { ladder.canAdd(it) }
+            fun y(r: Rung) = 170f + 35.6f * (r.level + 1)
+            fun x(r: Rung) = if (r.left == 0) 135f else 255f
+            val picks = listOf(spots[0], spots.first { it.left == 1 && it.level > spots[0].level + 1 }, spots.last())
+            pause(800); snap("0-start")
+            picks.forEach { tap(x(it), y(it)); pause(350) }; snap("1-drawn")
+            tap(x(picks[2]), y(picks[2])); pause(400); snap("2-erased")
+            tap(330f, 793f); pause(2500); snap("3-walking")
         }) { MiniGameScreen(MiniGameSession(MiniGame.LADDER, players, ladder, 1), "커피 쏘기", {}, {}) },
         Scene("t-setup", script = {
             pause(900); tap(348f, 43f); pause(900); snap("1-history")
