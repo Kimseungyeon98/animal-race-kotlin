@@ -125,19 +125,33 @@ private const val START_X = -START_LEFT * START_W
 private const val MAX_CAM_W = 250.0
 
 /**
+ * 지금 카메라가 볼 당첨 등수 (5.3). 선두가 결승선 [FOCUS_SWITCH_M] 앞에 오기 전엔 null(선두 무리를 따라감),
+ * 그 뒤엔 아직 정해지지 않은 다음 당첨 등수. 꼴찌 판은 꼴찌 자리. 다 정해졌으면 null.
+ */
+/** 선두가 결승선 이만큼 앞에 오면 카메라가 당첨 등수로 넘어간다 (골인 약 3~4초 전). 1등 골인 때 넘어가면 다들 거의 한꺼번에 들어와서 볼 틈이 없다 */
+private const val FOCUS_SWITCH_M = 200.0
+
+internal fun focusRank(v: RaceView, picks: List<Int>?): Int? {
+    if (v.racers.none { it.finished || it.x >= TRACK - FOCUS_SWITCH_M }) return null
+    val targets = if (picks.isNullOrEmpty()) listOf(v.racers.size) else picks.sorted()
+    return targets.firstOrNull { p -> v.racers.any { it.rank + 1 == p && !it.finished } }
+}
+
+/**
  * 아직 달리는 앞쪽 4마리가 들어오게 확대/축소하고, 선두를 화면 70% 지점에 둔다.
  * 랜덤 등수 판([picks])은 1등 대신 지금 당첨 등수 자리에서 달리는 동물들이 들어오게 잡는다 (4.6).
  * 5.2: 당첨 등수 바로 앞뒤 등수까지 함께 (꼴찌 당첨이어도 한 마리만 덩그러니 보이지 않게).
+ * 5.3: 막판 전까지는 선두를 따라가고, 그 뒤로 [focusRank] 자리를 하나씩 (꼴찌 판은 꼴찌 싸움).
  */
 private fun cameraTarget(v: RaceView, picks: List<Int>? = null): Pair<Double, Double> {
     val running = v.racers.filter { !it.finished }.sortedByDescending { it.x }
     // 모두 들어오면 결승선을 화면 가운데쯤 두어 결승선을 지난 동물과 등수 태그가 다 보이게
     if (running.isEmpty()) return (TRACK - 0.45 * 170.0) to 170.0
-    val hot = if (!picks.isNullOrEmpty()) running.filter { (it.rank + 1) in picks } else emptyList()
+    val focus = focusRank(v, picks)
+    val hot = if (focus != null) running.filter { it.rank + 1 == focus } else emptyList()
     if (hot.isNotEmpty()) {
         // 당첨 등수 바로 앞뒤 등수까지 함께 (뒤쪽 등수면 "탈출 경쟁" 상대가 보이게). 결승선을 지난 동물도 포함
-        val pickSet = picks!!.toSet()
-        fun around(d: Int) = v.racers.filter { r -> pickSet.any { abs(r.rank + 1 - it) <= d } }
+        fun around(d: Int) = v.racers.filter { r -> abs(r.rank + 1 - focus!!) <= d }
         val group = around(1).takeIf { it.size >= 3 } ?: around(2)
         val back = hot.minOf { it.x }
         val w = ((group.maxOf { it.x } - group.minOf { it.x }) * 1.3 + 100).coerceIn(START_W, MAX_CAM_W)
@@ -915,6 +929,30 @@ private fun Overlays(frame: Frame, stadium: Stadium, countdown: String?, picks: 
                 }
                 Text("%.2f초".format(w.finishTime ?: 0.0), style = NumberStyle, fontSize = 18.sp, color = Pal.Ink)
             }
+        }
+    }
+
+    // 카메라가 다음 당첨 등수로 옮겨 갈 때 안내 (5.3)
+    val focus = focusRank(view, picks)
+    var banner by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(focus) {
+        if (focus == null) return@LaunchedEffect
+        banner = focus
+        delay(2000)
+        banner = null
+    }
+    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(top = 142.dp), contentAlignment = Alignment.TopCenter) {
+        AnimatedVisibility(banner != null && !view.done, enter = slideInVertically { -it } + fadeIn(), exit = fadeOut()) {
+            val k = banner ?: return@AnimatedVisibility
+            Text(
+                if (picks.isNullOrEmpty()) "🐢 이제 꼴찌 싸움!" else "🎯 이제 ${k}등 자리로!",
+                fontSize = 18.sp, color = Color.White,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Pal.Tomato)
+                    .border(3.dp, Pal.Ink, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 16.dp, vertical = 5.dp),
+            )
         }
     }
 
