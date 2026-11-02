@@ -550,6 +550,9 @@ private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width
     // 주자 (코끝이 트랙 위치)
     val sprite = (laneH * 1.2f).coerceAtMost(110.dp)
     val spriteH = sprite * 0.85f
+    // 머리 위 폭탄·클로버 (5.4): 레인마다 지금 표시와 붙은 시각 (붙는 순간 위에서 톡 떨어진다)
+    val marked = remember { HashMap<Int, Pair<HotMark?, Double>>() }
+    val urgency = ((view.racers.maxOf { it.x } - 600) / 400).toFloat().coerceIn(0f, 1f)
     view.racers.forEach { r ->
         val nose = sx(visualX(r))
         val y = trackTop + laneH * (r.lane + 1) - spriteH - 2.dp
@@ -584,10 +587,29 @@ private fun Track(frame: Frame, stadium: Stadium, trackTop: Dp, laneH: Dp, width
                             .padding(horizontal = 5.dp),
                     )
                 }
-                if (r.rank == 0 && !r.finished && r.fx == Fx.NONE && view.t > 1) {
+                val crowned = r.rank == 0 && !r.finished && r.fx == Fx.NONE && view.t > 1
+                if (crowned) {
                     // 머리 꼭대기에 얹기 (동물마다 머리 위치가 달라서 상자 가운데에 두면 허공에 뜬다)
                     val head = headTop(r.animal)
                     Crown(Modifier.offset(x = sprite * (head.x / 200f) - 15.dp, y = sprite * (head.y / 200f) - 19.dp), width = 30.dp)
+                }
+                val mark = if (view.t > 1 && !r.finished) hotMark(r.rank, n, picks) else null
+                if (marked[r.lane]?.first != mark) marked[r.lane] = mark to frame.time
+                if (mark != null) {
+                    val head = headTop(r.animal)
+                    val since = (frame.time - (marked[r.lane]?.second ?: 0.0)).toFloat()
+                    val k = (since / 0.35f).coerceIn(0f, 1f)
+                    // 클로버는 폭탄보다 납작해서 조금 크게
+                    val mw = if (mark == HotMark.BOMB) (sprite * 0.3f).coerceIn(20.dp, 30.dp) else (sprite * 0.38f).coerceIn(26.dp, 34.dp)
+                    val mx = sprite * (head.x / 200f) - mw / 2 + (if (crowned) 24.dp else 0.dp)
+                    val my = sprite * (head.y / 200f) - mw * 1.1f - 4.dp - 34.dp * (1 - k) * (1 - k)
+                    val pop = Modifier.offset(x = mx, y = my).graphicsLayer { scaleX = 0.6f + 0.4f * k; scaleY = 0.6f + 0.4f * k; alpha = k }
+                    if (mark == HotMark.BOMB) Bomb(pop, mw, frame.time.toFloat(), urgency)
+                    else Clover(pop, mw, frame.time.toFloat())
+                }
+                if ((hit || (picks == null && r.finished && r.rank == n - 1)) && sinceFinish < 0.7) {
+                    val head = headTop(r.animal)
+                    Boom(Modifier.offset(x = sprite * (head.x / 200f) - 32.dp, y = sprite * (head.y / 200f) - 52.dp), 64.dp, sinceFinish.toFloat())
                 }
             }
             // 등수 태그는 코끝 앞(오른쪽)에, 레인 가운데 높이로 — 윗줄 동물을 가리지 않게

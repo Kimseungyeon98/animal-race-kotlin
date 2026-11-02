@@ -473,6 +473,31 @@ private fun scenes(): List<Scene> {
             RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG), "커피 쏘기", 0, { _, _ -> },
                 names = mapOf(Animal.HORSE to "민수", Animal.CAT to "지은", Animal.RABBIT to "현우", Animal.PANDA to "서연", Animal.DOG to "도윤", Animal.PIG to "하린"))
         },
+        // 5.4: 머리 위 폭탄(당첨 자리) · 당첨이 절반 넘으면 안전한 자리에 클로버
+        // 폭탄 크게: 심지가 타들어 가는 단계 (급함 0 → 1) + 클로버
+        Scene("bombs", w = 640, h = 170, snaps = listOf(1300)) {
+            androidx.compose.foundation.layout.Row(
+                androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFF2C98A)).padding(16.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(14.dp),
+            ) {
+                listOf(0f, 0.4f, 0.7f, 0.85f, 1f).forEach { u ->
+                    com.example.animalrace.ui.race.Bomb(width = 90.dp, time = 1.3f, urgency = u)
+                }
+                com.example.animalrace.ui.race.Clover(width = 80.dp, time = 0f)
+            }
+        },
+        Scene("marks-last", snaps = (6..40).map { it * 1000L }) {
+            RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG), "커피 쏘기", 0, { _, _ -> },
+                names = mapOf(Animal.HORSE to "민수", Animal.CAT to "지은", Animal.RABBIT to "현우", Animal.PANDA to "서연", Animal.DOG to "도윤", Animal.PIG to "하린"))
+        },
+        Scene("marks-two", snaps = (6..40).map { it * 1000L }) {
+            RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG), "커피 쏘기", 0, { _, _ -> },
+                picks = listOf(2, 5), picksFixed = true)
+        },
+        Scene("marks-many", snaps = (6..40).map { it * 1000L }) {
+            RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG, Animal.DUCK, Animal.TURTLE, Animal.CHEETAH, Animal.ELEPHANT), "커피 쏘기", 0, { _, _ -> },
+                picks = (1..8).toList(), picksFixed = true)
+        },
         // 속도감 (4.12): 경기 중반 3초를 0.1초마다
         Scene("speed", snaps = (90..120 step 5).map { it * 100L }) {
             RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.TURTLE, Animal.PIG), "커피 쏘기", 0, { _, _ -> })
