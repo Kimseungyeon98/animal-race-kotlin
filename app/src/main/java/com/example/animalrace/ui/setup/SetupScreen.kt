@@ -8,6 +8,15 @@ import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.composed
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
@@ -31,6 +40,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -53,6 +63,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -63,6 +74,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -132,9 +145,61 @@ fun SetupScreen(state: AppState) {
     var editBet by remember { mutableStateOf(false) }
     var rankSheet by remember { mutableStateOf(false) }
     var nameSheet by remember { mutableStateOf(false) }
+    // 이름표 끌어다 놓기 (5.5): 끄는 이름, 손가락 위치(루트 기준 px), 동물 칸 자리
+    var dragging by remember { mutableStateOf<String?>(null) }
+    var dragAt by remember { mutableStateOf(Offset.Zero) }
+    val tileBounds = remember { mutableMapOf<Animal, Rect>() }
+    // 끄는 이름표가 동물 목록 위·아래 가장자리에 오면 그쪽으로 저절로 스크롤
+    val gridScroll = rememberScrollState()
+    var gridBounds by remember { mutableStateOf(Rect.Zero) }
+    val density = LocalDensity.current
+    LaunchedEffect(dragging != null) {
+        if (dragging == null) return@LaunchedEffect
+        val edge = with(density) { 70.dp.toPx() }
+        val maxSpeed = with(density) { 900.dp.toPx() }
+        var last = withFrameNanos { it }
+        while (true) {
+            val now = withFrameNanos { it }
+            val dt = (now - last) / 1e9f
+            last = now
+            if (dragAt.x !in gridBounds.left..gridBounds.right) continue
+            val down = (dragAt.y - (gridBounds.bottom - edge)) / edge
+            val up = ((gridBounds.top + edge) - dragAt.y) / edge
+            val v = when {
+                down > 0f && dragAt.y <= gridBounds.bottom + edge -> down.coerceAtMost(1f)
+                up > 0f && dragAt.y >= gridBounds.top - edge -> -up.coerceAtMost(1f)
+                else -> 0f
+            }
+            if (v != 0f) gridScroll.scrollBy(v * maxSpeed * dt)
+        }
+    }
+    fun dropTarget() = tileBounds.entries.firstOrNull { it.value.contains(dragAt) }?.key
+    val drag = remember {
+        NameDrag(
+            start = { who, at -> dragging = who; dragAt = at; haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) },
+            move = { dragAt += it },
+            end = {
+                val who = dragging
+                dragging = null
+                if (who != null) {
+                    val target = dropTarget()
+                    when {
+                        target != null && state.placeName(who, target) -> {
+                            focused = target
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            sound.play(Sfx.SELECT)
+                        }
+                        target != null -> scope.launch { snackbar.showSnackbar("최대 ${AppState.MAX_RACERS}마리까지 출전할 수 있어요") }
+                        // 동물 칸 밖에 놓으면: 붙어 있던 이름표는 떼어서 다시 줄로
+                        who !in state.waiting -> { state.unplaceName(who); sound.play(Sfx.DESELECT) }
+                    }
+                }
+            },
+        )
+    }
 
     fun toggle(animal: Animal) {
-        if (state.toggle(animal)) {
+        if (state.tapAnimal(animal)) {
             focused = animal
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             sound.play(if (animal in state.selected) Sfx.SELECT else Sfx.DESELECT)
@@ -211,7 +276,8 @@ fun SetupScreen(state: AppState) {
                 }
 
                 RandomRankRow(state, Modifier) { rankSheet = true }
-                PeopleRow(state, Modifier.padding(bottom = 4.dp)) { nameSheet = true }
+                if (state.waiting.isNotEmpty()) NamePanel(state, drag, dragging, Modifier.padding(bottom = 4.dp)) { nameSheet = true }
+                else PeopleRow(state, Modifier.padding(bottom = 4.dp)) { nameSheet = true }
 
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -228,10 +294,15 @@ fun SetupScreen(state: AppState) {
 
             AnimalGrid(
                 state = state,
+                drag = drag,
+                hover = dragging?.let { dropTarget() },
+                tileBounds = tileBounds,
+                scroll = gridScroll,
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 16.dp)
-                    .padding(bottom = 12.dp),
+                    .padding(bottom = 12.dp)
+                    .onGloballyPositioned { gridBounds = it.boundsInRoot() },
                 onTap = ::toggle,
             )
 
@@ -242,6 +313,17 @@ fun SetupScreen(state: AppState) {
         }
 
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 180.dp))
+
+        // 끌고 있는 이름표: 손가락 조금 위에 떠서 따라온다
+        dragging?.let { who ->
+            val d = LocalDensity.current
+            NameTag(
+                who, fontSize = 18.sp, bg = Pal.Sun,
+                modifier = Modifier
+                    .offset { androidx.compose.ui.unit.IntOffset((dragAt.x - 30.dp.toPx()).toInt(), (dragAt.y - 46.dp.toPx()).toInt()) }
+                    .graphicsLayer { rotationZ = -6f; scaleX = 1.1f; scaleY = 1.1f; shadowElevation = with(d) { 6.dp.toPx() } },
+            )
+        }
 
         AnimatedVisibility(
             visible = dexIndex != null,
@@ -265,7 +347,7 @@ fun SetupScreen(state: AppState) {
             BetEditor(state.bet, onDismiss = { editBet = false }) { state.updateBet(it); editBet = false }
         }
         AnimatedVisibility(visible = nameSheet, enter = fadeIn(), exit = fadeOut()) {
-            NameSheet(state) { nameSheet = false }
+            PeopleSheet(state) { nameSheet = false }
         }
         AnimatedVisibility(visible = rankSheet, enter = fadeIn(), exit = fadeOut()) {
             RankSheet(state.rankSetting, maxOf(state.selected.size, AppState.MIN_RACERS), onDismiss = { rankSheet = false }) {
@@ -305,7 +387,10 @@ private fun SmallButton(label: String, icon: List<String>?, onClick: () -> Unit)
 
 /** 3열 유지. 남은 높이에 5줄이 들어가게 타일 크기를 정하고, 그보다 많으면 스크롤한다. */
 @Composable
-private fun AnimalGrid(state: AppState, modifier: Modifier, onTap: (Animal) -> Unit) {
+private fun AnimalGrid(
+    state: AppState, drag: NameDrag, hover: Animal?, tileBounds: MutableMap<Animal, Rect>, scroll: androidx.compose.foundation.ScrollState,
+    modifier: Modifier, onTap: (Animal) -> Unit,
+) {
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val cols = if (maxWidth > 560.dp) 5 else 3
         val animals = ANIMAL_ORDER
@@ -316,7 +401,6 @@ private fun AnimalGrid(state: AppState, modifier: Modifier, onTap: (Animal) -> U
         val visibleRows = minOf(rows, 5)
         val tileH = ((maxHeight - stickerRoom - gap * (visibleRows - 1)) / visibleRows - 5.dp).coerceIn(70.dp, 140.dp)
         val tileW = (maxWidth - gap * (cols - 1)) / cols
-        val scroll = rememberScrollState()
         Column(
             Modifier.fillMaxSize().verticalScroll(scroll).padding(top = stickerRoom, bottom = 4.dp),
             verticalArrangement = Arrangement.spacedBy(gap),
@@ -324,7 +408,11 @@ private fun AnimalGrid(state: AppState, modifier: Modifier, onTap: (Animal) -> U
             animals.chunked(cols).forEach { rowAnimals ->
                 Row(Modifier.fillMaxWidth().height(tileH + 5.dp), horizontalArrangement = Arrangement.spacedBy(gap)) {
                     rowAnimals.forEach { animal ->
-                        AnimalTile(animal, state.selected.indexOf(animal), state.names[animal], tileW, tileH, Modifier.weight(1f).fillMaxHeight()) { onTap(animal) }
+                        AnimalTile(
+                            animal, state.selected.indexOf(animal), state.names[animal], tileW, tileH,
+                            Modifier.weight(1f).fillMaxHeight().onGloballyPositioned { tileBounds[animal] = it.boundsInRoot() },
+                            hover = animal == hover, drag = drag,
+                        ) { onTap(animal) }
                     }
                     repeat(cols - rowAnimals.size) { Spacer(Modifier.weight(1f)) }
                 }
@@ -370,7 +458,10 @@ private fun AnimalGrid(state: AppState, modifier: Modifier, onTap: (Animal) -> U
 }
 
 @Composable
-private fun AnimalTile(animal: Animal, lane: Int, who: String?, tileW: Dp, tileH: Dp, modifier: Modifier, onClick: () -> Unit) {
+private fun AnimalTile(
+    animal: Animal, lane: Int, who: String?, tileW: Dp, tileH: Dp, modifier: Modifier,
+    hover: Boolean = false, drag: NameDrag? = null, onClick: () -> Unit,
+) {
     val selected = lane >= 0
     val shape = RoundedCornerShape(20.dp)
     val lastLane = remember { IntArray(1) }
@@ -384,8 +475,8 @@ private fun AnimalTile(animal: Animal, lane: Int, who: String?, tileW: Dp, tileH
                 .height(tileH)
                 .offset(y = if (selected) 3.dp else 0.dp)
                 .clip(shape)
-                .background(if (selected) Pal.Sun else Pal.Paper)
-                .border(3.dp, Pal.Ink, shape)
+                .background(if (hover) Pal.Pink else if (selected) Pal.Sun else Pal.Paper)
+                .border(if (hover) 4.dp else 3.dp, if (hover) Pal.Tomato else Pal.Ink, shape)
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -393,15 +484,10 @@ private fun AnimalTile(animal: Animal, lane: Int, who: String?, tileW: Dp, tileH
             // 이름표는 동물 이름보다 키가 커서, 이름이 붙으면 그림을 조금 줄여 칸 안에 들어가게
             AnimalSprite(animal, if (selected && who != null) sprite - 10.dp else sprite, running = selected)
             // 달릴 사람이 있으면 동물 이름 자리에 사람 이름표 (4.0): 동물은 그림으로 보인다
-            if (selected && who != null) Text(
-                // 줄 높이를 글자보다 낮게 잡으면 폰에서 글자 위아래가 테두리에 잘려서(4.13.2) 기본 줄 높이 + 위아래 여백
-                who, fontSize = 14.sp, color = Pal.Ink, maxLines = 1,
-                modifier = Modifier
-                    .padding(top = 2.dp)
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(Pal.Paper)
-                    .border(2.dp, Pal.Ink, RoundedCornerShape(9.dp))
-                    .padding(horizontal = 8.dp, vertical = 1.dp),
+            // 줄 높이를 글자보다 낮게 잡으면 폰에서 글자 위아래가 테두리에 잘려서(4.13.2) 기본 줄 높이 + 위아래 여백
+            // 붙은 이름표는 다른 동물로 끌어서 옮기거나, 칸 밖에 놓아 뗄 수 있다 (5.5)
+            if (selected && who != null) NameTag(
+                who, Modifier.padding(top = 2.dp).then(if (drag != null) Modifier.nameDrag(who, drag) else Modifier),
             ) else Text(animal.label, fontSize = 15.sp, color = Pal.Ink, lineHeight = 16.sp)
         }
         AnimatedVisibility(
@@ -523,7 +609,7 @@ private fun PeopleRow(state: AppState, modifier: Modifier, onOpen: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                if (people.isEmpty()) "이름 붙이기" else people.joinToString("·"),
+                if (people.isEmpty()) "누가 하나요?" else people.joinToString("·"),
                 fontSize = 14.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
             )
             InkIcon(listOf("M9 6l6 6-6 6"), size = 12.dp, stroke = 3.5f)
@@ -531,64 +617,146 @@ private fun PeopleRow(state: AppState, modifier: Modifier, onOpen: () -> Unit) {
     }
 }
 
+/** 이름표 끌어다 놓기 (5.5): 이름표마다 시작·이동·끝을 알려 준다. 좌표는 화면(루트) 기준 */
+internal class NameDrag(val start: (String, Offset) -> Unit, val move: (Offset) -> Unit, val end: () -> Unit)
+
+/** 이 요소를 끌면 [who] 이름표를 끄는 것으로 */
+private fun Modifier.nameDrag(who: String, drag: NameDrag): Modifier = composed {
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    onGloballyPositioned { origin = it.positionInRoot() }
+        .pointerInput(who) {
+            detectDragGestures(
+                onDragStart = { drag.start(who, origin + it) },
+                onDrag = { change, amount -> change.consume(); drag.move(amount) },
+                onDragEnd = drag.end,
+                onDragCancel = drag.end,
+            )
+        }
+}
+
+/** 이름표 모양 (칩·동물 칸·끌고 있는 것 모두 같은 모양) */
+@Composable
+private fun NameTag(who: String, modifier: Modifier = Modifier, bg: Color = Pal.Paper, fontSize: TextUnit = 14.sp) {
+    Text(
+        who, fontSize = fontSize, color = Pal.Ink, maxLines = 1,
+        modifier = modifier
+            .clip(RoundedCornerShape(9.dp))
+            .background(bg)
+            .border(2.dp, Pal.Ink, RoundedCornerShape(9.dp))
+            .padding(horizontal = 8.dp, vertical = 1.dp),
+    )
+}
+
 /**
- * 이름 붙이기 창 (시안: "4.0 사람이 주인공" ②). 출전 동물마다 달릴 사람 이름을 적는다.
- * 최근 멤버 칩을 누르면 지금 고른 칸(없으면 빈 칸)에 들어가고, 멤버 묶음은 한 번에 불러온다.
- * 창을 어떻게 닫든(완료·✕·아래로 내리기·바깥 누르기) 적은 이름이 그대로 반영된다 (4.6).
+ * 아직 동물에게 안 붙인 이름표들 (5.5 사람 먼저). 이름표를 끌어다 동물 칸에 놓으면 그 동물로 달린다.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun NameSheet(state: AppState, onClose: () -> Unit) {
-    val draft = remember { mutableStateMapOf<Animal, String>().apply { putAll(state.names) } }
-    var focus by remember { mutableStateOf(state.selected.firstOrNull { it !in state.names }) }
-    fun nextEmpty() = state.selected.firstOrNull { draft[it].isNullOrBlank() }
-    fun assign(who: String) {
-        // 같은 사람이 두 동물에 타지 않게: 이미 탄 동물에서는 뺀다
-        draft.entries.firstOrNull { it.value == who }?.let { draft.remove(it.key) }
-        val target = focus?.takeIf { it in state.selected } ?: nextEmpty() ?: return
-        draft[target] = who
-        focus = nextEmpty()
+private fun NamePanel(state: AppState, drag: NameDrag, dragging: String?, modifier: Modifier, onEdit: () -> Unit) {
+    val placed = state.selected.count { it in state.names }
+    val total = placed + state.waiting.size
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Pal.SunPale)
+            .border(3.dp, Pal.Ink, RoundedCornerShape(14.dp))
+            .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("🏷 이름표를 동물에게 끌어다 놓아요", fontSize = 16.sp, color = Pal.Ink, maxLines = 1, modifier = Modifier.weight(1f))
+            Text("$placed/$total", fontSize = 15.sp, color = Pal.InkSoft, style = NumberStyle)
+        }
+        // 이름표가 줄어도 칸 높이는 그대로 (끌어다 놓는 사이 아래 동물 칸이 움직이지 않게)
+        val minH = remember { mutableStateOf(0.dp) }
+        val density = LocalDensity.current
+        FlowRow(
+            Modifier.heightIn(min = minH.value).onSizeChanged { val h = with(density) { it.height.toDp() }; if (h > minH.value) minH.value = h },
+            horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            state.waiting.forEach { w ->
+                NameTag(
+                    w, fontSize = 16.sp, bg = Pal.Sun,
+                    modifier = Modifier
+                        .graphicsLayer { alpha = if (w == dragging) 0.3f else 1f }
+                        .nameDrag(w, drag),
+                )
+            }
+        }
+        SmallChip("✏️ 참가자 바꾸기", false, onEdit)
     }
-    // 적은 이름은 닫을 때 한 번에 반영 (글자마다 반영하면 "민"·"민수"가 모두 최근 멤버에 쌓여서)
-    fun done() { state.updateNames(draft); onClose() }
+}
+
+/**
+ * 참가자 정하기 창 (5.5 사람 먼저). 이름만 넣으면 닫은 뒤 한 명씩 돌아가며 자기 동물을 고른다.
+ * 최근 멤버 칩은 눌러서 넣고 빼기, 멤버 묶음은 한 번에. 창을 어떻게 닫든 그대로 반영된다.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun PeopleSheet(state: AppState, onClose: () -> Unit) {
+    val draft = remember { mutableStateListOf<String>().apply { addAll((state.selected.mapNotNull { state.names[it] } + state.waiting).distinct()) } }
+    var input by remember { mutableStateOf("") }
+    fun add(raw: String) {
+        val who = AppState.cleanName(raw)
+        if (who.isNotEmpty() && who !in draft && draft.size < AppState.MAX_RACERS) draft.add(who)
+        input = ""
+    }
+    fun done() { if (input.isNotBlank()) add(input); state.setPeople(draft); onClose() }
     Sheet(::done, fill = false) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("🙋 누가 달려요?", fontSize = 24.sp, color = Pal.Ink)
-                Text("이름을 붙이면 중계·결과에 이름으로 나와요 · 비워 두면 동물 이름", fontSize = 13.sp, color = Pal.InkSoft)
+                Text("🙋 누가 하나요?", fontSize = 24.sp, color = Pal.Ink)
+                Text("이름만 넣으면, 한 명씩 돌아가며 자기 동물을 골라요", fontSize = 13.sp, color = Pal.InkSoft)
             }
-            SquareIcon(Icons2.Close, "이름 창 닫기", ::done)
+            SquareIcon(Icons2.Close, "참가자 창 닫기", ::done)
         }
-        if (state.selected.isEmpty()) {
-            Text(
-                "먼저 출전할 동물을 골라 주세요\n(아래 멤버 묶음을 불러오면 사람 수만큼 자동으로 골라요)",
-                fontSize = 15.sp, color = Pal.Ink,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Pal.Cream)
-                    .border(2.dp, Pal.Ink, RoundedCornerShape(14.dp)).padding(12.dp),
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            BasicTextField(
+                value = input,
+                onValueChange = { input = it.take(AppState.NAME_MAX) },
+                singleLine = true,
+                textStyle = TextStyle(fontFamily = Jua, fontSize = 18.sp, color = Pal.Ink),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { add(input) }),
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Pal.Paper)
+                    .border(2.dp, Pal.Ink, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 9.dp),
+                decorationBox = { inner ->
+                    if (input.isEmpty()) Text("새 이름 입력", fontSize = 16.sp, color = Pal.Disabled, maxLines = 1)
+                    inner()
+                },
             )
+            SmallChip("＋ 추가", true) { add(input) }
         }
-        state.selected.forEachIndexed { lane, a ->
-            NameRow(a, lane, draft[a].orEmpty(), a == focus, onFocus = { focus = a }) { draft[a] = it.take(AppState.NAME_MAX) }
-        }
-        if (state.members.isNotEmpty()) {
-            Text("최근 멤버 · 누르면 고른 칸에", fontSize = 15.sp, color = Pal.InkSoft)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                state.members.forEach { m ->
-                    val on = draft.entries.firstOrNull { it.value == m }?.key
-                    Text(
-                        if (on != null) "$m · ${on.emoji}" else m, fontSize = 15.sp, color = Pal.Ink,
-                        modifier = Modifier
-                            .graphicsLayer { alpha = if (on != null) 0.5f else 1f }
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Pal.Paper)
-                            .border(2.dp, Pal.Ink, RoundedCornerShape(12.dp))
-                            .clickable { assign(m) }
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                    )
+        Text("참가자 ${draft.size}명", fontSize = 15.sp, color = Pal.InkSoft)
+        if (draft.isEmpty()) Text("아래 최근 멤버를 누르거나 이름을 넣어 주세요", fontSize = 14.sp, color = Pal.Ink,
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Pal.Cream).padding(10.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            draft.forEachIndexed { i, w ->
+                Row(
+                    Modifier.clip(RoundedCornerShape(12.dp)).background(Pal.Sun).border(2.dp, Pal.Ink, RoundedCornerShape(12.dp))
+                        .clickable { draft.remove(w) }.padding(start = 4.dp, end = 8.dp, top = 3.dp, bottom = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    LaneSticker(i, size = 20.dp)
+                    Text(w, fontSize = 16.sp, color = Pal.Ink)
+                    InkIcon(Icons2.Close, size = 10.dp, stroke = 3f)
                 }
             }
         }
-        Text("멤버 묶음", fontSize = 15.sp, color = Pal.InkSoft)
+        val recent = state.members.filter { it !in draft }
+        if (recent.isNotEmpty()) {
+            Text("최근 멤버 · 누르면 추가", fontSize = 15.sp, color = Pal.InkSoft)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                recent.forEach { m -> SmallChip(m, false) { add(m) } }
+            }
+        }
+        if (state.groups.isNotEmpty()) Text("멤버 묶음", fontSize = 15.sp, color = Pal.InkSoft)
         state.groups.forEach { g ->
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Pal.Paper).border(2.5.dp, Pal.Ink, RoundedCornerShape(14.dp))
@@ -598,73 +766,13 @@ internal fun NameSheet(state: AppState, onClose: () -> Unit) {
             ) {
                 Text("👥 ${g.size}명", fontSize = 16.sp, color = Pal.Ink)
                 Text(g.joinToString("·"), fontSize = 14.sp, color = Pal.InkSoft, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                SmallChip("불러오기", true) {
-                    state.ensureRacers(g.size)
-                    draft.clear()
-                    g.zip(state.selected).forEach { (who, a) -> draft[a] = who }
-                    focus = nextEmpty()
-                }
-                Box(
-                    Modifier.size(28.dp).clip(CircleShape).clickable { state.deleteGroup(g) },
-                    contentAlignment = Alignment.Center,
-                ) { InkIcon(Icons2.Close, size = 12.dp, stroke = 3f) }
+                SmallChip("불러오기", true) { draft.clear(); draft.addAll(g.take(AppState.MAX_RACERS)) }
             }
         }
-        val named = state.selected.mapNotNull { draft[it]?.let(AppState::cleanName)?.ifEmpty { null } }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (named.size >= 2) SmallChip("＋ 지금 멤버를 묶음으로 저장", false) { state.saveGroup(named) }
-            if (named.size >= 2) SmallChip("🔀 이름 섞기", false) {
-                val shuffled = named.shuffled()
-                val slots = state.selected.filter { !draft[it].isNullOrBlank() }
-                slots.zip(shuffled).forEach { (a, who) -> draft[a] = who }
-            }
-            if (draft.isNotEmpty()) SmallChip("모두 지우기", false) { draft.clear(); focus = state.selected.firstOrNull() }
-        }
-        if (state.groups.isEmpty() && named.size < 2) Text("두 명 이상 적으면 멤버 묶음으로 저장해 다음에 한 번에 불러올 수 있어요", fontSize = 13.sp, color = Pal.InkSoft)
+        if (draft.size >= 2 && draft.toList() !in state.groups) SmallChip("＋ 지금 멤버를 묶음으로 저장", false) { state.saveGroup(draft.toList()) }
         CartoonButton(onClick = ::done, color = Pal.Sun, modifier = Modifier.fillMaxWidth(), height = 52.dp, depth = 4.dp) {
-            Text("완료", fontSize = 19.sp, color = Pal.Ink)
+            Text(if (draft.isEmpty()) "닫기" else "${draft.size}명 · 동물 고르러 가기", fontSize = 19.sp, color = Pal.Ink)
         }
-    }
-}
-
-/** 이름 붙이기 창의 한 줄: 출전 번호 + 동물 + 이름 칸 */
-@Composable
-private fun NameRow(animal: Animal, lane: Int, value: String, focused: Boolean, onFocus: () -> Unit, onChange: (String) -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (focused) Pal.SunPale else Color.Transparent)
-            .clickable(onClick = onFocus)
-            .padding(horizontal = 4.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        LaneSticker(lane, size = 22.dp)
-        AnimalSprite(animal, 44.dp)
-        Text(animal.label, fontSize = 14.sp, color = Pal.InkSoft, modifier = Modifier.width(52.dp), maxLines = 1)
-        BasicTextField(
-            value = value,
-            onValueChange = onChange,
-            singleLine = true,
-            textStyle = TextStyle(fontFamily = Jua, fontSize = 18.sp, color = Pal.Ink),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            modifier = Modifier
-                .weight(1f)
-                .onFocusChanged { if (it.isFocused) onFocus() }
-                .clip(RoundedCornerShape(12.dp))
-                .background(Pal.Paper)
-                .border(if (focused) 3.dp else 2.dp, Pal.Ink, RoundedCornerShape(12.dp))
-                .padding(horizontal = 12.dp, vertical = 9.dp),
-            decorationBox = { inner ->
-                if (value.isEmpty()) Text("이름 (비워 두면 ${animal.label})", fontSize = 16.sp, color = Pal.Disabled, maxLines = 1)
-                inner()
-            },
-        )
-        if (value.isNotEmpty()) Box(
-            Modifier.size(30.dp).clip(CircleShape).clickable { onChange("") },
-            contentAlignment = Alignment.Center,
-        ) { InkIcon(Icons2.Close, size = 12.dp, stroke = 3f) }
     }
 }
 

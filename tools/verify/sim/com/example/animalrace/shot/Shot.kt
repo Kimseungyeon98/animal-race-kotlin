@@ -44,7 +44,6 @@ import com.example.animalrace.ui.result.ResultScreen
 import com.example.animalrace.ui.race.RaceScreen
 import com.example.animalrace.ui.setup.SetupScreen
 import com.example.animalrace.ui.setup.RankSheet
-import com.example.animalrace.ui.setup.NameSheet
 import com.example.animalrace.ui.setup.HistorySheet
 import com.example.animalrace.ui.result.ShareSheet
 import com.example.animalrace.model.RankMode
@@ -92,6 +91,14 @@ internal class Act(private val sc: ImageComposeScene, private val out: File, pri
         sc.sendPointerEvent(PointerEventType.Release, at(x, y)); pause(120)
     }
     fun press(x: Float, y: Float) { sc.sendPointerEvent(PointerEventType.Press, at(x, y)); frame() }
+    /** 누른 채로 [ms] 동안 (x, y)까지 끌기 (떼지 않음) */
+    fun moveTo(fromX: Float, fromY: Float, x: Float, y: Float, ms: Long) {
+        val steps = (ms / 16).toInt().coerceAtLeast(2)
+        for (k in 1..steps) {
+            val t = k.toFloat() / steps
+            sc.sendPointerEvent(PointerEventType.Move, at(fromX + (x - fromX) * t, fromY + (y - fromY) * t)); frame()
+        }
+    }
     fun release(x: Float, y: Float) { sc.sendPointerEvent(PointerEventType.Release, at(x, y)); frame() }
     fun hold(x: Float, y: Float, ms: Long) {
         sc.sendPointerEvent(PointerEventType.Press, at(x, y)); pause(ms)
@@ -352,7 +359,7 @@ private fun scenes(): List<Scene> {
                 updateNames(mapOf(Animal.HORSE to "민수", Animal.CAT to "지은", Animal.RABBIT to "현우"))
                 saveGroup(listOf("민수", "지은", "현우", "서연")); saveGroup(listOf("아빠", "엄마", "도윤"))
             }
-            Box(Modifier.fillMaxSize()) { SetupScreen(state); NameSheet(state) {} }
+            Box(Modifier.fillMaxSize()) { SetupScreen(state); com.example.animalrace.ui.setup.PeopleSheet(state) {} }
         },
         Scene("people-race", snaps = listOf(1500, 9000)) {
             RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PIG), "커피 쏘기", 0, { _, _ -> },
@@ -505,6 +512,23 @@ private fun scenes(): List<Scene> {
         Scene("roulette", snaps = listOf(900, 2600, 4200)) {
             RaceScreen(listOf(Animal.HORSE, Animal.CAT, Animal.RABBIT, Animal.PANDA, Animal.DOG, Animal.PIG), "커피 쏘기", 0, { _, _ -> }, picks = listOf(2, 5))
         },
+        // 5.5 사람 먼저: 참가자 창 → 이름표를 동물에게 끌어다 놓기
+        *listOf("p-sheet", "p-turn0", "p-turn3", "p-done").map { name ->
+            Scene(name, snaps = listOf(1200)) {
+                val people = listOf("지은", "민수", "현우", "서연", "도윤", "하린", "재석", "준하")
+                val state = AppState(FakeRepo).apply {
+                    members.clear(); members.addAll(people + listOf("세호", "다은"))
+                    if (groups.isEmpty()) groups.add(people.take(5))
+                    if (name != "p-sheet") setPeople(people)
+                    if (name == "p-turn3" || name == "p-done") listOf(Animal.PANDA, Animal.RABBIT, Animal.CAPYBARA).zip(people).forEach { (a, w) -> placeName(w, a) }
+                    if (name == "p-done") listOf(Animal.CAT, Animal.DOG, Animal.PIG, Animal.PENGUIN, Animal.HEDGEHOG).zip(people.drop(3)).forEach { (a, w) -> placeName(w, a) }
+                }
+                if (name == "p-sheet") Box(Modifier.fillMaxSize()) {
+                    SetupScreen(state)
+                    com.example.animalrace.ui.setup.PeopleSheet(state.apply { setPeople(people.take(6)) }) {}
+                } else SetupScreen(state)
+            }
+        }.toTypedArray(),
         Scene("setup") {
             val state = AppState(FakeRepo).apply { listOf(Animal.HORSE, Animal.CAT, Animal.PANDA).forEach { toggle(it) } }
             SetupScreen(state)

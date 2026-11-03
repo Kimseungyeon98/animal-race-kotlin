@@ -89,6 +89,9 @@ class AppState(private val repo: AppRepository) {
     /** 동물마다 달릴 사람 이름 (4.0 사람이 주인공). 출전 동물처럼 앱을 켤 때마다 비운다 */
     val names = mutableStateMapOf<Animal, String>()
 
+    /** 사람 먼저 (5.5): 이름은 넣었지만 아직 동물에게 이름표를 안 붙인 사람들 */
+    val waiting = mutableStateListOf<String>()
+
     /** 최근에 쓴 이름 (최근 것이 앞, 이름 붙이기 창의 빠른 칩) */
     val members = mutableStateListOf<String>()
 
@@ -103,6 +106,7 @@ class AppState(private val repo: AppRepository) {
     var raceSeq by mutableIntStateOf(0)
         private set
 
+    /** 이름표를 안 붙인 사람이 있어도 출발할 수 있다 (이름 없이 동물 이름으로 하는 판도 있어서) */
     val canStart get() = selected.size >= MIN_RACERS
 
     /** 몰아주기 미니게임 (결과 화면에서 시작) */
@@ -138,7 +142,68 @@ class AppState(private val repo: AppRepository) {
         return true
     }
 
-    fun clearSelection() { selected.clear(); names.clear(); persistSetup() }
+    fun clearSelection() {
+        // 동물만 내려놓고 사람은 다시 고를 차례로
+        val people = selected.mapNotNull { names[it] }
+        selected.clear(); names.clear()
+        val next = (people + waiting).distinct()
+        waiting.clear(); waiting.addAll(next)
+        persistSetup()
+    }
+
+    /** 참가자 정하기 (5.5): 빠진 사람의 동물은 내려놓고, 아직 동물이 없는 사람은 고를 차례로 */
+    fun setPeople(people: List<String>) {
+        val clean = people.map(::cleanName).filter { it.isNotEmpty() }.distinct().take(MAX_RACERS)
+        selected.filter { names[it] != null && names[it] !in clean }.forEach { selected.remove(it); names.remove(it) }
+        waiting.clear(); waiting.addAll(clean.filter { it !in names.values })
+        val next = (clean + members).distinct().take(MEMBERS_SIZE)
+        members.clear(); members.addAll(next)
+        persistSetup()
+    }
+
+    /** 동물 칸을 눌렀을 때 (5.5): 이름표가 붙은 동물이면 내려놓고 그 사람은 다시 기다리는 줄로, 아니면 예전처럼 켜고 끄기 */
+    fun tapAnimal(animal: Animal): Boolean {
+        val owner = names[animal] ?: return toggle(animal)
+        selected.remove(animal); names.remove(animal)
+        if (owner !in waiting) waiting.add(owner)
+        persistSetup()
+        return true
+    }
+
+    /**
+     * 이름표를 [animal]에 끌어다 놓기 (5.5). 다른 동물에 붙어 있던 이름표면 옮기고,
+     * 놓은 동물에 이미 다른 이름표가 있으면 서로 바꾼다 (기다리던 사람이면 상대가 줄로 돌아감). 자리가 꽉 차면 false.
+     */
+    fun placeName(who: String, animal: Animal): Boolean {
+        val from = names.entries.firstOrNull { it.value == who }?.key
+        if (from == animal) return true
+        val prev = names[animal]
+        if (animal !in selected) {
+            if (from == null && selected.size >= MAX_RACERS) return false
+            if (from != null && prev == null) {
+                // 옮기기: 원래 동물 자리(출전 번호)를 새 동물이 이어받는다
+                selected[selected.indexOf(from)] = animal
+                names.remove(from)
+            } else selected.add(animal)
+        } else if (from != null && prev == null) {
+            selected.remove(from); names.remove(from)
+        }
+        when {
+            prev != null && from != null -> names[from] = prev
+            prev != null -> waiting.add(prev)
+        }
+        names[animal] = who
+        waiting.remove(who)
+        persistSetup()
+        return true
+    }
+
+    /** 이름표 떼기: 동물은 내려놓고 사람은 다시 기다리는 줄로 */
+    fun unplaceName(who: String) {
+        names.entries.firstOrNull { it.value == who }?.key?.let { selected.remove(it); names.remove(it) }
+        if (who !in waiting) waiting.add(who)
+        persistSetup()
+    }
 
     fun pickRandom(count: Int) {
         // 이름은 동물이 아니라 사람을 따라간다: 새로 뽑은 동물에 같은 순서로 다시 붙인다

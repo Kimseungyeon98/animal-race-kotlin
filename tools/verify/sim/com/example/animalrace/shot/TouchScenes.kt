@@ -90,6 +90,42 @@ internal fun touchScenes(): List<Scene> {
             tap(x(picks[2]), y(picks[2])); pause(400); snap("2-erased")
             tap(330f, 793f); pause(2500); snap("3-walking")
         }) { MiniGameScreen(MiniGameSession(MiniGame.LADDER, players, ladder, 1), "커피 쏘기", {}, {}) },
+        // 5.5: 참가자 8명을 넣은 뒤 이름표를 동물 칸에 끌어다 놓기
+        Scene("t-people", script = {
+            val chip = 49f to 245f
+            fun dragTo(x: Float, y: Float, from: Pair<Float, Float> = chip, mid: String? = null) {
+                press(from.first, from.second); pause(80)
+                moveTo(from.first, from.second, (from.first + x) / 2, (from.second + y) / 2, 200)
+                moveTo((from.first + x) / 2, (from.second + y) / 2, x, y, 250)
+                pause(150); mid?.let { snap(it) }
+                release(x, y); pause(450)
+            }
+            pause(900); snap("00")
+            dragTo(317f, 430f, mid = "01"); snap("02")
+            dragTo(72f, 430f); snap("03")
+            dragTo(317f, 515f); snap("04")
+            // 판다에 붙은 지은 이름표를 햄스터로 옮기기
+            dragTo(195f, 430f, from = 317f to 452f, mid = "05"); snap("06")
+            listOf(72f to 515f, 195f to 515f, 195f to 600f, 72f to 600f, 317f to 600f).forEachIndexed { i, (x, y) ->
+                dragTo(x, y); snap("%02d".format(7 + i))
+            }
+            pause(500); snap("12")
+        }) {
+            val people = listOf("지은", "민수", "현우", "서연", "도윤", "하린", "재석", "준하")
+            SetupScreen(androidx.compose.runtime.remember { AppState(FakeRepo).apply { setPeople(people) } })
+        },
+        // 5.5: 이름표를 동물 목록 아래 가장자리로 끌고 있으면 저절로 스크롤 → 아래쪽 동물에 놓기
+        Scene("t-people-scroll", script = {
+            pause(900)
+            press(49f, 245f); pause(80)
+            moveTo(49f, 245f, 195f, 655f, 400)
+            pause(1500); snap("1-scrolled")
+            moveTo(195f, 655f, 195f, 560f, 200); pause(200); snap("2-hover")
+            release(195f, 560f); pause(500); snap("3-dropped")
+        }) {
+            val people = listOf("지은", "민수", "현우", "서연", "도윤", "하린", "재석", "준하")
+            SetupScreen(androidx.compose.runtime.remember { AppState(FakeRepo).apply { setPeople(people) } })
+        },
         Scene("t-setup", script = {
             pause(900); tap(348f, 43f); pause(900); snap("1-history")
         }) { FakeRepo.history = history; SetupScreen(AppState(FakeRepo).apply { listOf(Animal.HORSE, Animal.CAT).forEach { toggle(it) } }) },
