@@ -269,9 +269,10 @@ fun SetupScreen(state: AppState) {
                             withStyle(SpanStyle(fontFamily = NumberStyle.fontFamily)) { append("${state.selected.size}") }
                             withStyle(SpanStyle(fontFamily = NumberStyle.fontFamily, color = Color(0xFF4A5F78))) { append("/${AppState.MAX_RACERS}") }
                         },
-                        fontSize = 19.sp, color = Pal.Ink, modifier = Modifier.weight(1f),
+                        // 제목은 늘 한 줄 그대로, 남는 자리만큼 벌칙 칩이 줄어든다 (5.6.2: 글자 크기를 키운 폰에서 제목이 두 줄로 깨지던 것)
+                        fontSize = 19.sp, color = Pal.Ink, maxLines = 1, softWrap = false,
                     )
-                    BetChip(state) { editBet = true }
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) { BetChip(state) { editBet = true } }
                     SmallButton("비우기", null) { state.clearSelection() }
                 }
             }
@@ -563,8 +564,8 @@ private fun RandomRankRow(state: AppState, modifier: Modifier, onOpen: () -> Uni
  * 룰렛으로 뽑기(기본, 인원 −/+ · 자동) / 직접 고르기(1등~[racers]등 여러 개). [확인]해야 반영.
  */
 /**
- * 벌칙 칩 (5.6): 맨 위 큰 벌칙 줄 대신 "출전할 동물" 줄의 [비우기] 왼쪽에 "꼴찌 커피 쏘기 ✏️".
- * 랜덤 등수면 "🎯 당첨", 비어 있으면 "+ 벌칙". 누르면 벌칙 고르기 창
+ * 벌칙 칩 (5.6): 맨 위 큰 벌칙 줄 대신 "출전할 동물" 줄의 [비우기] 왼쪽에 "커피 쏘기 ✏️".
+ * 꼴찌 벌칙은 분홍, 랜덤 등수는 노랑 바탕 (5.6.2), 비어 있으면 "+ 벌칙". 누르면 벌칙 고르기 창
  */
 @Composable
 private fun BetChip(state: AppState, onEdit: () -> Unit) {
@@ -572,19 +573,21 @@ private fun BetChip(state: AppState, onEdit: () -> Unit) {
     Row(
         Modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(if (bet.isEmpty()) Pal.Paper.copy(alpha = 0.7f) else Pal.Cream)
+            // 꼴찌 벌칙은 분홍, 랜덤 등수는 노랑 (따로 꼬리표를 달면 벌칙 글자가 들어갈 자리가 모자라서)
+            .background(if (bet.isEmpty()) Pal.Paper.copy(alpha = 0.7f) else if (state.randomRank) Pal.Sun else Pal.Pink)
             .border(2.dp, Pal.Ink, RoundedCornerShape(12.dp))
             .clickable(onClick = onEdit)
-            .padding(start = 4.dp, end = 10.dp, top = 3.dp, bottom = 3.dp),
+            .padding(start = 9.dp, end = 8.dp, top = 3.dp, bottom = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (bet.isEmpty()) {
-            Text("＋ 벌칙", fontSize = 15.sp, color = Pal.InkSoft, modifier = Modifier.padding(start = 6.dp))
+            Text("＋ 벌칙", fontSize = 14.sp, color = Pal.InkSoft, maxLines = 1)
         } else {
-            if (state.randomRank) Tag("🎯 당첨", Pal.Sun, Pal.Ink, fontSize = 12.sp) else Tag("꼴찌", Pal.Tomato, fontSize = 12.sp)
-            Text(bet, fontSize = 15.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 104.dp))
-            InkIcon(Icons2.Pencil, size = 14.dp)
+            // 남는 자리만큼만 보이고 나머지는 … (자리가 넉넉해도 최대 120dp)
+            Text(bet, fontSize = 14.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false).widthIn(max = 120.dp))
+            InkIcon(Icons2.Pencil, size = 12.dp)
         }
     }
 }

@@ -529,6 +529,18 @@ private fun scenes(): List<Scene> {
                 } else SetupScreen(state)
             }
         }.toTypedArray(),
+        // 5.6.2: 폰 글자 크기를 키워도(1.3배) 제목 "출전할 동물 n/10"은 한 줄, 긴 벌칙은 칩 안에서 …
+        *listOf("커피 쏘기", "꼴찌가 스타벅스 커피랑 케이크 쏘기").flatMapIndexed { i, bet -> listOf(1f, 1.3f).map { fs ->
+            Scene("bet-font-$i-${(fs * 10).toInt()}") {
+                val state = androidx.compose.runtime.remember {
+                    AppState(FakeRepo).apply { listOf(Animal.HORSE, Animal.CAT).forEach { toggle(it) }; updateBet(bet); updateRandomRank(i == 0) }
+                }
+                val d = androidx.compose.ui.platform.LocalDensity.current
+                androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density, fs)) {
+                    SetupScreen(state)
+                }
+            }
+        } }.toTypedArray(),
         // 5.6: 벌칙은 [비우기] 옆 작은 칩 (꼴찌 / 랜덤 / 비었을 때 / 이름표 칸이 있을 때)
         *listOf("bet-chip", "bet-chip-rank", "bet-chip-empty", "bet-chip-people").map { name ->
             Scene(name) {

@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-5.6.1-4C9A2A" alt="version 5.6.1">
+  <img src="https://img.shields.io/badge/version-5.6.2-4C9A2A" alt="version 5.6.2">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -123,11 +123,17 @@
 | **5.5** | **🏷 이름표 끌어다 놓기** — 참가자는 이름만 넣고, 이름표를 원하는 동물에게 끌어다 붙이기 (동물 짝짓기 창 없앰) |
 | **5.6** | 메인 맨 위 벌칙 줄 → "출전할 동물" 줄의 [비우기] 옆 작은 칩, 동물 칸이 한 줄 더 보임 |
 | **5.6.1** | 이름표 칸이 두 줄에서 한 줄로 줄어야 할 때 두 줄 크기로 남던 것 수정 |
+| **5.6.2** | 글자를 크게 쓰는 폰에서 "출전할 동물 n/10"이 두 줄로 깨지던 것 → 벌칙 칩이 대신 줄어듦 |
 
 ---
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 5.6.2 — 벌칙 칩이 제목을 밀어내지 않게
+- 폰 글자 크기를 키우면 벌칙 칩에 밀려 "출전할 동물 n/10"이 두 줄로 깨지던 것 → 제목은 늘 한 줄 그대로, **남는 자리만큼 칩이 줄고** 긴 벌칙은 …
+- 칩을 더 작게: 글자 15→14, "꼴찌"/"🎯 당첨" 꼬리표 대신 **바탕색**으로 구분 (꼴찌 벌칙 분홍 · 랜덤 등수 노랑) → 벌칙 글자가 더 많이 보임
+- `shot -Pscene=bet-font` (글자 크기 1배·1.3배 × 짧은·긴 벌칙)
 
 ### 5.6.1 — 이름표 칸 높이
 - 이름표가 두 줄(예: 7명)이었다가 하나를 붙여 한 줄이 돼도 칸이 두 줄 크기로 남던 것 → **끄는 동안만** 높이를 붙잡아 두고(손가락 아래 동물 칸이 움직이지 않게), 놓고 나면 실제 줄 수에 맞게 부드럽게 줄어듦
