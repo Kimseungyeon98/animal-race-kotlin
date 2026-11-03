@@ -529,6 +529,20 @@ private fun scenes(): List<Scene> {
                 } else SetupScreen(state)
             }
         }.toTypedArray(),
+        // 5.6: 벌칙은 [비우기] 옆 작은 칩 (꼴찌 / 랜덤 / 비었을 때 / 이름표 칸이 있을 때)
+        *listOf("bet-chip", "bet-chip-rank", "bet-chip-empty", "bet-chip-people").map { name ->
+            Scene(name) {
+                val state = androidx.compose.runtime.remember {
+                    AppState(FakeRepo).apply {
+                        listOf(Animal.HORSE, Animal.CAT, Animal.PANDA, Animal.RABBIT).forEach { toggle(it) }
+                        updateBet(if (name == "bet-chip-empty") "" else "꼴찌가 커피 쏘기")
+                        updateRandomRank(name == "bet-chip-rank")
+                        if (name == "bet-chip-people") setPeople(listOf("지은", "민수", "현우", "서연", "도윤"))
+                    }
+                }
+                SetupScreen(state)
+            }
+        }.toTypedArray(),
         Scene("setup") {
             val state = AppState(FakeRepo).apply { listOf(Animal.HORSE, Animal.CAT, Animal.PANDA).forEach { toggle(it) } }
             SetupScreen(state)

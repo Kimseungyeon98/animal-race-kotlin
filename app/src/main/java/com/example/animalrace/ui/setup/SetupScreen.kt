@@ -257,24 +257,6 @@ fun SetupScreen(state: AppState) {
                     )
                 }
 
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Pal.Cream)
-                        .border(3.dp, Pal.Ink, RoundedCornerShape(14.dp))
-                        .clickable { editBet = true }
-                        .padding(horizontal = 12.dp, vertical = 9.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    if (state.randomRank) Tag("🎯 랜덤 벌칙", Pal.Sun, Pal.Ink, fontSize = 14.sp)
-                    else Tag("꼴찌 벌칙", Pal.Tomato, fontSize = 14.sp)
-                    Text(shortBet(state.bet).ifEmpty { "없음" }, fontSize = 17.sp, color = Pal.Ink, modifier = Modifier.weight(1f),
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    InkIcon(Icons2.Pencil, size = 18.dp)
-                }
-
                 RandomRankRow(state, Modifier) { rankSheet = true }
                 if (state.waiting.isNotEmpty()) NamePanel(state, drag, dragging, Modifier.padding(bottom = 4.dp)) { nameSheet = true }
                 else PeopleRow(state, Modifier.padding(bottom = 4.dp)) { nameSheet = true }
@@ -288,6 +270,7 @@ fun SetupScreen(state: AppState) {
                         },
                         fontSize = 19.sp, color = Pal.Ink, modifier = Modifier.weight(1f),
                     )
+                    BetChip(state) { editBet = true }
                     SmallButton("비우기", null) { state.clearSelection() }
                 }
             }
@@ -578,6 +561,33 @@ private fun RandomRankRow(state: AppState, modifier: Modifier, onOpen: () -> Uni
  * 랜덤 등수 설정 창 (시안: "랜덤 등수 · 인원·등수 직접 정하기" ②③).
  * 룰렛으로 뽑기(기본, 인원 −/+ · 자동) / 직접 고르기(1등~[racers]등 여러 개). [확인]해야 반영.
  */
+/**
+ * 벌칙 칩 (5.6): 맨 위 큰 벌칙 줄 대신 "출전할 동물" 줄의 [비우기] 왼쪽에 "꼴찌 커피 쏘기 ✏️".
+ * 랜덤 등수면 "🎯 당첨", 비어 있으면 "+ 벌칙". 누르면 벌칙 고르기 창
+ */
+@Composable
+private fun BetChip(state: AppState, onEdit: () -> Unit) {
+    val bet = shortBet(state.bet)
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (bet.isEmpty()) Pal.Paper.copy(alpha = 0.7f) else Pal.Cream)
+            .border(2.dp, Pal.Ink, RoundedCornerShape(12.dp))
+            .clickable(onClick = onEdit)
+            .padding(start = 4.dp, end = 10.dp, top = 3.dp, bottom = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (bet.isEmpty()) {
+            Text("＋ 벌칙", fontSize = 15.sp, color = Pal.InkSoft, modifier = Modifier.padding(start = 6.dp))
+        } else {
+            if (state.randomRank) Tag("🎯 당첨", Pal.Sun, Pal.Ink, fontSize = 12.sp) else Tag("꼴찌", Pal.Tomato, fontSize = 12.sp)
+            Text(bet, fontSize = 15.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 104.dp))
+            InkIcon(Icons2.Pencil, size = 14.dp)
+        }
+    }
+}
+
 /** 참가자 줄 (4.0): 누가 달리는지 요약. 누르면 이름 붙이기 창 */
 @Composable
 private fun PeopleRow(state: AppState, modifier: Modifier, onOpen: () -> Unit) {
