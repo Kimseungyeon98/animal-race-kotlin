@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-5.6-4C9A2A" alt="version 5.6">
+  <img src="https://img.shields.io/badge/version-5.6.1-4C9A2A" alt="version 5.6.1">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -122,11 +122,16 @@
 | **5.4** | **💣 폭탄 돌리기** — 지금 당첨 자리 동물 머리 위에 폭탄, 순위가 바뀌면 옮겨 가고 막판엔 심지가 타들어 가다 골인하면 펑 |
 | **5.5** | **🏷 이름표 끌어다 놓기** — 참가자는 이름만 넣고, 이름표를 원하는 동물에게 끌어다 붙이기 (동물 짝짓기 창 없앰) |
 | **5.6** | 메인 맨 위 벌칙 줄 → "출전할 동물" 줄의 [비우기] 옆 작은 칩, 동물 칸이 한 줄 더 보임 |
+| **5.6.1** | 이름표 칸이 두 줄에서 한 줄로 줄어야 할 때 두 줄 크기로 남던 것 수정 |
 
 ---
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 5.6.1 — 이름표 칸 높이
+- 이름표가 두 줄(예: 7명)이었다가 하나를 붙여 한 줄이 돼도 칸이 두 줄 크기로 남던 것 → **끄는 동안만** 높이를 붙잡아 두고(손가락 아래 동물 칸이 움직이지 않게), 놓고 나면 실제 줄 수에 맞게 부드럽게 줄어듦
+- `shot -Pscene=t-people-shrink`
 
 ### 5.6 — 벌칙은 작은 칩으로 (캔버스 "✏️ 벌칙 줄 → [비우기] 옆 작은 칩")
 - 메인 맨 위의 큰 벌칙 줄을 없애고 "출전할 동물 n/10" 줄의 **[비우기] 왼쪽**에 작은 칩 "꼴찌 커피 쏘기 ✏️" (랜덤 등수면 "🎯 당첨", 비어 있으면 "＋ 벌칙") · 누르면 지금과 같은 벌칙 고르기 창

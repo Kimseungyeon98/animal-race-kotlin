@@ -92,7 +92,7 @@ internal fun touchScenes(): List<Scene> {
         }) { MiniGameScreen(MiniGameSession(MiniGame.LADDER, players, ladder, 1), "커피 쏘기", {}, {}) },
         // 5.5: 참가자 8명을 넣은 뒤 이름표를 동물 칸에 끌어다 놓기
         Scene("t-people", script = {
-            val chip = 49f to 245f
+            val chip = 49f to 186f
             fun dragTo(x: Float, y: Float, from: Pair<Float, Float> = chip, mid: String? = null) {
                 press(from.first, from.second); pause(80)
                 moveTo(from.first, from.second, (from.first + x) / 2, (from.second + y) / 2, 200)
@@ -101,15 +101,26 @@ internal fun touchScenes(): List<Scene> {
                 release(x, y); pause(450)
             }
             pause(900); snap("00")
-            dragTo(317f, 430f, mid = "01"); snap("02")
-            dragTo(72f, 430f); snap("03")
-            dragTo(317f, 515f); snap("04")
+            dragTo(317f, 371f, mid = "01"); snap("02")
+            dragTo(72f, 371f); snap("03")
+            dragTo(317f, 456f); snap("04")
             // 판다에 붙은 지은 이름표를 햄스터로 옮기기
-            dragTo(195f, 430f, from = 317f to 452f, mid = "05"); snap("06")
-            listOf(72f to 515f, 195f to 515f, 195f to 600f, 72f to 600f, 317f to 600f).forEachIndexed { i, (x, y) ->
+            dragTo(195f, 340f, from = 317f to 362f, mid = "05"); snap("06")
+            listOf(72f to 456f, 195f to 456f, 195f to 541f, 72f to 541f).forEachIndexed { i, (x, y) ->
                 dragTo(x, y); snap("%02d".format(7 + i))
             }
-            pause(500); snap("12")
+            pause(500); snap("11")
+        }) {
+            // 한 줄에 들어가는 7명 (줄 수가 바뀌면 동물 칸 위치도 바뀌어서)
+            val people = listOf("지은", "민수", "현우", "서연", "도윤", "하린", "재석")
+            SetupScreen(androidx.compose.runtime.remember { AppState(FakeRepo).apply { setPeople(people) } })
+        },
+        // 5.6.1: 두 줄(8명)에서 하나를 붙이면, 끄는 동안은 높이 그대로 → 놓고 나면 한 줄로 줄어듦
+        Scene("t-people-shrink", script = {
+            pause(900); snap("0-two-rows")
+            press(49f, 186f); pause(80)
+            moveTo(49f, 186f, 200f, 300f, 200); moveTo(200f, 300f, 317f, 371f, 250); pause(150); snap("1-dragging")
+            release(317f, 371f); pause(700); snap("2-one-row")
         }) {
             val people = listOf("지은", "민수", "현우", "서연", "도윤", "하린", "재석", "준하")
             SetupScreen(androidx.compose.runtime.remember { AppState(FakeRepo).apply { setPeople(people) } })
@@ -117,8 +128,8 @@ internal fun touchScenes(): List<Scene> {
         // 5.5: 이름표를 동물 목록 아래 가장자리로 끌고 있으면 저절로 스크롤 → 아래쪽 동물에 놓기
         Scene("t-people-scroll", script = {
             pause(900)
-            press(49f, 245f); pause(80)
-            moveTo(49f, 245f, 195f, 655f, 400)
+            press(49f, 186f); pause(80)
+            moveTo(49f, 186f, 195f, 655f, 400)
             pause(1500); snap("1-scrolled")
             moveTo(195f, 655f, 195f, 560f, 200); pause(200); snap("2-hover")
             release(195f, 560f); pause(500); snap("3-dropped")

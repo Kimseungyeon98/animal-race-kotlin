@@ -1,6 +1,7 @@
 package com.example.animalrace.ui.setup
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
@@ -668,6 +669,7 @@ private fun NamePanel(state: AppState, drag: NameDrag, dragging: String?, modifi
     Column(
         modifier
             .fillMaxWidth()
+            .animateContentSize()
             .clip(RoundedCornerShape(14.dp))
             .background(Pal.SunPale)
             .border(3.dp, Pal.Ink, RoundedCornerShape(14.dp))
@@ -678,11 +680,14 @@ private fun NamePanel(state: AppState, drag: NameDrag, dragging: String?, modifi
             Text("🏷 이름표를 동물에게 끌어다 놓아요", fontSize = 16.sp, color = Pal.Ink, maxLines = 1, modifier = Modifier.weight(1f))
             Text("$placed/$total", fontSize = 15.sp, color = Pal.InkSoft, style = NumberStyle)
         }
-        // 이름표가 줄어도 칸 높이는 그대로 (끌어다 놓는 사이 아래 동물 칸이 움직이지 않게)
-        val minH = remember { mutableStateOf(0.dp) }
+        // 끄는 동안만 칸 높이를 붙잡아 둔다 (이름표가 빠지며 줄 수가 바뀌어도 손가락 아래 동물 칸이 움직이지 않게).
+        // 놓고 나면 실제 줄 수에 맞게 줄어든다 (5.6.1: 예전엔 한 번 늘어난 높이가 계속 남았음)
+        val held = remember { mutableStateOf(0.dp) }
         val density = LocalDensity.current
         FlowRow(
-            Modifier.heightIn(min = minH.value).onSizeChanged { val h = with(density) { it.height.toDp() }; if (h > minH.value) minH.value = h },
+            Modifier
+                .heightIn(min = if (dragging != null) held.value else 0.dp)
+                .onSizeChanged { if (dragging == null) held.value = with(density) { it.height.toDp() } },
             horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             state.waiting.forEach { w ->
