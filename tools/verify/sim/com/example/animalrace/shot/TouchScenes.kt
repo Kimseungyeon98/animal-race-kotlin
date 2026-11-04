@@ -32,50 +32,40 @@ internal fun touchScenes(): List<Scene> {
     fun circle(cx: Float, cy: Float, r: Float, turns: Float) =
         (0..48).map { k -> val a = -PI / 2 + 2 * PI * turns * k / 48; (cx + (cos(a) * r).toFloat()) to (cy + (sin(a) * r).toFloat()) }
     return listOf(
-        Scene("t-gacha", script = {
-            pause(800)
-            drag(circle(195f, 605f, 44f, 1.15f), 1400); pause(300); snap("1-rolling")
-            pause(1400); snap("2-open")
-            tap(195f, 430f); pause(250); tap(195f, 430f); pause(300); snap("3-cracks")
-            tap(195f, 430f); pause(900); snap("4-safe")
-            tap(195f, 720f); pause(600); snap("5-next")
-            drag(circle(195f, 605f, 44f, 1.15f), 1400); pause(1700)
-            repeat(3) { tap(195f, 430f); pause(250) }; pause(900); snap("6-bust")
-            pause(2000); snap("7-final")
-        }) { MiniGameScreen(session(MiniGame.GACHA), "커피 쏘기", {}, {}) },
-        // 룰렛 (시안): 꾹 누르면 게이지 왕복 → 떼면 그 힘으로 빙글빙글 → 몰빵 칸에서 멈춤
-        *listOf(4, 6, 9).map { k ->
-            Scene("t-roulette$k", script = {
-                pause(800); snap("0-ready")
-                press(195f, 795f); pause(380); snap("1-charge"); pause(mapOf(4 to 330L, 6 to 700L, 9 to 250L).getValue(k)); snap("2-charge")
-                release(195f, 795f)
-                for (t in 1..14) { pause(600); snap("s%02d".format(t)) }
-            }) {
-                val names = listOf("지은", "서연", "도윤", "민수", "현우", "하린", "재석", "준하", "세호")
-                val ps = results(Animal.CAT, Animal.PIG, Animal.PANDA, Animal.HORSE, Animal.RABBIT, Animal.DOG, Animal.HAMSTER, Animal.DUCK, Animal.CAPYBARA)
-                    .take(k).mapIndexed { i, r -> r.copy(who = names[i], lane = i) }
-                MiniGameScreen(MiniGameSession(MiniGame.ROULETTE, ps, Ladder.random(k), 1), "커피 쏘기", {}, {})
-            }
-        }.toTypedArray(),
-        Scene("t-picker", script = { pause(1000); tap(195f, 318f); pause(900); snap("1-games") }) {
-            val who = listOf("지은", "민수", "현우", "서연", "도윤")
-            ResultScreen(
-                RaceRecord(0L, "커피 쏘기", 3, results(Animal.CAT, Animal.HORSE, Animal.RABBIT, Animal.PIG, Animal.DOG).mapIndexed { i, r -> r.copy(who = who[i]) },
-                    Venue.BEACH, listOf(2, 4)),
-                onAgain = {}, onHome = {},
-            )
+        // 5.7: 순서 없이 · 몰빵이 나오면 "누가 긁었어요/돌렸어요?" (3명)
+        Scene("n-lotto-play", script = {
+            fun scratch() { drag((0..56).map { k -> (if (k % 2 == 0) 45f else 350f) to (275f + k * 8f) }, 2400) }
+            pause(900); snap("0-start")
+            tap(70f, 335f); pause(700); scratch(); pause(500); snap("1-pass")
+            tap(195f, 792f); pause(500); snap("2-next")
+            tap(195f, 490f); pause(700); scratch(); pause(300); snap("3-bust")
+            pause(1200); snap("4-who")
+            tap(244f, 486f); pause(700); snap("5-picked"); pause(1800); snap("6-final")
+        }) {
+            val ps = results(Animal.CAT, Animal.PIG, Animal.PANDA).mapIndexed { i, r -> r.copy(who = listOf("지은", "민수", "현우")[i]) }
+            MiniGameScreen(MiniGameSession(MiniGame.LOTTO, ps, Ladder.random(3), 1, 4), "커피 쏘기", {}, {})
         },
-        Scene("t-lotto", script = {
-            // 이름 없이 복권부터 누르면 "먼저 이름을" → 이름 누르고 다시 → 크게 펼침
-            pause(800); tap(80f, 445f); pause(600); snap("1-nudge")
-            tap(70f, 143f); pause(600); snap("2-picked")
-            tap(80f, 445f); pause(120); snap("3-opening"); pause(780); snap("4-big")
-        }) { MiniGameScreen(session(MiniGame.LOTTO), "커피 쏘기", {}, {}) },
-        Scene("t-gacha-who", script = {
-            // 캡슐: 이름 없이 레버부터 → 빨간 안내, 이름 누르면 "○○ 차례!"
-            pause(800); drag(listOf(195f to 470f, 215f to 495f, 235f to 520f), 300); pause(600); snap("1-nudge")
-            tap(70f, 795f); pause(600); snap("2-picked")
-        }) { MiniGameScreen(session(MiniGame.GACHA), "커피 쏘기", {}, {}) },
+        Scene("n-gacha-play", script = {
+            pause(900); snap("0-start")
+            drag(circle(195f, 585f, 44f, 1.15f), 1400); pause(1700)
+            repeat(3) { tap(195f, 430f); pause(250) }; pause(700); snap("1-pass")
+            tap(195f, 700f); pause(600)
+            drag(circle(195f, 585f, 44f, 1.15f), 1400); pause(1700)
+            repeat(3) { tap(195f, 430f); pause(250) }; pause(300); snap("2-bust")
+            pause(1300); snap("3-who")
+            tap(244f, 448f); pause(700); snap("4-picked"); pause(1800); snap("5-final")
+        }) {
+            val ps = results(Animal.CAT, Animal.PIG, Animal.PANDA).mapIndexed { i, r -> r.copy(who = listOf("지은", "민수", "현우")[i]) }
+            MiniGameScreen(MiniGameSession(MiniGame.GACHA, ps, Ladder.random(3), 1, 1), "커피 쏘기", {}, {})
+        },
+        Scene("n-lotto", snaps = listOf(1200)) {
+            val ps = results(Animal.CAT, Animal.PIG, Animal.PANDA).mapIndexed { i, r -> r.copy(who = listOf("지은", "민수", "현우")[i]) }
+            MiniGameScreen(MiniGameSession(MiniGame.LOTTO, ps, Ladder.random(3), 1, 4), "커피 쏘기", {}, {})
+        },
+        Scene("n-gacha", snaps = listOf(1200)) {
+            val ps = results(Animal.CAT, Animal.PIG, Animal.PANDA).mapIndexed { i, r -> r.copy(who = listOf("지은", "민수", "현우")[i]) }
+            MiniGameScreen(MiniGameSession(MiniGame.GACHA, ps, Ladder.random(3), 1, 1), "커피 쏘기", {}, {})
+        },
         Scene("lotto6", snaps = listOf(1000)) {
             MiniGameScreen(MiniGameSession(MiniGame.LOTTO, results(Animal.CAT, Animal.PIG, Animal.PANDA, Animal.DOG, Animal.DUCK, Animal.HORSE), Ladder.random(6), 2), "커피 쏘기", {}, {})
         },

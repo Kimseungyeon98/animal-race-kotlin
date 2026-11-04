@@ -56,6 +56,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -103,6 +104,7 @@ import com.example.animalrace.ui.components.withRo
 import com.example.animalrace.ui.theme.Jua
 import com.example.animalrace.ui.theme.Pal
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.hypot
 
 /** 사다리 길 색 (출발 순서대로). 몰빵이 드러나면 그 길만 빨강. */
@@ -488,70 +490,78 @@ private fun withSubjectUi(word: String) = com.example.animalrace.race.withSubjec
 // ---------------------------------------------------------------- 복권
 
 /**
- * 복권·캡슐 차례 (4.9): 순서는 자유, 대신 할 사람이 자기 이름을 누르고 한다.
- * 한 바퀴에 한 사람이 한 번씩만 할 수 있어서, 어떤 순서로 하든 걸릴 확률은 모두 같다
- * (바퀴마다 몰빵이 그 바퀴의 어느 자리에 있을지는 순서와 상관없이 고르게 정해져 있으므로).
+ * 5.7 순서 없이: 이름을 먼저 고르지 않고 아무나 돌아가며 한다. 위에 "한 사람이 ○ 돌아가며!" 안내.
+ * (복권·캡슐은 사람 수 × 바퀴 수라, 다들 같은 횟수만큼 해야 걸릴 확률이 같다)
  */
-internal class FreeTurns(private val order: List<Int>) {
-    /** 이번 바퀴에 이미 한 사람 */
-    val done = mutableStateListOf<Int>()
-    /** 몇 번째 바퀴 (0부터) */
-    var round by mutableIntStateOf(0)
-    /** 이름을 누른 사람 */
-    var picked by mutableStateOf<Int?>(null)
-    /** 이번 바퀴에 아직 안 한 사람 (출전 번호 순) */
-    val left: List<Int> get() = order.filter { it !in done }
-    /** 지금 할 사람: 이름을 누른 사람, 아니면 한 명만 남았을 때 그 사람 */
-    val current: Int? get() = picked ?: left.singleOrNull()
-    fun finish(p: Int) {
-        done += p; picked = null
-        if (done.size == order.size) { done.clear(); round++ }
-    }
-}
-
-/** "누가 할래요?" 이번 바퀴에 아직 안 한 사람들의 이름 칩. [nudge]면 먼저 이름을 누르라고 빨갛게 */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun WhoPicker(session: MiniGameSession, turns: FreeTurns, what: String, nudge: Boolean, modifier: Modifier = Modifier) {
-    Column(
+internal fun TakeTurnsNote(title: String, sub: String, modifier: Modifier = Modifier) {
+    Row(
         modifier
             .fillMaxWidth()
             .background(Pal.Ivory, RoundedCornerShape(20.dp))
-            .border(3.dp, if (nudge) Pal.Tomato else Pal.Ink, RoundedCornerShape(20.dp))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .border(3.dp, Pal.Ink, RoundedCornerShape(20.dp))
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("누가 $what?", fontSize = 20.sp, color = Pal.Ink)
-            Text(
-                if (nudge) "먼저 자기 이름을 눌러 주세요!" else roundLabel(turns.round) + "자기 이름을 누르고 시작",
-                fontSize = 13.sp, color = if (nudge) Pal.TomatoText else Pal.InkSoft,
-            )
+        Text("🔁", fontSize = 28.sp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, fontSize = 18.sp, color = Pal.Ink, maxLines = 1)
+            Text(sub, fontSize = 12.sp, color = Pal.InkSoft, maxLines = 2)
         }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            turns.left.forEach { i ->
-                val p = session.players[i]
-                Row(
-                    Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Pal.Sun)
-                        .border(2.5.dp, Pal.Ink, RoundedCornerShape(14.dp))
-                        .clickable { turns.picked = i }
-                        .padding(start = 4.dp, end = 10.dp, top = 2.dp, bottom = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    LaneSticker(p.lane, size = 18.dp)
-                    AnimalSprite(p.animal, 30.dp)
-                    Text(p.name, fontSize = 16.sp, color = Pal.Ink, maxLines = 1)
+    }
+}
+
+/** 몰빵이 나오면 "누가 뽑았어요?": 누른 사람이 몰빵으로 기록된다 (5.7, 기록용) */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun WhoGotIt(session: MiniGameSession, verb: String, onPick: (Int) -> Unit) {
+    val sound = LocalSound.current
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Pal.Ink.copy(alpha = 0.55f))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            Modifier
+                .padding(horizontal = 8.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Pal.Paper)
+                .border(4.dp, Pal.Ink, RoundedCornerShape(24.dp))
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Tag("💸 몰빵!", Pal.Tomato, fontSize = 22.sp)
+            Text("누가 $verb?", fontSize = 24.sp, color = Pal.Ink)
+            Text("이름을 누르면 그 사람이 몰빵으로 기록돼요", fontSize = 13.sp, color = Pal.InkSoft)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                session.players.forEachIndexed { i, p ->
+                    Row(
+                        Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Pal.Pink)
+                            .border(2.5.dp, Pal.Ink, RoundedCornerShape(14.dp))
+                            .clickable { sound.play(Sfx.CLICK); onPick(i) }
+                            .padding(start = 4.dp, end = 12.dp, top = 2.dp, bottom = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        AnimalSprite(p.animal, 36.dp)
+                        LaneSticker(p.lane, size = 18.dp)
+                        Text(p.name, fontSize = 18.sp, color = Pal.Ink, maxLines = 1)
+                    }
                 }
             }
         }
     }
 }
 
-/** 두 바퀴째부터 앞에 붙이는 말 */
-internal fun roundLabel(round: Int) = when (round) { 0 -> ""; 1 -> "두 번째 바퀴 · "; else -> "세 번째 바퀴 · " }
 
 /**
  * 복권 긁기 v2 (시안: "복권 긁기 v2", 4.7 "3바퀴 + 4칸 격자").
@@ -568,23 +578,22 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
     val rounds = MiniGameDraw.rounds(n)
     val tickets = MiniGameDraw.slots(n)
     val bomb = session.roundBomb
-    val order = remember(session) { session.players.indices.sortedBy { session.players[it].lane } }
-    // 복권 자리마다 고른 사람 (아직 안 골랐으면 null)
-    val owner = remember(session) { mutableStateListOf<Int?>().apply { repeat(tickets) { add(null) } } }
-    // 긁은 복권 자리. 사람은 자기 복권을 다 긁어야(2장) 탈출로 표시된다
+    // 5.7 순서 없이: 아무나 한 장씩 골라 긁고, 몰빵이 나오면 누가 긁었는지만 골라 기록
+    val opened = remember(session) { mutableStateListOf<Int>() }
     val scratched = remember(session) { mutableStateListOf<Int>() }
-    val turns = remember(session) { FreeTurns(order) }
-    var nudge by remember(session) { mutableStateOf(false) }
     var open by remember(session) { mutableStateOf<Int?>(null) }
     var shown by remember(session) { mutableStateOf(0) }
-    val current = turns.current?.takeIf { loser == null }
-    LaunchedEffect(current) { if (current != null) nudge = false }
+    var asking by remember(session) { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            // 지금 차례: 이름을 아직 안 눌렀으면 "누가 고를래요?"
-            if (loser == null && current == null) WhoPicker(session, turns, "고를래요", nudge)
-            else Row(
+            val left = tickets - opened.size
+            if (loser == null) TakeTurnsNote(
+                "한 사람이 한 장씩 돌아가며!",
+                if (left == tickets) "아무나 먼저 · 복권 ${tickets}장 = ${n}명 × ${rounds}바퀴 · 몰빵이 나오면 누가 긁었는지 골라요"
+                else "남은 복권 ${left}장 · 몰빵이 나오면 누가 긁었는지 골라요",
+            ) else Row(
                 Modifier
                     .fillMaxWidth()
                     .background(Pal.Ivory, RoundedCornerShape(20.dp)) // 깜짝! 말풍선이 위로 삐져나와도 잘리지 않게 clip 없이
@@ -593,22 +602,12 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                val who = session.players[loser ?: current ?: order.last()]
-                AnimalSprite(who.animal, 60.dp, fx = if (loser != null) Fx.SCARED else Fx.NONE)
+                val who = session.players[loser]
+                AnimalSprite(who.animal, 60.dp, fx = Fx.SCARED)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(if (loser != null) "${withSubjectUi(who.name)} 몰빵! 💸" else "${who.name} 차례!", fontSize = 20.sp, color = Pal.Ink)
-                    val left = owner.count { it == null }
-                    Text(
-                        if (loser != null) "잠시 뒤 최종 발표" else if (left == tickets) "똑같이 생긴 복권 ${tickets}장 중 한 장을 골라 주세요" else "${roundLabel(turns.round)}남은 복권 ${left}장 중 한 장을 골라 주세요",
-                        fontSize = 13.sp, color = Pal.InkSoft,
-                    )
+                    Text("${withSubjectUi(who.name)} 몰빵! 💸", fontSize = 20.sp, color = Pal.Ink)
+                    Text("잠시 뒤 최종 발표", fontSize = 13.sp, color = Pal.InkSoft)
                 }
-                // 이름을 잘못 눌렀으면 다시 고르기
-                if (loser == null && turns.picked != null && turns.left.size > 1) Text(
-                    "바꾸기", fontSize = 14.sp, color = Pal.Ink,
-                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).border(2.dp, Pal.Ink, RoundedCornerShape(10.dp))
-                        .clickable { turns.picked = null }.padding(horizontal = 8.dp, vertical = 2.dp),
-                )
             }
             // 똑같이 생긴 복권들: 두 칸 격자, 출전 번호 순 (시안: "화면 다듬기" ②)
             // 2~3장은 크게, 4장 이상은 남은 높이에 맞춰 납작하게
@@ -630,20 +629,20 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                     (0 until tickets).chunked(cols).forEach { line ->
                         Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                             line.forEach { t ->
-                                val who = owner[t]
-                                // 결과 면(꽝 탈출·몰빵)은 실제로 긁은 뒤에만. 고르기만 한 장은 아직 똑같은 복권
+                                // 결과 면(꽝·몰빵)은 실제로 긁은 뒤에만. 고르기만 한 장은 아직 똑같은 복권
                                 val out = t in scratched
                                 TicketFace(
-                                    used = who?.takeIf { out }?.let { session.players[it] },
-                                    lose = out && who == loser,
+                                    opened = out,
+                                    owner = if (out && t == bomb) loser?.let { session.players[it] } else null,
+                                    lose = out && t == bomb,
                                     compact = cardH < tallH * 0.85f || cols >= 3,
                                     narrow = cols == 3,
                                     mini = cols == 4,
                                     modifier = Modifier
                                         .size(cardW, cardH)
                                         .rotate(if (tickets <= 3) (if (t % 2 == 0) -1.5f else 1.5f) else 0f),
-                                    onClick = if (who == null && loser == null && open == null) {
-                                        { if (current != null) { owner[t] = current; shown = t; open = t; nudge = false } else nudge = true }
+                                    onClick = if (t !in opened && loser == null && open == null) {
+                                        { opened += t; shown = t; open = t }
                                     } else null,
                                 )
                             }
@@ -651,7 +650,7 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                     }
                     Text(
                         if (loser != null) "${withSubjectUi(session.players[loser].name)} 몰빵! 💸"
-                        else if (owner.count { it == null } == 1) "마지막 한 장… 직접 긁어서 확인!"
+                        else if (left == 1) "마지막 한 장… 직접 긁어서 확인!"
                         else "어느 장에 몰빵이 숨어 있을까…",
                         fontSize = 16.sp, color = Pal.Ink, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp),
                     )
@@ -662,30 +661,30 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
         // 고른 복권을 화면 가득
         AnimatedVisibility(open != null, enter = fadeIn() + scaleIn(spring(dampingRatio = 0.7f), initialScale = 0.6f), exit = fadeOut()) {
             val t = shown
-            val p = owner[t] ?: return@AnimatedVisibility
             val lose = t == bomb
             val out = t in scratched
             BigTicket(
-                player = session.players[p],
+                number = opened.indexOf(t) + 1,
                 lose = lose,
                 revealed = out,
                 onScratched = {
                     sound.play(Sfx.POP)
                     if (t !in scratched) scratched += t
-                    // 몰빵이면 바로, 꽝이면 자기 복권을 다 긁었을 때만 탈출
-                    if (lose || owner.count { it == p } >= rounds) onReveal(p, lose) else sound.play(Sfx.SAFE)
+                    // 몰빵이면 잠깐 보여 주고 "누가 긁었어요?", 꽝이면 다음 사람
+                    if (lose) scope.launch { delay(700); asking = true } else sound.play(Sfx.SAFE)
                 },
                 nextLabel = if (out && !lose && loser == null) "다음 사람 →" else null,
-                onNext = { open = null; turns.finish(p) },
+                onNext = { open = null },
             )
         }
+        if (asking && loser == null) WhoGotIt(session, "긁었어요") { i -> asking = false; open = null; onReveal(i, true) }
     }
 }
 
 /** 고르기 화면의 복권 한 장. 아직 안 고른 장은 모두 똑같이 생겼고, 긁은 장은 결과와 주인이 남는다. */
 @Composable
-private fun TicketFace(used: RaceResult?, lose: Boolean, modifier: Modifier, onClick: (() -> Unit)?, compact: Boolean = false, narrow: Boolean = false, mini: Boolean = false) {
-    Box(modifier.graphicsLayer { alpha = if (used != null && !lose) 0.55f else 1f }) {
+private fun TicketFace(opened: Boolean, owner: RaceResult?, lose: Boolean, modifier: Modifier, onClick: (() -> Unit)?, compact: Boolean = false, narrow: Boolean = false, mini: Boolean = false) {
+    Box(modifier.graphicsLayer { alpha = if (opened && !lose) 0.55f else 1f }) {
         Box(Modifier.matchParentSize().offset(y = 4.dp).clip(RoundedCornerShape(16.dp)).background(Pal.Ink))
         Column(
             Modifier
@@ -710,11 +709,11 @@ private fun TicketFace(used: RaceResult?, lose: Boolean, modifier: Modifier, onC
                     .fillMaxWidth()
                     .weight(1f)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(if (used == null) Pal.Silver else if (lose) Pal.Pink else Pal.Mint)
+                    .background(if (!opened) Pal.Silver else if (lose) Pal.Pink else Pal.Mint)
                     .border(2.dp, Pal.Ink, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                if (used == null) {
+                if (!opened) {
                     Canvas(Modifier.fillMaxSize()) {
                         rotate(35f) {
                             var x = -size.height * 2
@@ -727,10 +726,11 @@ private fun TicketFace(used: RaceResult?, lose: Boolean, modifier: Modifier, onC
                     Text("? ? ?", fontSize = if (mini) 15.sp else 20.sp, color = Color(0xFF6A7684))
                 } else {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(if (lose) "몰빵!" else if (mini) "꽝" else "꽝 탈출", fontSize = if (mini) 16.sp else 20.sp, color = if (lose) Pal.TomatoText else Color(0xFF1D8A3A))
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                            LaneSticker(used.lane, size = 16.dp)
-                            Text(used.name, fontSize = 12.sp, color = Pal.Ink, maxLines = 1)
+                        Text(if (lose) "몰빵!" else "꽝", fontSize = if (mini) 16.sp else 20.sp, color = if (lose) Pal.TomatoText else Color(0xFF1D8A3A))
+                        // 몰빵 복권에만 누가 긁었는지 (꽝은 누가 긁었는지 따로 남기지 않는다)
+                        if (owner != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            LaneSticker(owner.lane, size = 16.dp)
+                            Text(owner.name, fontSize = 12.sp, color = Pal.Ink, maxLines = 1)
                         }
                     }
                 }
@@ -752,7 +752,7 @@ private fun DashedLine() {
 
 /** 화면 가득 펼친 복권: 누구 복권인지 + 큰 긁기 칸. 꽝이면 아래에 [다음 차례로] 버튼. */
 @Composable
-private fun BigTicket(player: RaceResult, lose: Boolean, revealed: Boolean, onScratched: () -> Unit, nextLabel: String?, onNext: () -> Unit) {
+private fun BigTicket(number: Int, lose: Boolean, revealed: Boolean, onScratched: () -> Unit, nextLabel: String?, onNext: () -> Unit) {
     Box(
         Modifier
             .fillMaxSize()
@@ -773,18 +773,14 @@ private fun BigTicket(player: RaceResult, lose: Boolean, revealed: Boolean, onSc
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text("🎫 몰아주기 복권", fontSize = 26.sp, color = Pal.Ink)
-                    Text("꽝이면 탈출, 몰빵이면 벌칙!", fontSize = 15.sp, color = Pal.InkSoft)
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AnimalSprite(player.animal, 60.dp, fx = if (revealed && lose) Fx.SCARED else Fx.NONE)
-                        LaneSticker(player.lane, size = 24.dp)
-                        Text("${player.name}의 복권", fontSize = 20.sp, color = Pal.Ink)
-                    }
+                    Text("꽝이면 통과, 몰빵이면 벌칙!", fontSize = 15.sp, color = Pal.InkSoft)
+                    Text("${number}번째로 고른 복권", fontSize = 20.sp, color = Pal.Ink)
                     Text("★ ★ ★ ★ ★", fontSize = 18.sp, color = Pal.TomatoText)
                     DashedLine()
                     Spacer(Modifier.height(4.dp))
-                    key(player.lane) {
+                    key(number) {
                         ScratchArea(
-                            prize = if (lose) "몰빵! 💸" else "꽝 탈출 🎉",
+                            prize = if (lose) "몰빵! 💸" else "꽝! 🎉",
                             lose = lose,
                             revealed = revealed,
                             fontSize = 52.sp,
@@ -795,7 +791,7 @@ private fun BigTicket(player: RaceResult, lose: Boolean, revealed: Boolean, onSc
                 }
                 if (revealed) {
                     Tag(
-                        if (lose) "몰빵!" else "탈출!", Pal.Tomato, fontSize = 20.sp,
+                        if (lose) "몰빵!" else "꽝!", Pal.Tomato, fontSize = 20.sp,
                         modifier = Modifier.align(Alignment.CenterEnd).offset(x = 6.dp, y = (-40).dp).rotate(10f),
                     )
                 }
