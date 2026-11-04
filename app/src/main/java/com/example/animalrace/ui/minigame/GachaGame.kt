@@ -296,7 +296,7 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                 "한 사람이 한 번씩 돌아가며!",
                 when {
                     phase == Gacha.OPENED && bust -> "몰빵! 누가 돌렸는지 골라 주세요"
-                    phase == Gacha.OPENED -> "꽝! 다음 사람 차례 · 남은 캡슐 ${capsules - k - 1}개"
+                    phase == Gacha.OPENED -> "생존! 다음 사람 차례 · 남은 캡슐 ${capsules - k - 1}개"
                     phase == Gacha.OPENING -> "캡슐을 톡톡 두드려 깨요"
                     capsules - k == 1 -> "마지막 캡슐… 그래도 열어 봐야죠"
                     k == 0 -> "아무나 먼저 · 캡슐 ${capsules}개 = ${n}명 × ${MiniGameDraw.rounds(n)}바퀴 · 몰빵이 나오면 누가 돌렸는지 골라요"
@@ -364,7 +364,7 @@ private fun BigCapsule(color: Color, taps: Int, lid: Float, wobble: Float, bust:
     // 쪽지 글씨: 캔버스와 같은 계산으로 쪽지(중심 y = 0.55h - 70단위) 위에
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val slipY = maxHeight * 0.05f - maxWidth * (70f / 390f) * lid
-        if (opened && lid > 0.6f) Text(if (bust) "몰빵! 💸" else "꽝! 🎉", fontSize = 28.sp, color = if (bust) Pal.TomatoText else Pal.Ink, modifier = Modifier.offset(y = slipY))
+        if (opened && lid > 0.6f) Text(if (bust) "몰빵! 💸" else "생존! 🎉", fontSize = 28.sp, color = if (bust) Pal.TomatoText else Pal.Ink, modifier = Modifier.offset(y = slipY))
         else if (!opened) {
             // 시안 "③ 톡톡 깨기": 두드린 만큼 노랗게 차는 동그라미 3개 + 안내, 캡슐 오른쪽 아래에 까딱이는 손가락
             Column(

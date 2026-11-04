@@ -566,7 +566,7 @@ internal fun WhoGotIt(session: MiniGameSession, verb: String, onPick: (Int) -> U
 /**
  * 복권 긁기 v2 (시안: "복권 긁기 v2", 4.7 "3바퀴 + 4칸 격자").
  * 똑같이 생긴 복권을 사람 수 × 바퀴 수만큼 놓고, 몰빵이 나올 때까지 출전 번호 순으로 돌아가며 한 장씩 고른다.
- * 고른 복권은 화면 가득 펼쳐서 긁고(공개 조건은 [ScratchArea]), 꽝이면 다음 사람이 남은 장에서 고른다.
+ * 고른 복권은 화면 가득 펼쳐서 긁고(공개 조건은 [ScratchArea]), 생존이면 다음 사람이 남은 장에서 고른다.
  * 몰빵은 [MiniGameSession.roundBomb] 자리의 복권에 숨어 있다.
  */
 @Composable
@@ -629,7 +629,7 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                     (0 until tickets).chunked(cols).forEach { line ->
                         Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                             line.forEach { t ->
-                                // 결과 면(꽝·몰빵)은 실제로 긁은 뒤에만. 고르기만 한 장은 아직 똑같은 복권
+                                // 결과 면(생존·몰빵)은 실제로 긁은 뒤에만. 고르기만 한 장은 아직 똑같은 복권
                                 val out = t in scratched
                                 TicketFace(
                                     opened = out,
@@ -670,7 +670,7 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                 onScratched = {
                     sound.play(Sfx.POP)
                     if (t !in scratched) scratched += t
-                    // 몰빵이면 잠깐 보여 주고 "누가 긁었어요?", 꽝이면 다음 사람
+                    // 몰빵이면 잠깐 보여 주고 "누가 긁었어요?", 생존이면 다음 사람
                     if (lose) scope.launch { delay(700); asking = true } else sound.play(Sfx.SAFE)
                 },
                 nextLabel = if (out && !lose && loser == null) "다음 사람 →" else null,
@@ -726,8 +726,8 @@ private fun TicketFace(opened: Boolean, owner: RaceResult?, lose: Boolean, modif
                     Text("? ? ?", fontSize = if (mini) 15.sp else 20.sp, color = Color(0xFF6A7684))
                 } else {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(if (lose) "몰빵!" else "꽝", fontSize = if (mini) 16.sp else 20.sp, color = if (lose) Pal.TomatoText else Color(0xFF1D8A3A))
-                        // 몰빵 복권에만 누가 긁었는지 (꽝은 누가 긁었는지 따로 남기지 않는다)
+                        Text(if (lose) "몰빵!" else "생존", fontSize = if (mini) 16.sp else 20.sp, color = if (lose) Pal.TomatoText else Color(0xFF1D8A3A))
+                        // 몰빵 복권에만 누가 긁었는지 (생존 복권은 누가 긁었는지 따로 남기지 않는다)
                         if (owner != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                             LaneSticker(owner.lane, size = 16.dp)
                             Text(owner.name, fontSize = 12.sp, color = Pal.Ink, maxLines = 1)
@@ -750,7 +750,7 @@ private fun DashedLine() {
     }
 }
 
-/** 화면 가득 펼친 복권: 누구 복권인지 + 큰 긁기 칸. 꽝이면 아래에 [다음 차례로] 버튼. */
+/** 화면 가득 펼친 복권: 누구 복권인지 + 큰 긁기 칸. 생존이면 아래에 [다음 사람 →] 버튼. */
 @Composable
 private fun BigTicket(number: Int, lose: Boolean, revealed: Boolean, onScratched: () -> Unit, nextLabel: String?, onNext: () -> Unit) {
     Box(
@@ -773,14 +773,14 @@ private fun BigTicket(number: Int, lose: Boolean, revealed: Boolean, onScratched
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text("🎫 몰아주기 복권", fontSize = 26.sp, color = Pal.Ink)
-                    Text("꽝이면 통과, 몰빵이면 벌칙!", fontSize = 15.sp, color = Pal.InkSoft)
+                    Text("몰빵만 피하면 생존!", fontSize = 15.sp, color = Pal.InkSoft)
                     Text("${number}번째로 고른 복권", fontSize = 20.sp, color = Pal.Ink)
                     Text("★ ★ ★ ★ ★", fontSize = 18.sp, color = Pal.TomatoText)
                     DashedLine()
                     Spacer(Modifier.height(4.dp))
                     key(number) {
                         ScratchArea(
-                            prize = if (lose) "몰빵! 💸" else "꽝! 🎉",
+                            prize = if (lose) "몰빵! 💸" else "생존! 🎉",
                             lose = lose,
                             revealed = revealed,
                             fontSize = 52.sp,
@@ -791,7 +791,7 @@ private fun BigTicket(number: Int, lose: Boolean, revealed: Boolean, onScratched
                 }
                 if (revealed) {
                     Tag(
-                        if (lose) "몰빵!" else "꽝!", Pal.Tomato, fontSize = 20.sp,
+                        if (lose) "몰빵!" else "생존!", Pal.Tomato, fontSize = 20.sp,
                         modifier = Modifier.align(Alignment.CenterEnd).offset(x = 6.dp, y = (-40).dp).rotate(10f),
                     )
                 }
