@@ -548,6 +548,25 @@ private fun scenes(): List<Scene> {
                 SetupScreen(state)
             }
         }.toTypedArray(),
+        // 플레이 스토어 그래픽 이미지 (1024×500)
+        Scene("store-feature", w = 512, h = 250, snaps = listOf(1600)) {
+            Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF8ED6FF))) {
+                Box(Modifier.align(androidx.compose.ui.Alignment.BottomCenter).width(512.dp).height(70.dp).background(androidx.compose.ui.graphics.Color(0xFFF2C98A)))
+                Box(Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = 70.dp).width(512.dp).height(14.dp).background(androidx.compose.ui.graphics.Color(0xFF7ED37A)))
+                androidx.compose.foundation.layout.Column(Modifier.padding(start = 26.dp, top = 30.dp)) {
+                    com.example.animalrace.ui.components.OutlinedText("동물 레이스", 46.sp, outlineWidth = 9f)
+                    androidx.compose.foundation.layout.Spacer(Modifier.height(6.dp))
+                    com.example.animalrace.ui.components.Tag("복불복 내기 게임", com.example.animalrace.ui.theme.Pal.Tomato, fontSize = 20.sp)
+                }
+                listOf(Triple(Animal.HORSE, 330, 70), Triple(Animal.RABBIT, 410, 95), Triple(Animal.PIG, 250, 112), Triple(Animal.PANDA, 160, 128)).forEachIndexed { i, (a, x, y) ->
+                    Box(Modifier.padding(start = x.dp, top = y.dp)) {
+                        com.example.animalrace.ui.art.AnimalSprite(a, if (i == 0) 104.dp else 92.dp, running = true)
+                        if (i == 0) com.example.animalrace.ui.components.Crown(Modifier.padding(start = 56.dp), width = 30.dp)
+                        if (i == 3) com.example.animalrace.ui.race.Bomb(Modifier.padding(start = 50.dp), width = 28.dp, time = 1.3f, urgency = 0.9f)
+                    }
+                }
+            }
+        },
         Scene("setup") {
             val state = AppState(FakeRepo).apply { listOf(Animal.HORSE, Animal.CAT, Animal.PANDA).forEach { toggle(it) } }
             SetupScreen(state)
