@@ -16,6 +16,10 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.Density
@@ -548,6 +552,37 @@ private fun scenes(): List<Scene> {
                 SetupScreen(state)
             }
         }.toTypedArray(),
+        // 시안: 카피바라 앱 아이콘 (A 얼굴 + 왕관 · B 온몸 + 왕관 · C 얼굴 + 머리 위 귤)
+        Scene("icon-capy", w = 600, h = 220, snaps = listOf(900)) {
+            val sky = androidx.compose.ui.graphics.Color(0xFF8ED6FF)
+            androidx.compose.foundation.layout.Row(
+                Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFFFFFDF6)).padding(20.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(25.dp),
+            ) {
+                listOf("A", "B", "C").forEach { v ->
+                    Box(Modifier.size(170.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(42.dp)).background(sky)) {
+                        val big = v != "B"
+                        val sz = if (big) 330.dp else 176.dp
+                        val k = sz.value / 200f
+                        val ox = if (big) (85f - 150f * k) else -6f
+                        val oy = if (big) (95f - 82f * k) else 22f
+                        com.example.animalrace.ui.art.AnimalSprite(Animal.CAPYBARA, sz, Modifier.wrapContentSize(androidx.compose.ui.Alignment.TopStart, unbounded = true).offset(x = ox.dp, y = oy.dp))
+                        val hx = ox + 152f * k
+                        val hy = oy + 54f * k
+                        if (v != "C") com.example.animalrace.ui.components.Crown(Modifier.offset(x = (hx - (if (big) 30f else 17f)).dp, y = (hy - (if (big) 40f else 24f)).dp).rotate(14f), width = if (big) 62.dp else 34.dp)
+                        else androidx.compose.foundation.Canvas(Modifier.offset(x = (hx - 26f).dp, y = (hy - 44f).dp).size(52.dp)) {
+                            val r = size.minDimension * 0.38f
+                            val c = androidx.compose.ui.geometry.Offset(size.width / 2, size.height * 0.58f)
+                            drawCircle(com.example.animalrace.ui.theme.Pal.Ink, r + 3.dp.toPx(), c)
+                            drawCircle(androidx.compose.ui.graphics.Color(0xFFFF9F1C), r, c)
+                            drawCircle(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.45f), r * 0.28f, c + androidx.compose.ui.geometry.Offset(-r * 0.35f, -r * 0.35f))
+                            drawOval(com.example.animalrace.ui.theme.Pal.Ink, androidx.compose.ui.geometry.Offset(size.width * 0.5f - 2.dp.toPx(), size.height * 0.05f), androidx.compose.ui.geometry.Size(size.width * 0.34f, size.height * 0.2f))
+                            drawOval(androidx.compose.ui.graphics.Color(0xFF6BCB77), androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.08f), androidx.compose.ui.geometry.Size(size.width * 0.28f, size.height * 0.14f))
+                        }
+                    }
+                }
+            }
+        },
         // 플레이 스토어 그래픽 이미지 (1024×500)
         Scene("store-feature", w = 512, h = 250, snaps = listOf(1600)) {
             Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF8ED6FF))) {
