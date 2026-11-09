@@ -426,6 +426,27 @@ private fun scenes(): List<Scene> {
             val rec = RaceRecord(0L, "", 1, results(Animal.CHEETAH, Animal.DOG, Animal.MONKEY), Venue.DESERT)
             Box(Modifier.fillMaxSize()) { ResultScreen(rec, onAgain = {}, onHome = {}); ShareSheet(rec) {} }
         },
+        // 5.8: 기록 카드 순위 칩에 참가자 이름
+        *listOf(1).map { _ ->
+            Scene("hist-names") {
+                val state = androidx.compose.runtime.remember {
+                    AppState(FakeRepo).apply {
+                        val now = System.currentTimeMillis()
+                        fun rs(vararg p: Pair<Animal, String?>) = p.mapIndexed { i, (a, w) -> RaceResult(a, 17.4 + i * 0.37, 0, i, w) }
+                        history.clear()
+                        history.addAll(listOf(
+                            RaceRecord(now, "점심 쏘기", 3, rs(Animal.RABBIT to "재석", Animal.CAPYBARA to "하하", Animal.DOG to "곽범", Animal.PANDA to "경환",
+                                Animal.HORSE to "상국", Animal.CAT to "우재", Animal.PIG to "준하"), Venue.DESERT, listOf(5, 7),
+                                MiniGameResult(MiniGame.ROULETTE, Animal.HORSE, "상국")),
+                            RaceRecord(now - 3_600_000L, "꼴찌가 커피 쏘기", 2, rs(Animal.CAT to "지은", Animal.HORSE to "민수", Animal.RABBIT to "현우", Animal.PIG to "서연"), Venue.MEADOW),
+                            RaceRecord(now - 7_200_000L, "아이스크림", 1, rs(Animal.PENGUIN to null, Animal.DUCK to null, Animal.TURTLE to null), Venue.SNOW),
+                            RaceRecord(now - 90_000_000L, "설거지", 4, rs(Animal.HAMSTER to "다은", Animal.HEDGEHOG to "세호", Animal.SLOTH to "도윤", Animal.KANGAROO to "하린", Animal.DUCK to "준하"), Venue.BEACH),
+                        ))
+                    }
+                }
+                Box(Modifier.fillMaxSize()) { SetupScreen(state); HistorySheet(state) {} }
+            }
+        }.toTypedArray(),
         // ---- 4.2 우리 기록
         *listOf("ours", "ours-empty", "t-delete").map { name ->
             Scene(name, script = if (name != "t-delete") null else ({

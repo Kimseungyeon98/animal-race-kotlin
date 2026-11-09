@@ -1318,19 +1318,22 @@ private fun HistoryCard(number: Int, record: RaceRecord, onDelete: () -> Unit) {
                 )
             }
         }
+        fun hit(i: Int) = if (picks == null) i == record.results.lastIndex else (i + 1) in picks
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             record.results.forEachIndexed { i, r ->
-                val last = if (picks == null) i == record.results.lastIndex else (i + 1) in picks
+                val last = hit(i)
                 Row(
                     Modifier
                         .clip(RoundedCornerShape(12.dp))
                         .background(if (i == 0) Pal.SunPale else if (last) Pal.Pink else Pal.Ivory)
                         .border(2.dp, if (i == 0 || last) Pal.Ink else Pal.Line, RoundedCornerShape(12.dp))
-                        .padding(start = 6.dp, end = 2.dp),
+                        .padding(start = 6.dp, end = if (r.who != null) 8.dp else 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("${i + 1}", style = NumberStyle, fontSize = 12.sp, color = if (last) Pal.TomatoText else Pal.InkSoft)
                     AnimalSprite(r.animal, 32.dp)
+                    // 동물 옆에 그 판에 달린 사람 이름 (5.8, 이름 없이 한 판은 동물만)
+                    if (r.who != null) Text(r.who, fontSize = 13.sp, color = if (last) Pal.TomatoText else Pal.Ink, maxLines = 1)
                 }
             }
         }

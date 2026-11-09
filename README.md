@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-5.7.1-4C9A2A" alt="version 5.7.1">
+  <img src="https://img.shields.io/badge/version-5.8-4C9A2A" alt="version 5.8">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -126,11 +126,18 @@
 | **5.6.2** | 글자를 크게 쓰는 폰에서 "출전할 동물 n/10"이 두 줄로 깨지던 것 → 벌칙 칩이 대신 줄어듦 |
 | **5.7** | **복권·캡슐은 순서 없이** — 이름 먼저 고르기 없앰, 몰빵이 나오면 "누가 긁었어요/돌렸어요?"로 기록 |
 | **5.7.1** | 복권·캡슐의 안전한 결과 "꽝" → **"생존"** (꽝은 나쁜 결과로 읽혀서) |
+| **5.8** | 기록 카드 순위 칩에 **참가자 이름** — 지난 판에 누가 참가했는지 바로 보기 |
 
 ---
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 5.8 — 기록에서 참가자 보기 (캔버스 "📒 기록에서 참가자 보기" ①)
+- 🏆 기록 › 최근 경기 카드의 순위 칩 "1 🐰 · 2 🦫 …" 옆에 그 판에 달린 **사람 이름** ("1 🐰 재석 · 2 🦫 하하 · … · 7 🐷 준하") → 전전판에도 누가 참가했는지 바로 보임
+- 당첨 자리 이름은 빨간 글씨 · 사람이 많으면 칩이 여러 줄로 · 이름 없이 한 판은 지금처럼 동물만
+- 기록에 이미 저장돼 있던 이름을 보여 주는 것이라 예전 판에도 바로 적용
+- `shot -Pscene=hist-names`
 
 ### 5.7.1 — "꽝" 대신 "생존"
 - 5.7에서 안전한 결과를 "꽝!"으로 바꿨는데, 꽝은 보통 나쁜 결과라 몰빵과 헷갈림 → 복권·캡슐 모두 **"생존!"** (작은 복권 "생존", 큰 복권·캡슐 쪽지 "생존! 🎉", 안내 "생존! 다음 사람 차례")
