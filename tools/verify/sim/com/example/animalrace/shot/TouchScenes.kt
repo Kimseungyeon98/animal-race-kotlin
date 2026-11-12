@@ -58,6 +58,19 @@ internal fun touchScenes(): List<Scene> {
             val ps = results(Animal.CAT, Animal.PIG, Animal.PANDA).mapIndexed { i, r -> r.copy(who = listOf("지은", "민수", "현우")[i]) }
             MiniGameScreen(MiniGameSession(MiniGame.GACHA, ps, Ladder.random(3), 1, 1), "커피 쏘기", {}, {})
         },
+        // 6.0.1: 생존 결과는 잠깐 뒤 저절로 다음 사람 · 누르면 바로
+        Scene("t-safe-auto", script = {
+            pause(900)
+            drag(circle(195f, 585f, 44f, 1.15f), 1400); pause(1700)
+            repeat(3) { tap(195f, 430f); pause(250) }; pause(300); snap("1-safe")
+            pause(2600); snap("2-auto-next")
+            drag(circle(195f, 585f, 44f, 1.15f), 1400); pause(1700)
+            repeat(3) { tap(195f, 430f); pause(250) }; pause(300); snap("3-safe")
+            tap(195f, 300f); pause(500); snap("4-tapped")
+        }) {
+            val ps = results(Animal.CAT, Animal.PIG, Animal.PANDA).mapIndexed { i, r -> r.copy(who = listOf("지은", "민수", "현우")[i]) }
+            MiniGameScreen(MiniGameSession(MiniGame.GACHA, ps, Ladder.random(3), 1, 5), "커피 쏘기", {}, {})
+        },
         Scene("n-lotto", snaps = listOf(1200)) {
             val ps = results(Animal.CAT, Animal.PIG, Animal.PANDA).mapIndexed { i, r -> r.copy(who = listOf("지은", "민수", "현우")[i]) }
             MiniGameScreen(MiniGameSession(MiniGame.LOTTO, ps, Ladder.random(3), 1, 4), "커피 쏘기", {}, {})

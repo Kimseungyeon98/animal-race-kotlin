@@ -670,8 +670,12 @@ private fun LottoGame(session: MiniGameSession, revealed: List<Int>, loser: Int?
                 onScratched = {
                     sound.play(Sfx.POP)
                     if (t !in scratched) scratched += t
-                    // 몰빵이면 잠깐 보여 주고 "누가 긁었어요?", 생존이면 다음 사람
-                    if (lose) scope.launch { delay(700); asking = true } else sound.play(Sfx.SAFE)
+                    // 몰빵이면 잠깐 보여 주고 "누가 긁었어요?", 생존이면 잠깐 보여 주고 저절로 닫힘 (6.0.1, 그 사이 누르면 바로)
+                    if (lose) scope.launch { delay(700); asking = true }
+                    else {
+                        sound.play(Sfx.SAFE)
+                        scope.launch { delay(SAFE_HOLD_MS); if (open == t) open = null }
+                    }
                 },
                 nextLabel = if (out && !lose && loser == null) "다음 사람 →" else null,
                 onNext = { open = null },
@@ -757,7 +761,8 @@ private fun BigTicket(number: Int, lose: Boolean, revealed: Boolean, onScratched
         Modifier
             .fillMaxSize()
             .background(Pal.Ink.copy(alpha = 0.5f))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
+            // 생존을 확인한 뒤엔 아무 데나 누르면 닫힘 (6.0.1)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (nextLabel != null) onNext() },
     ) {
         Column(Modifier.fillMaxSize().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.weight(1f).fillMaxWidth().rotate(if (revealed && lose) -1.5f else 0f)) {

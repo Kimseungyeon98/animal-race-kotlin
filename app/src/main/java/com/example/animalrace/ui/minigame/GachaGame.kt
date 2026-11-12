@@ -78,6 +78,9 @@ private val Smoke = Color(0xFF5A4A80)
 
 private enum class Gacha { LEVER, DROPPED, OPENING, OPENED }
 
+/** 생존 결과를 보여 주는 시간: 이만큼 지나면 저절로 다음 사람 (6.0.1, 복권도 같이) */
+internal const val SAFE_HOLD_MS = 1800L
+
 private class DomeCapsule(val x: Float, val y: Float, val tilt: Float, val color: Color)
 
 /** 돔 바닥에 쌓인 캡슐 17개 자리 (시안 좌표 x, y, 기울기) */
@@ -135,7 +138,13 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
             if (phase == Gacha.DROPPED) phase = Gacha.OPENING
         }
     }
+    fun next() {
+        k++; taps = 0; lever = 0f; phase = Gacha.LEVER
+        scope.launch { lid.snapTo(0f); drop.snapTo(0f) }
+    }
     fun tap() {
+        // 생존 쪽지가 보이는 동안 아무 데나 누르면 바로 다음 사람 (6.0.1)
+        if (phase == Gacha.OPENED && !bust && loser == null) { sound.play(Sfx.CLICK); next(); return }
         if (phase != Gacha.OPENING) return
         taps++
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -148,12 +157,13 @@ internal fun GachaGame(session: MiniGameSession, loser: Int?, onReveal: (Int, Bo
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 // 펑! 연기를 잠깐 보여 주고 "누가 돌렸어요?"
                 scope.launch { delay(900); asking = true }
-            } else sound.play(Sfx.SAFE)
+            } else {
+                sound.play(Sfx.SAFE)
+                // 생존이면 잠깐 보여 주고 저절로 다음 사람 (그 사이 누르면 바로)
+                val at = k
+                scope.launch { delay(SAFE_HOLD_MS); if (phase == Gacha.OPENED && k == at) next() }
+            }
         }
-    }
-    fun next() {
-        k++; taps = 0; lever = 0f; phase = Gacha.LEVER
-        scope.launch { lid.snapTo(0f); drop.snapTo(0f) }
     }
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -333,7 +343,7 @@ private fun BigCapsule(color: Color, taps: Int, lid: Float, wobble: Float, bust:
         Modifier
             .fillMaxSize()
             .background(Pal.Ink.copy(alpha = 0.6f)) // 뒤 기계는 흐리게, 캡슐·동그라미에 눈이 가게
-            .pointerInput(opened) { if (!opened) detectTapGestures { onTap() } },
+            .pointerInput(opened, bust) { if (!opened || !bust) detectTapGestures { onTap() } },
     ) {
         val c = Offset(size.width / 2, size.height * 0.55f)
         val sc = size.width / 390f
