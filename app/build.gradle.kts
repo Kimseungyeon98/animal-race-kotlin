@@ -23,8 +23,8 @@ android {
         applicationId = "com.animalrace.android"
         minSdk = 24
         targetSdk = 36
-        versionCode = 98
-        versionName = "5.8"
+        versionCode = 99
+        versionName = "6.0"
     }
 
     signingConfigs {
@@ -70,6 +70,10 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.activity:activity-compose:1.9.3")
+
+    // 광고 (6.0): AdMob + 개인정보 동의 창(UMP)
+    implementation("com.google.android.gms:play-services-ads:23.6.0")
+    implementation("com.google.android.ump:user-messaging-platform:3.1.0")
 
     testImplementation("junit:junit:4.13.2")
 }

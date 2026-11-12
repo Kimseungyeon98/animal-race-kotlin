@@ -16,6 +16,8 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.clip
@@ -573,7 +575,7 @@ private fun scenes(): List<Scene> {
                 SetupScreen(state)
             }
         }.toTypedArray(),
-        // 시안: 카피바라 앱 아이콘 (A 얼굴 + 왕관 · B 온몸 + 왕관 · C 얼굴 + 머리 위 귤)
+        // 카피바라 앱 아이콘 시안 (채택 안 함, 기록용): A 얼굴 + 왕관 · B 온몸 + 왕관 · C 얼굴 + 머리 위 귤
         Scene("icon-capy", w = 600, h = 220, snaps = listOf(900)) {
             val sky = androidx.compose.ui.graphics.Color(0xFF8ED6FF)
             androidx.compose.foundation.layout.Row(
@@ -604,6 +606,67 @@ private fun scenes(): List<Scene> {
                 }
             }
         },
+        // 광고 위치 시안 (가짜 광고 상자): A 결과 화면 아래 배너(6.0 반영) · B 메인 아래 배너(안 함) · C 3판마다 전면 광고(6.0 반영)
+        *listOf("ad-result", "ad-main", "ad-inter").map { name ->
+            Scene(name) {
+                @androidx.compose.runtime.Composable
+                fun banner() {
+                    androidx.compose.foundation.layout.Row(
+                        Modifier.fillMaxWidth().height(58.dp).background(androidx.compose.ui.graphics.Color(0xFFF1F1F1))
+                            .border(1.dp, androidx.compose.ui.graphics.Color(0xFFCCCCCC)).padding(horizontal = 10.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                    ) {
+                        androidx.compose.material3.Text("AD", fontSize = 11.sp, color = androidx.compose.ui.graphics.Color.White,
+                            modifier = Modifier.background(androidx.compose.ui.graphics.Color(0xFFE0A100)).padding(horizontal = 4.dp))
+                        androidx.compose.foundation.layout.Column(Modifier.weight(1f)) {
+                            androidx.compose.material3.Text("광고 배너 자리 (320×50)", fontSize = 14.sp, color = androidx.compose.ui.graphics.Color(0xFF555555))
+                            androidx.compose.material3.Text("AdMob 적응형 배너 · 화면 맨 아래 고정", fontSize = 11.sp, color = androidx.compose.ui.graphics.Color(0xFF888888))
+                        }
+                    }
+                }
+                val who = listOf("재석", "하하", "곽범", "경환", "상국", "우재", "준하")
+                val record = RaceRecord(0L, "점심 쏘기", 3, results(Animal.RABBIT, Animal.CAPYBARA, Animal.DOG, Animal.PANDA, Animal.HORSE, Animal.CAT, Animal.PIG)
+                    .mapIndexed { i, r -> r.copy(who = who[i]) }, Venue.DESERT, listOf(5, 7))
+                when (name) {
+                    "ad-result" -> androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
+                        Box(Modifier.weight(1f)) { ResultScreen(record, onAgain = {}, onHome = {}) }
+                        banner()
+                    }
+                    "ad-main" -> androidx.compose.foundation.layout.Column(Modifier.fillMaxSize()) {
+                        Box(Modifier.weight(1f)) {
+                            SetupScreen(androidx.compose.runtime.remember {
+                                AppState(FakeRepo).apply {
+                                    setPeople(who)
+                                    listOf(Animal.RABBIT, Animal.CAPYBARA, Animal.DOG, Animal.PANDA, Animal.HORSE, Animal.CAT, Animal.PIG).zip(who).forEach { (a, w) -> placeName(w, a) }
+                                }
+                            })
+                        }
+                        banner()
+                    }
+                    else -> Box(Modifier.fillMaxSize()) {
+                        ResultScreen(record, onAgain = {}, onHome = {})
+                        Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.86f))) {
+                            androidx.compose.foundation.layout.Column(
+                                Modifier.align(androidx.compose.ui.Alignment.Center).width(330.dp).height(560.dp)
+                                    .background(androidx.compose.ui.graphics.Color(0xFFF1F1F1)).padding(20.dp),
+                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                                verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                            ) {
+                                androidx.compose.material3.Text("AD", fontSize = 16.sp, color = androidx.compose.ui.graphics.Color.White,
+                                    modifier = Modifier.background(androidx.compose.ui.graphics.Color(0xFFE0A100)).padding(horizontal = 8.dp, vertical = 2.dp))
+                                androidx.compose.foundation.layout.Spacer(Modifier.height(14.dp))
+                                androidx.compose.material3.Text("전면 광고 자리", fontSize = 24.sp, color = androidx.compose.ui.graphics.Color(0xFF555555))
+                                androidx.compose.material3.Text("[같은 동물로 한 판 더] · [처음으로]를 누를 때\n3판마다 한 번 · 몇 초 뒤 ✕로 닫기", fontSize = 14.sp,
+                                    color = androidx.compose.ui.graphics.Color(0xFF777777), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                            }
+                            androidx.compose.material3.Text("✕", fontSize = 26.sp, color = androidx.compose.ui.graphics.Color.White,
+                                modifier = Modifier.align(androidx.compose.ui.Alignment.TopEnd).padding(top = 40.dp, end = 22.dp))
+                        }
+                    }
+                }
+            }
+        }.toTypedArray(),
         // 플레이 스토어 그래픽 이미지 (1024×500)
         Scene("store-feature", w = 512, h = 250, snaps = listOf(1600)) {
             Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF8ED6FF))) {

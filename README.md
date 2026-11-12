@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-5.8-4C9A2A" alt="version 5.8">
+  <img src="https://img.shields.io/badge/version-6.0-4C9A2A" alt="version 6.0">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -127,11 +127,21 @@
 | **5.7** | **복권·캡슐은 순서 없이** — 이름 먼저 고르기 없앰, 몰빵이 나오면 "누가 긁었어요/돌렸어요?"로 기록 |
 | **5.7.1** | 복권·캡슐의 안전한 결과 "꽝" → **"생존"** (꽝은 나쁜 결과로 읽혀서) |
 | **5.8** | 기록 카드 순위 칩에 **참가자 이름** — 지난 판에 누가 참가했는지 바로 보기 |
+| **6.0** | **광고** — 결과 화면 아래 배너 + 3판마다 전면 광고 (경주·미니게임 중엔 없음, 보상형 광고 없음) |
 
 ---
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 6.0 — 광고 (캔버스 "📢 광고 위치 시안" A + C)
+- 📢 **결과 화면 맨 아래 배너** (AdMob 적응형 배너, 버튼 줄과 떨어진 맨 아래 · 광고가 안 오면 자리도 없음)
+- 📢 **전면 광고**: 결과에서 [같은 동물로 한 판 더]·[처음으로]를 누를 때 **3판마다 한 번** (`AdPacing.EVERY`), 광고가 아직 안 왔으면 기다리지 않고 바로 넘어감
+- 경주·룰렛·미니게임·이름표 끌기 중엔 광고 없음 · **보상형 광고 없음** (광고가 순위·확률에 영향을 주지 않게)
+- 처음 켤 때 개인정보 동의가 필요한 지역이면 Google 동의 창(UMP) · 동의하지 않거나 인터넷이 없어도 게임은 그대로
+- 지금은 구글 **테스트 광고 ID** (`res/values/ads.xml`) — AdMob 계정에서 광고 단위를 만들면 세 값만 바꿈
+- 개인정보처리방침·스토어 설명·데이터 보안 안내를 광고 포함 기준으로 고침 (`docs/privacy.md`, `docs/store/listing.md`)
+- 코드: 공통 `ui/ads/Ads.kt`(검증 도구는 `NoAds`) · 안드로이드 `data/AndroidAds.kt` · `AdPacingTest`
 
 ### 5.8 — 기록에서 참가자 보기 (캔버스 "📒 기록에서 참가자 보기" ①)
 - 🏆 기록 › 최근 경기 카드의 순위 칩 "1 🐰 · 2 🦫 …" 옆에 그 판에 달린 **사람 이름** ("1 🐰 재석 · 2 🦫 하하 · … · 7 🐷 준하") → 전전판에도 누가 참가했는지 바로 보임

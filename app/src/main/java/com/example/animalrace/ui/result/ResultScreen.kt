@@ -24,6 +24,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import com.example.animalrace.ui.ads.LocalAds
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -100,6 +103,9 @@ fun ResultScreen(
     LaunchedEffect(record) { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // 아래 버튼 줄 + 광고 배너 높이만큼 목록 끝을 띄운다 (배너는 광고가 안 오면 높이 0)
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    var bottomBar by remember { mutableStateOf(0.dp) }
     fun lane(r: RaceResult) = r.lane
 
     Box(Modifier.fillMaxSize().background(Pal.Sky)) {
@@ -107,7 +113,7 @@ fun ResultScreen(
 
         LazyColumn(
             Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = topInset + 20.dp, bottom = bottomInset + 120.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = topInset + 20.dp, bottom = maxOf(bottomBar, bottomInset + 100.dp) + 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item {
@@ -159,12 +165,13 @@ fun ResultScreen(
             }
         }
 
-        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Pal.Grass)) {
+        Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Pal.Grass)
+                .onSizeChanged { bottomBar = with(density) { it.height.toDp() } },
+        ) {
             Box(Modifier.fillMaxWidth().height(3.dp).background(Pal.Ink))
             Row(
-                Modifier
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 CartoonButton(onClick = onHome, color = Pal.Paper, contentPadding = PaddingValues(horizontal = 14.dp)) {
@@ -178,6 +185,9 @@ fun ResultScreen(
                     OutlinedText("같은 동물로 한 판 더", 20.sp, outlineWidth = 5f)
                 }
             }
+            // 광고 배너 (6.0): 버튼 줄 아래, 화면 맨 아래 (버튼과 붙지 않게 줄 아래로 따로)
+            LocalAds.current.Banner(Modifier.fillMaxWidth())
+            Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
         }
 
         AnimatedVisibility(picker, enter = fadeIn(), exit = fadeOut()) {

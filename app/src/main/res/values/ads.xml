@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    AdMob ID (6.0). 지금은 구글이 공개한 "테스트" ID라 누르거나 봐도 수익·제재가 없다.
+    AdMob 계정에서 앱과 광고 단위(배너·전면)를 만들면 아래 세 값만 실제 ID로 바꾼다.
+-->
+<resources>
+    <string name="admob_app_id" translatable="false">ca-app-pub-3940256099942544~3347511713</string>
+    <string name="admob_banner" translatable="false">ca-app-pub-3940256099942544/9214589741</string>
+    <string name="admob_interstitial" translatable="false">ca-app-pub-3940256099942544/1033173712</string>
+</resources>

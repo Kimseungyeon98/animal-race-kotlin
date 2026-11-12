@@ -11,10 +11,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import com.example.animalrace.data.AndroidAds
 import com.example.animalrace.data.AndroidSharer
 import com.example.animalrace.data.AndroidSound
 import com.example.animalrace.data.PrefsRepository
 import com.example.animalrace.ui.App
+import com.example.animalrace.ui.ads.LocalAds
 import com.example.animalrace.ui.result.LocalSharer
 import com.example.animalrace.ui.sound.LocalSound
 import com.example.animalrace.ui.theme.AnimalRaceTheme
@@ -35,6 +37,8 @@ class MainActivity : ComponentActivity() {
         val repository = PrefsRepository(applicationContext)
         sound = AndroidSound(applicationContext)
         val sharer = AndroidSharer(this)
+        // 광고 (6.0): 동의 확인 → 광고 SDK 시작. 실패해도 게임은 그대로
+        val ads = AndroidAds(this).also { it.start() }
         setContent {
             val state = remember { AppState(repository) }
             // 🔊 효과음 · 🎵 배경음악 버튼
@@ -42,7 +46,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(state.musicOn) { sound.musicOn = state.musicOn }
             // 경기 중 뒤로가기 → "그만둘까요?" 확인창, 결과 화면 → 메인. 메인에서는 기본 동작(앱 종료)
             BackHandler(enabled = state.screen != Screen.Setup) { state.back() }
-            CompositionLocalProvider(LocalSound provides sound, LocalSharer provides sharer) {
+            CompositionLocalProvider(LocalSound provides sound, LocalSharer provides sharer, LocalAds provides ads) {
                 AnimalRaceTheme { App(state) }
             }
         }
