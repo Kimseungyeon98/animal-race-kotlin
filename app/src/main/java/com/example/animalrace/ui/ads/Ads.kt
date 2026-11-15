@@ -17,6 +17,12 @@ interface Ads {
 
     /** 전면 광고를 띄우고, 닫히면(못 띄우면 바로) [then] */
     fun showInterstitial(then: () -> Unit)
+
+    /** 광고 개인정보 동의를 다시 고를 수 있어야 하는 지역(유럽 등)인지. 맞을 때만 정보 창에 "광고 개인정보 설정"이 보인다 (6.1) */
+    val privacyOptionsRequired: Boolean get() = false
+
+    /** 광고 개인정보 동의 창을 다시 연다 */
+    fun showPrivacyOptions() {}
 }
 
 object NoAds : Ads {

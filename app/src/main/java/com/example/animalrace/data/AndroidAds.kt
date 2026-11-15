@@ -82,6 +82,13 @@ class AndroidAds(private val activity: Activity) : Ads {
         ad.show(activity)
     }
 
+    override val privacyOptionsRequired: Boolean
+        get() = consent.privacyOptionsRequirementStatus == ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
+
+    override fun showPrivacyOptions() {
+        UserMessagingPlatform.showPrivacyOptionsForm(activity) { }
+    }
+
     @Composable
     override fun Banner(modifier: Modifier) {
         if (!ready) return

@@ -143,6 +143,7 @@ fun SetupScreen(state: AppState) {
     var focused by remember { mutableStateOf(state.selected.lastOrNull() ?: ANIMAL_ORDER.first()) }
     var dexIndex by remember { mutableStateOf<Int?>(null) }
     var showHistory by remember { mutableStateOf(false) }
+    var showInfo by remember { mutableStateOf(false) }
     var editBet by remember { mutableStateOf(false) }
     var rankSheet by remember { mutableStateOf(false) }
     var nameSheet by remember { mutableStateOf(false) }
@@ -156,7 +157,8 @@ fun SetupScreen(state: AppState) {
     val density = LocalDensity.current
     LaunchedEffect(dragging != null) {
         if (dragging == null) return@LaunchedEffect
-        val edge = with(density) { 70.dp.toPx() }
+        // 밖(이름표 줄)에서 끌고 들어올 땐 가장자리를 지나도 스크롤하지 않고, 안쪽에 들어온 뒤부터 (6.1)
+        val edge = EdgeScroll(with(density) { 70.dp.toPx() })
         val maxSpeed = with(density) { 900.dp.toPx() }
         var last = withFrameNanos { it }
         while (true) {
@@ -164,13 +166,7 @@ fun SetupScreen(state: AppState) {
             val dt = (now - last) / 1e9f
             last = now
             if (dragAt.x !in gridBounds.left..gridBounds.right) continue
-            val down = (dragAt.y - (gridBounds.bottom - edge)) / edge
-            val up = ((gridBounds.top + edge) - dragAt.y) / edge
-            val v = when {
-                down > 0f && dragAt.y <= gridBounds.bottom + edge -> down.coerceAtMost(1f)
-                up > 0f && dragAt.y >= gridBounds.top - edge -> -up.coerceAtMost(1f)
-                else -> 0f
-            }
+            val v = edge.speed(dragAt.y, gridBounds.top, gridBounds.bottom)
             if (v != 0f) gridScroll.scrollBy(v * maxSpeed * dt)
         }
     }
@@ -232,6 +228,8 @@ fun SetupScreen(state: AppState) {
                             ToggleDot(state.musicOn, if (state.musicOn) Icons2.MusicOn else Icons2.MusicOff) {
                                 state.toggleMusic(); haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             }
+                            // 정보 창 (6.1): 공정성 안내 · 개인정보처리방침 · 광고 개인정보 설정
+                            ToggleDot(true, Icons2.Info) { showInfo = true }
                             state.history.firstOrNull()?.let { last ->
                                 Text(
                                     buildAnnotatedString {
@@ -241,7 +239,7 @@ fun SetupScreen(state: AppState) {
                                             append(miniGame?.name ?: last.losers.joinToString("·") { it.name })
                                         }
                                     },
-                                    fontSize = 14.sp, color = Pal.Ink,
+                                    fontSize = 14.sp, color = Pal.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(10.dp))
                                         .background(Color.White.copy(alpha = 0.75f))
@@ -327,6 +325,9 @@ fun SetupScreen(state: AppState) {
 
         AnimatedVisibility(visible = showHistory, enter = fadeIn(), exit = fadeOut()) {
             HistorySheet(state) { showHistory = false }
+        }
+        AnimatedVisibility(visible = showInfo, enter = fadeIn(), exit = fadeOut()) {
+            InfoSheet { showInfo = false }
         }
         AnimatedVisibility(visible = editBet, enter = fadeIn(), exit = fadeOut()) {
             BetEditor(state.bet, onDismiss = { editBet = false }) { state.updateBet(it); editBet = false }
@@ -1121,7 +1122,7 @@ private fun SquareIcon(icon: List<String>, label: String, onClick: () -> Unit, t
  * [fill]이 false면 내용 높이만큼만 올라온다.
  */
 @Composable
-private fun Sheet(onClose: () -> Unit, fill: Boolean = true, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+internal fun Sheet(onClose: () -> Unit, fill: Boolean = true, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val drag = remember { Animatable(0f) }

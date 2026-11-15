@@ -78,6 +78,7 @@ Claude-Session: <세션 링크>
 | 랜덤 등수 / 미니게임·사다리 모델 | `model/RandomRank.kt`, `model/MiniGame.kt` |
 | 사람 이름(참가자·최근 멤버·멤버 묶음) / 우리 기록 통계 | `AppState.kt`의 `names`·`members`·`groups`, `ui/setup/SetupScreen.kt`의 `NameSheet` / `model/Stats.kt`, `ui/setup/OurRecords.kt` |
 | 결과 공유 카드 (카드 / 안드로이드 공유·저장) | `ui/result/ShareCard.kt` / `data/AndroidSharer.kt` (검증 빌드에서 제외, `res/xml/share_paths.xml`) |
+| 정보 창(공정성·개인정보처리방침·광고 개인정보 설정) / 이름표 끌기 자동 스크롤 | `ui/setup/InfoSheet.kt` / `ui/setup/EdgeScroll.kt` |
 | 메인 / 경주(룰렛 포함) / 결과 / 미니게임 화면 | `ui/setup/`, `ui/race/RaceScreen.kt`, `ui/result/`, `ui/minigame/` |
 | 캐릭터 그림·연출, 경기장 | `ui/art/` (달리기 걸음은 `ui/art/Gait.kt`), `ui/race/Stadium.kt`, `ui/race/Guests.kt` |
 | 색·폰트·공통 컴포넌트 | `ui/theme/`, `ui/components/` |

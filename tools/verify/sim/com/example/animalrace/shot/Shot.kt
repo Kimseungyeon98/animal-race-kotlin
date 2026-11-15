@@ -66,7 +66,7 @@ import java.io.File
 fun main(args: Array<String>) {
     val out = File(args.getOrElse(0) { "build/shots" }).apply { mkdirs() }
     val only = args.getOrElse(1) { "all" }
-    val scenes = scenes() + touchScenes()
+    val scenes = scenes() + touchScenes() + ideaScenes()
     scenes.filter { only == "all" || it.name == only || it.name.startsWith("$only-") }.forEach { s -> shoot(out, s) }
 }
 

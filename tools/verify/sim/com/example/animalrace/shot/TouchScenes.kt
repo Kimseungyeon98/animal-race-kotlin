@@ -140,6 +140,28 @@ internal fun touchScenes(): List<Scene> {
             val people = listOf("지은", "민수", "현우", "서연", "도윤", "하린", "재석", "준하")
             SetupScreen(androidx.compose.runtime.remember { AppState(FakeRepo).apply { setPeople(people) } })
         },
+        // 6.1: 위쪽 이름표 줄에서 끌고 들어올 땐 위 가장자리에서 스크롤하지 않음 → 안쪽에 들어왔다가 다시 위로 가면 스크롤
+        Scene("t-people-enter", script = {
+            pause(900)
+            // 먼저 아래로 스크롤해 둔다
+            press(49f, 186f); pause(80)
+            moveTo(49f, 186f, 195f, 655f, 400); pause(1200)
+            moveTo(195f, 655f, 195f, 560f, 200); release(195f, 560f); pause(500); snap("0-scrolled-down")
+            // 두 번째 이름표를 위에서 끌고 들어와 위 가장자리 띠에 머무름: 스크롤 그대로여야 함
+            press(49f, 186f); pause(80)
+            moveTo(49f, 186f, 195f, 350f, 500); pause(1200); snap("1-enter-stays")
+            // 안쪽까지 들어갔다가 다시 위로: 이제는 위로 스크롤
+            moveTo(195f, 350f, 195f, 520f, 250); pause(200)
+            moveTo(195f, 520f, 195f, 350f, 250); pause(1200); snap("2-inside-then-up")
+            release(195f, 350f); pause(400)
+        }) {
+            val people = listOf("지은", "민수", "현우", "서연", "도윤", "하린", "재석")
+            SetupScreen(androidx.compose.runtime.remember { AppState(FakeRepo).apply { setPeople(people) } })
+        },
+        // 6.1: 정보 버튼 → 정보 창
+        Scene("t-info", script = {
+            pause(900); snap("0-main"); tap(98f, 60f); pause(900); snap("1-sheet")
+        }) { SetupScreen(androidx.compose.runtime.remember { AppState(FakeRepo).apply { listOf(Animal.HORSE, Animal.CAT, Animal.PANDA).forEach { toggle(it) } } }) },
         Scene("t-setup", script = {
             pause(900); tap(348f, 43f); pause(900); snap("1-history")
         }) { FakeRepo.history = history; SetupScreen(AppState(FakeRepo).apply { listOf(Animal.HORSE, Animal.CAT).forEach { toggle(it) } }) },
