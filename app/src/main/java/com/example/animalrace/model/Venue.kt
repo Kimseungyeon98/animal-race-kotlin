@@ -5,7 +5,8 @@ enum class Venue(val emoji: String, val title: String) {
     MEADOW("🌿", "초원"),
     BEACH("🏖️", "해변"),
     SNOW("❄️", "설원"),
-    DESERT("🌵", "사막");
+    DESERT("🌵", "사막"),
+    VOLCANO("🌋", "화산");
 
     /** 카운트다운 이름표 등: "🏖️ 해변 경기장" */
     val label get() = "$emoji $title 경기장"

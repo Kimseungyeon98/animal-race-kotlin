@@ -415,6 +415,7 @@ private fun burrowColors(venue: Venue): Pair<Color, Color> = when (venue) {
     Venue.BEACH -> Color(0xFF7A6040) to Color(0xFFE9C88E)
     Venue.SNOW -> Color(0xFF9FB8D6) to Color.White
     Venue.DESERT -> Color(0xFF5A3020) to Color(0xFFC97A48)
+    Venue.VOLCANO -> Color(0xFF3A2630) to Color(0xFF8A6660)
 }
 
 /** 굴 구멍 + 앞쪽 흙 테. [front]=true면 앞 테만(몸을 덮는 부분) 그린다. 좌표는 200×170. */

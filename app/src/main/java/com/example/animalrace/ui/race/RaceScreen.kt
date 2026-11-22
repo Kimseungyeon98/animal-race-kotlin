@@ -219,7 +219,7 @@ private fun RaceScreenBody(
     onQuit: () -> Unit,
     names: Map<Animal, String>,
 ) {
-    val stadium = remember(raceKey) { Stadium.entries.random() }
+    val stadium = remember(raceKey) { forceStadium ?: Stadium.entries.random() }
     val race = remember(raceKey) { Race(animals, venue = stadium.venue, names = names) }
     var frame by remember(raceKey) { mutableStateOf(Frame(race.view(), START_X, START_W, 0.0)) }
     var countdown by remember(raceKey) { mutableStateOf<String?>(null) }

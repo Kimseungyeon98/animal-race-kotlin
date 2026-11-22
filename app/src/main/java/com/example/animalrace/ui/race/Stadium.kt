@@ -23,6 +23,9 @@ import kotlin.math.sin
  * 경기장 테마. 경주를 시작할 때 무작위로 하나를 고르며, 순위와는 무관한 배경 연출이다.
  * 시안: 캔버스 "경기장 테마 (무작위)" 보드 (Stadiums.dc.html)
  */
+/** 시안용 임시 스위치: 값이 있으면 무작위 대신 이 경기장 */
+internal var forceStadium: Stadium? = null
+
 enum class Stadium(
     val venue: Venue,
     val skyTop: Color,
@@ -45,6 +48,9 @@ enum class Stadium(
     val extras: List<Pair<Deco, Float>>,
     val snowy: Boolean = false,
     val prints: Boolean = false,
+    val cloud: Color = Color.White,
+    /** 아래에서 위로 날리는 불티 (화산) */
+    val embers: Boolean = false,
 ) {
     MEADOW(
         Venue.MEADOW, Color(0xFF8ED6FF), Color(0xFF8ED6FF), Color.White, Color.White, Color(0xFF7ED37A),
@@ -77,6 +83,16 @@ enum class Stadium(
         props = listOf(Deco.CACTUS to 120f, Deco.CACTUS to 320f),
         specks = Color(0xFFD88E58) to Color(0xFFF3C08C), pebbles = Color(0xFFB8875E) to Color(0xFFA9774F),
         extras = listOf(Deco.CRACK to 0.8f, Deco.WEED to 0.45f),
+    ),
+    // 시안: 새 경기장 후보 (캔버스 "새 경기장 후보")
+    VOLCANO(
+        Venue.VOLCANO, Color(0xFF5A3B6E), Color(0xFFFF9E5E), Color(0xFF8A6E78), Color(0xFF4A3B4E), Color(0xFF7A5A5E),
+        Color(0xFFB39088), Color(0xFFA9867E), Color(0xFF8A6660), Color(0xFFD9BDB4),
+        hills = Color(0xFF7A4E5E) to Color(0xFF6A4254),
+        props = listOf(Deco.SPIRE to 30f, Deco.CONE to 150f, Deco.SPIRE to 330f, Deco.SPIRE to 370f),
+        specks = Color(0xFF8E6A64) to Color(0xFFC9A79E), pebbles = Color(0xFF6E5560) to Color(0xFF5E4852),
+        extras = listOf(Deco.LAVA to 0.95f, Deco.CRACK to 0.5f),
+        cloud = Color(0xFFBFA6B8), embers = true,
     );
 
     /** 레인별 바닥 무늬 (최대 10레인) */
@@ -104,6 +120,12 @@ enum class Deco(
     TWIG(22f, 10f, "M1 7 L21 4", null, "M9 6 L13 1 M15 5 L18 9", detail = Color(0xFF6B4A2E)),
     CRACK(24f, 10f, "", null, "M0 5 L6 3 L10 7 L16 3 L24 6 M10 7 L12 10", detail = Color(0xFFB76A3E)),
     WEED(18f, 18f, "M9 1 A8 8 0 1 1 8.9 1 Z", Color(0xFFD9A35F), "M3 9 Q9 3 15 9 Q9 15 3 9 M9 2 Q12 9 9 16", detail = Color(0xFF8A5A2B)),
+
+    // 화산 소품
+    CONE(96f, 74f, "M0 74 L32 14 Q48 6 64 14 L96 74 Z", Color(0xFF6A4254),
+        "M32 14 Q48 24 64 14 Q56 9 48 11 Q40 9 32 14 Z M42 18 Q39 38 46 54 Q50 40 49 20 Z M55 18 Q60 30 56 44 Q62 32 61 16 Z", Color(0xFFFF7A2E)),
+    SPIRE(26f, 44f, "M2 44 L8 14 L13 20 L17 2 L24 44 Z", Color(0xFF6E5560)),
+    LAVA(26f, 11f, "M2 6 Q6 1 12 4 Q20 0 24 5 Q19 11 12 8 Q6 11 2 6 Z", Color(0xFFFF8A3C), "M8 5 L13 6", detail = Color(0xFFFFE38A)),
 
     // 배경 손님
     BUTTERFLY(22f, 16f, "M11 8 Q4 -2 1 4 Q0 10 11 9 Q22 10 21 4 Q18 -2 11 8 Z", Color(0xFFFFD84D), "M11 4 L11 14"),
@@ -154,7 +176,7 @@ internal fun DrawScope.stadiumBackdrop(st: Stadium, top: Float, camPx: Float, ti
     listOf(0.1f to 0.35f, 0.62f to 0.5f).forEach { (fx, fy) ->
         var cx = fx * size.width - cloudShift
         if (cx < -160f) cx += size.width + 200f
-        drawRoundRect(Color.White.copy(alpha = 0.9f), Offset(cx, top * fy), Size(120.dp.toPx(), 34.dp.toPx()),
+        drawRoundRect(st.cloud.copy(alpha = 0.9f), Offset(cx, top * fy), Size(120.dp.toPx(), 34.dp.toPx()),
             androidx.compose.ui.geometry.CornerRadius(20.dp.toPx()))
     }
 
@@ -166,6 +188,12 @@ internal fun DrawScope.stadiumBackdrop(st: Stadium, top: Float, camPx: Float, ti
             val y = (rnd(k * 7.7) * top + (time * (34 + rnd(k.toDouble()) * 34)).toFloat()) % top
             drawCircle(Color.White, (1.5f + rnd(k * 1.9) * 2f) * density, Offset(x, y))
         }
+    }
+
+    if (st.embers) for (k in 0 until 22) {
+        val x = rnd(k * 3.1) * size.width + sin(time.toFloat() * 1.3f + k) * 10.dp.toPx()
+        val y = top - ((rnd(k * 7.7) * top + (time * (20 + rnd(k.toDouble()) * 30)).toFloat()) % top)
+        drawCircle(if (k % 3 == 0) Color(0xFFFFE38A) else Color(0xFFFF8A3C), (1.2f + rnd(k * 1.9) * 1.8f) * density, Offset(x, y), alpha = 0.9f)
     }
 
     val hills = st.hills
@@ -231,7 +259,7 @@ private fun DrawScope.guests(st: Stadium, top: Float, camPx: Float, time: Double
             val wob = sin(tt * 2) * 3.dp.toPx()
             devilGuest(x + wob, top - 14.dp.toPx() - 80 * density, density, time)
         }
-        Stadium.SNOW -> Unit
+        else -> Unit
     }
 }
 

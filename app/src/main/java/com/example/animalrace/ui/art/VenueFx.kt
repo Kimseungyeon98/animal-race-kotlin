@@ -75,6 +75,7 @@ internal fun venueTrip(venue: Venue, t: Float, loop: Boolean): FxFrame = when (v
     Venue.BEACH -> beachTrip(t)
     Venue.SNOW -> snowTrip(t, loop)
     Venue.DESERT -> desertTrip(t)
+    Venue.VOLCANO -> if (volcanoTripStyle == 0) lavaBombTrip(t, loop) else steamVentTrip(t, loop)
 }
 
 // ---------------------------------------------------------------- 초원: 돌부리에 걸려 데굴 → 꽈당 (시안 "초원 연출 다듬기" ②)
@@ -427,6 +428,173 @@ private fun desertTrip(t: Float): FxFrame {
             // 바닥 모래 구름 (넓게 퍼지며 출렁)
             part(base, 128f, 30f, -14f, 62f, 128f, 30f, SandDust, sw = 2f)
             part(svg(BASE_LINES), 128f, 30f, -14f, 62f, 128f, 30f, null, Sand, 2f)
+        },
+    )
+}
+
+// ---------------------------------------------------------------- 화산 (시안 두 가지)
+
+/** 시안 스위치: 0 = 화산탄 쿵 → 엉덩방아 · 화산재 콜록, 1 = 증기 분출구 슝 → 빙글 → 쿵 */
+internal var volcanoTripStyle = 0
+
+private const val ROCK = "M3 9 Q1 3 8 2 Q15 0 18 6 Q20 13 12 15 Q4 16 3 9 Z"
+private const val ROCK_GLOW = "M6 6 L10 9 L15 6 M10 9 L9 13"
+private const val FLAME = "M8 0 Q14 8 12 13 Q16 12 14 18 Q12 22 8 22 Q2 22 2 16 Q1 11 5 9 Q4 5 8 0 Z"
+private const val FLAME_CORE = "M8 8 Q11 13 10 17 Q9 20 8 20 Q5 20 5 17 Q5 13 8 8 Z"
+private val Rock = Color(0xFF4A3B4E)
+private val Crater = Color(0xFF3A2630)
+private val Lava = Color(0xFFFF7A2E)
+private val LavaHot = Color(0xFFFFD84D)
+private val LavaDark = Color(0xFFD9481E)
+private val Ash = Color(0xFFB7AEB8)
+private val Steam = Color(0xFFF7F4FA)
+
+/** 시안 좌표 그대로 그리기 (경로가 시안 좌표로 되어 있을 때) */
+private fun DrawScope.raw(path: Path, fill: Color?, stroke: Color? = Ink, sw: Float = 2.2f, alpha: Float = 1f) =
+    part(path, 100f, 85f, 0f, 0f, 100f, 85f, fill, stroke, sw, alpha)
+
+/** 뭉게뭉게 덩어리 (잉크 먼저, 채우기 나중 → 한 덩어리) */
+private fun DrawScope.puffs(ps: List<Triple<Float, Float, Float>>, color: Color, alpha: Float = 1f) {
+    val list = ps.filter { it.third > 1.5f }
+    list.forEach { (x, y, d) -> dot(x, y, d + 4f, Ink, alpha = alpha) }
+    list.forEach { (x, y, d) -> dot(x, y, d, color, alpha = alpha) }
+}
+
+/** 화산탄: 하늘에서 불붙은 돌이 떨어져 코앞에 쿵 → 놀라 뒤로 폴짝, 엉덩방아 → 화산재를 뒤집어쓰고 콜록콜록 */
+private fun lavaBombTrip(t: Float, loop: Boolean): FxFrame {
+    val ph = if (loop) (t % 36f) / 36f else (t / 32f).coerceAtMost(1f)
+    val fall = (ph / 0.24f).coerceAtMost(1f)
+    val hit = ph >= 0.24f
+    val boom = ((ph - 0.24f) / 0.18f).coerceIn(0f, 1f)
+    val sit = smoothstep(0.24f, 0.44f, ph)
+    val after = ((ph - 0.44f) / 0.56f).coerceIn(0f, 1f)
+    val hop = if (ph in 0.24f..0.44f) sin((ph - 0.24f) / 0.2f * PI.toFloat()) * 12f else 0f
+    // 콜록할 때마다 몸이 살짝 들썩
+    val cough = if (after > 0f) abs(sin(after * PI.toFloat() * 4)) * 2f * (1 - after * 0.5f) else 0f
+    val lx = 106f
+    val gy = 75f
+    fun rockAt(f: Float) = Offset(lx + 42f * (1 - f), -46f + (gy - 7f + 46f) * f * f)
+    return FxFrame(
+        front = listOf(hurt(if (ph < 0.24f) "어? 어?" else if (ph < 0.46f) "으악!" else "콜록콜록!").copy(x = -48f, y = -40f)),
+        rot = -22f * sit, pivotY = 0.92f,
+        dx = -10f * sit * F, dy = (-hop + 4f * sit - cough) * F, pose = 0,
+        under = {
+            if (!hit) {
+                // 떨어질 자리에 그림자가 점점 커지고 진해짐
+                raw(oval(lx, gy, 4f + 10f * fall, 1.5f + 2.5f * fall), Ink, null, alpha = 0.12f + 0.2f * fall)
+            } else {
+                raw(svg("M${lx - 13} $gy L${lx - 20} ${gy - 3} M${lx - 17} ${gy - 1.5f} L${lx - 19} ${gy + 2} M${lx + 13} $gy L${lx + 21} ${gy - 2.5f}"), null, LavaDark, 2.2f)
+                raw(oval(lx, gy, 13f, 3.6f), Crater, sw = 2.2f)
+                raw(oval(lx, gy - 0.4f, 8f, 1.8f), Lava, null, alpha = 0.7f + 0.3f * sin(t * 0.9f))
+            }
+        },
+        over = {
+            if (!hit) {
+                // 불꼬리
+                for (k in 5 downTo 1) {
+                    val p = rockAt((fall - k * 0.05f).coerceAtLeast(0f))
+                    dot(p.x, p.y, 11f - k * 1.5f, if (k % 2 == 0) LavaHot else Lava, alpha = 1f - k * 0.15f)
+                }
+                val p = rockAt(fall)
+                part(svg(ROCK), 20f, 16f, p.x - 10f, p.y - 8f, 20f, 16f, Rock, sw = 2.2f, rot = fall * 220f)
+                part(svg(ROCK_GLOW), 20f, 16f, p.x - 10f, p.y - 8f, 20f, 16f, null, Lava, 1.8f, rot = fall * 220f)
+            } else {
+                // 쿵! 번쩍 + 튀는 돌 부스러기
+                if (boom < 1f) {
+                    dot(lx, gy - 6f, 8f + 30f * boom, LavaHot, alpha = (1 - boom) * 0.85f)
+                    for (k in 0..5) {
+                        val vx = (k - 2.5f) * 10f
+                        val x = lx + vx * boom
+                        val y = gy - 6f - (22f + (k % 2) * 12f) * boom + 30f * boom * boom
+                        dot(x, y, 4.5f - (k % 2), if (k % 3 == 0) Lava else Rock, 0.8f, alpha = 1 - boom * 0.6f)
+                    }
+                }
+                // 땅에 박힌 화산탄 + 위에 작은 불
+                part(svg(ROCK), 20f, 16f, lx - 9f, gy - 11f, 18f, 14f, Rock, sw = 2.2f)
+                part(svg(ROCK_GLOW), 20f, 16f, lx - 9f, gy - 11f, 18f, 14f, null, if (sin(t * 1.4f) > 0) LavaHot else Lava, 1.8f)
+                val fl = 1f + 0.15f * sin(t * 2.2f)
+                part(svg(FLAME), 16f, 22f, lx - 4f, gy - 22f * fl, 9f, 12f * fl, Lava, sw = 1.8f, rot = sin(t * 1.6f) * 8f)
+                part(svg(FLAME_CORE), 16f, 22f, lx - 4f, gy - 22f * fl, 9f, 12f * fl, LavaHot, null, rot = sin(t * 1.6f) * 8f)
+                // 화산재 구름: 터진 자리에서 동물 쪽으로 몰려와 감쌌다가 걷힘
+                val a = ((ph - 0.24f) / 0.76f).coerceIn(0f, 1f)
+                val fade = 1f - smoothstep(0.65f, 1f, a)
+                puffs(
+                    List(6) { k ->
+                        val spread = (0.3f + a) * (k - 2.5f) * 9f
+                        Triple(lx - 8f - a * 34f + spread, gy - 8f - a * (16f + (k % 3) * 9f), (7f + (k % 3) * 3f) * (0.6f + a * 0.9f))
+                    },
+                    Ash, alpha = fade * 0.95f,
+                )
+                // 콜록할 때 입에서 나오는 작은 재 뭉치
+                if (after > 0f) for (k in 0..1) {
+                    val f = (after * 4f + k * 0.5f) % 1f
+                    puffs(listOf(Triple(94f + f * 12f, 18f - f * 12f, 5f + f * 4f)), Ash, alpha = 1f - f)
+                }
+            }
+        },
+    )
+}
+
+/** 증기 분출구: 발밑에서 쉬익… → 뜨거운 증기가 펑 솟아 붕 날아오름(빙글 한 바퀴) → 쿵 착지 → 뜨거 뜨거! 땀 뻘뻘 */
+private fun steamVentTrip(t: Float, loop: Boolean): FxFrame {
+    val ph = if (loop) (t % 36f) / 36f else (t / 32f).coerceAtMost(1f)
+    val hiss = smoothstep(0f, 0.2f, ph)
+    val blast = ((ph - 0.2f) / 0.38f).coerceIn(0f, 1f)
+    val flying = ph in 0.2f..0.58f
+    val up = if (flying) sin(blast * PI.toFloat()) * 46f else 0f
+    val land = ((ph - 0.58f) / 0.42f).coerceIn(0f, 1f)
+    val shake = if (ph < 0.2f) sin(t * 3f) * 1.4f * hiss else 0f
+    val rot = when {
+        flying -> 360f * smoothstep(0.08f, 0.92f, blast)
+        land > 0f -> sin(land * PI.toFloat() * 4) * 7f * (1 - land)
+        else -> 0f
+    }
+    val vx = 46f
+    val gy = 75f
+    // 증기 기둥 높이: 펑 솟았다가 천천히 가라앉음
+    val h = 74f * smoothstep(0.2f, 0.28f, ph) * (1f - 0.8f * smoothstep(0.55f, 1f, ph))
+    return FxFrame(
+        front = listOf(hurt(if (ph < 0.2f) "쉬익…?" else if (ph < 0.58f) "으아아~!" else "뜨거 뜨거!").copy(x = 196f, y = -20f)),
+        rot = rot % 360, pivotY = 0.5f, dx = shake * F, dy = -up * F, pose = 0,
+        under = {
+            // 갈라진 분출구
+            raw(svg("M${vx - 10} $gy L${vx - 17} ${gy - 2.5f} M${vx + 10} $gy L${vx + 17} ${gy - 2}"), null, LavaDark, 2.2f)
+            raw(oval(vx, gy, 10f, 2.8f), Crater, sw = 2.2f)
+            raw(oval(vx, gy - 0.3f, 6f, 1.4f), LavaHot, null, alpha = 0.4f + 0.6f * hiss)
+            if (h < 4f) {
+                // 쉬익: 작은 김이 몽글몽글
+                for (k in 0..2) {
+                    val f = (t * 0.07f + k / 3f) % 1f
+                    puffs(listOf(Triple(vx + sin(f * 6 + k) * 3f, gy - 3f - f * 18f * (0.5f + hiss), 3f + 4f * f)), Steam, alpha = (1 - f) * (0.4f + hiss))
+                }
+            } else {
+                // 증기 기둥 (뭉게뭉게 쌓인 김)
+                val n = (h / 7f).toInt().coerceAtLeast(1)
+                puffs(
+                    List(n + 1) { i ->
+                        val y = gy - 2f - h * i / n
+                        Triple(vx + sin(t * 0.8f + i * 1.3f) * 3f, y, 9f + i * 0.9f + if (i == n) 7f else 0f)
+                    } + listOf(Triple(vx - 8f, gy - h + 2f, 10f), Triple(vx + 8f, gy - h + 1f, 11f)),
+                    Steam,
+                )
+            }
+        },
+        over = {
+            if (land > 0f) {
+                // 쿵 착지 먼지
+                val k = (land * 3f).coerceAtMost(1f)
+                if (k < 1f) dust(listOf(Triple(20f - k * 12f, 74f, 12f * (1 - k)), Triple(86f + k * 12f, 74f, 12f * (1 - k))))
+                // 땀 뻘뻘 (뜨거워서)
+                for (j in 0..2) {
+                    val f = (land * 2.2f + j * 0.33f) % 1f
+                    drop2(70f + j * 11f + f * 4f, 6f + f * 12f, 7f, 1f - f)
+                }
+                // 남은 김이 몸에서 모락모락
+                for (j in 0..1) {
+                    val f = (t * 0.05f + j * 0.5f) % 1f
+                    puffs(listOf(Triple(34f + j * 26f, 30f - f * 20f, 4f + 5f * f)), Steam, alpha = (1 - f) * (1 - land * 0.6f))
+                }
+            }
         },
     )
 }

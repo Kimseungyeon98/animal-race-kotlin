@@ -36,6 +36,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.animalrace.AppState
 import com.example.animalrace.model.Animal
+import com.example.animalrace.model.Fx
+import com.example.animalrace.model.Venue
+import com.example.animalrace.ui.art.volcanoTripStyle
+import com.example.animalrace.ui.race.Stadium
+import com.example.animalrace.ui.race.forceStadium
 import com.example.animalrace.race.Racer
 import com.example.animalrace.ui.art.AnimalSprite
 import com.example.animalrace.ui.components.CartoonButton
@@ -54,6 +59,28 @@ internal fun ideaScenes(): List<Scene> {
     val names = mapOf(Animal.HORSE to "민수", Animal.CAT to "지은", Animal.RABBIT to "현우", Animal.PANDA to "서연", Animal.DOG to "도윤", Animal.PIG to "하린")
     return listOf(
         // ① 사진 판정: 당첨 자리와 바로 앞 등수가 간발의 차이일 때 결과 전에 잠깐
+        // 화산 넘어지는 장면 두 가지 (0 화산탄 · 1 증기): 줄마다 동물, 칸마다 시간
+        *listOf("bomb" to 0, "steam" to 1).map { (n, style) ->
+            Scene("idea-vtrip-$n", w = 190 * 7 + 24, h = 160 * 2 + 40) {
+                volcanoTripStyle = style
+                Column(Modifier.fillMaxSize().background(Stadium.VOLCANO.dirt).padding(12.dp)) {
+                    listOf(Animal.RABBIT, Animal.PIG).forEach { a ->
+                        Row {
+                            listOf(0.15f, 0.4f, 0.6f, 0.85f, 1.1f, 1.4f, 1.8f).forEach { tm ->
+                                Box(Modifier.size(190.dp, 160.dp).padding(top = 56.dp, start = 40.dp)) {
+                                    AnimalSprite(a, 112.dp, fx = Fx.TRIP, fxTime = tm, venue = Venue.VOLCANO)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }.toTypedArray(),
+        Scene("idea-vrace", snaps = (4..15).map { it * 1000L }) {
+            volcanoTripStyle = 0
+            forceStadium = Stadium.VOLCANO
+            RaceScreen(names.keys.toList(), "커피 쏘기", 0, { _, _ -> }, names = names)
+        },
         Scene("idea-photo", snaps = listOf(30000L)) {
             var last by remember { mutableStateOf<List<Racer>?>(null) }
             Box(Modifier.fillMaxSize()) {
