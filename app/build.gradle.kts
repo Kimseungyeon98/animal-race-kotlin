@@ -23,8 +23,8 @@ android {
         applicationId = "com.animalrace.android"
         minSdk = 24
         targetSdk = 36
-        versionCode = 101
-        versionName = "6.1"
+        versionCode = 102
+        versionName = "6.1.1"
     }
 
     signingConfigs {

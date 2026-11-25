@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    AdMob ID (6.0). 지금은 구글이 공개한 "테스트" ID라 누르거나 봐도 수익·제재가 없다.
-    AdMob 계정에서 앱과 광고 단위(배너·전면)를 만들면 아래 세 값만 실제 ID로 바꾼다.
+    AdMob 실제 ID (6.1.1, 출시용). release 빌드가 이 값을 쓴다.
+    debug 빌드(내 폰 설치·개발용)는 app/src/debug/res/values/ads.xml 의 구글 테스트 ID로 덮어쓴다.
+    실제 광고는 개발자 본인이 누르면 안 된다 (무효 클릭 → 계정 제재). 본인 폰은 AdMob › 설정 › 테스트 기기에 등록.
 -->
 <resources>
-    <string name="admob_app_id" translatable="false">ca-app-pub-3940256099942544~3347511713</string>
-    <string name="admob_banner" translatable="false">ca-app-pub-3940256099942544/9214589741</string>
-    <string name="admob_interstitial" translatable="false">ca-app-pub-3940256099942544/1033173712</string>
+    <string name="admob_app_id" translatable="false">ca-app-pub-8022512248292629~1768552160</string>
+    <string name="admob_banner" translatable="false">ca-app-pub-8022512248292629/2503883481</string>
+    <string name="admob_interstitial" translatable="false">ca-app-pub-8022512248292629/6131303151</string>
 </resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    debug 빌드 전용: 구글이 공개한 "테스트" AdMob ID (6.1.1).
+    개발 중에 봐도·눌러도 수익·제재가 없다. release 빌드는 main/res/values/ads.xml 의 실제 ID.
+-->
+<resources>
+    <string name="admob_app_id" translatable="false">ca-app-pub-3940256099942544~3347511713</string>
+    <string name="admob_banner" translatable="false">ca-app-pub-3940256099942544/9214589741</string>
+    <string name="admob_interstitial" translatable="false">ca-app-pub-3940256099942544/1033173712</string>
+</resources>

@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>벌칙 걸고, 응원하고, 소리 지르는 20초짜리 동물 경주</b><br>
-  <img src="https://img.shields.io/badge/version-6.1-4C9A2A" alt="version 6.1">
+  <img src="https://img.shields.io/badge/version-6.1.1-4C9A2A" alt="version 6.1.1">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84" alt="Android">
   <img src="https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF" alt="Kotlin Compose">
   <img src="https://img.shields.io/badge/%EA%B3%B5%EC%A0%95%EC%84%B1-%CF%87%C2%B2%20%EA%B2%80%EC%A6%9D-0969DA" alt="공정성 검증">
@@ -135,6 +135,10 @@
 
 <details>
 <summary><b>📋 전체 패치노트</b> (버전별 자세히)</summary>
+
+### 6.1.1 — 정식 출시용 광고 ID
+- `res/values/ads.xml`을 실제 AdMob 앱·배너·전면 광고 ID로 (release 빌드)
+- **debug 빌드는 구글 테스트 ID 그대로** (`app/src/debug/res/values/ads.xml`가 덮어씀): 개발하며 내 폰에 설치해도 실제 광고가 나오지 않음
 
 ### 6.1 — 정보 창 · 이름표 끌기 스크롤 (캔버스 "다음 업데이트 후보" 3)
 - ⓘ **정보 창**: 메인 제목 아래 효과음·배경음악 옆 세 번째 동그라미 → 공정성 안내 · **개인정보처리방침**(브라우저) · **광고 개인정보 설정**(동의를 다시 고를 수 있어야 하는 지역에서만 보임, `Ads.privacyOptionsRequired`) · 버전 (`ui/setup/InfoSheet.kt`)
